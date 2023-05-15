@@ -1,5 +1,5 @@
 install: ngrok swap node-pi pip
-	cd vue && npm install
+	cd vue && npm install -y
 	cd flask && pip install -r requirements.txt
 
 run: run-flask run-express
@@ -56,7 +56,7 @@ pip:
 	@echo "Checking for pip..."
 	@if ! command -v pip > /dev/null; then \
   		echo "Installing distutils..."; \
-	    sudo apt-get install python3-distutils; \
+	    sudo apt-get install python3-distutils -y; \
 		echo "Installing pip..."; \
 		curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py; \
 		sudo python3 get-pip.py; \
@@ -78,3 +78,11 @@ install_apt_dependencies: swap
 			sudo apt-get install -y $$dep; \
 		fi \
 	done
+
+updatepath:
+	if echo $$PATH | grep -q "/home/pi/.local/bin"; then \
+		echo "PATH already contains /home/pi/.local/bin. No changes made."; \
+	else \
+		echo "export PATH=\$$PATH:/home/pi/.local/bin" >> ~/.bashrc; \
+		source ~/.bashrc; \
+	fi
