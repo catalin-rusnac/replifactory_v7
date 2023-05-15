@@ -1,0 +1,51 @@
+<template>
+  <div id="app">
+    <ul class="nav nav-tabs" id="myTab">
+      <li class="nav-item" v-for="tab in tabs" :key="tab">
+        <a class="nav-link" :class="{ active: currentTab === tab }" href="#" @click="currentTab = tab">{{ tab }}</a>
+      </li>
+    </ul>
+    <div class="tab-content">
+      <HomeTab v-if="currentTab === 'Home'"/>
+      <ExperimentTab v-if="currentTab === 'Experiment'"/>
+      <DeviceControl v-if="currentTab === 'Device'" />
+      <NgrokTab v-if="currentTab === 'Remote'" />
+      <HelpTab v-if="currentTab === 'Help'" />
+    </div>
+  </div>
+</template>
+
+<script>
+import DeviceControl from './components/DeviceControl/DeviceControl';
+import HomeTab from '@/client/components/HomeTab/HomeTab';
+import ExperimentTab from "@/client/components/ExperimentTab/ExperimentTab";
+import NgrokTab from "@/client/components/Remote/NgrokTab";
+import HelpTab from "@/client/components/HelpTab/HelpTab";
+export default {
+  name: 'App',
+  components: {
+    HomeTab,
+    ExperimentTab,
+    DeviceControl,
+    NgrokTab,
+    HelpTab
+  },
+  data() {
+    return {
+      currentTab: 'Device',
+      tabs: ['Home', 'Experiment', 'Device', 'Remote', 'Help']
+    };
+  },
+};
+</script>
+
+<style>
+#app {
+  font-family: 'Avenir', Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #2c3e50;
+  margin: 0 auto;
+  max-width: 1024px;
+}
+</style>
