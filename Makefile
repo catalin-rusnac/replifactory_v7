@@ -86,3 +86,7 @@ updatepath:
 		echo "export PATH=\$$PATH:/home/pi/.local/bin" >> ~/.bashrc; \
 		source ~/.bashrc; \
 	fi
+
+kill-services:
+    sudo fuser -k 3000/tcp
+    sudo fuser -k 5000/tcp
