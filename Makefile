@@ -88,5 +88,5 @@ updatepath:
 	fi
 
 kill-services:
-    sudo fuser -k 3000/tcp; \
-    sudo fuser -k 5000/tcp
+	sudo fuser -k 3000/tcp
+	sudo fuser -k 5000/tcp
