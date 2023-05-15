@@ -47,7 +47,7 @@ node-pi:
 		echo "Installing Node.js and npm for Raspberry Pi..."; \
 		curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -; \
 		sudo apt-get install -y nodejs; \
-		echo "Node.js and npm installed successfully."; \
+		echo "Node.js and npm installed successfully"; \
 	else \
 		echo "Node.js and npm already installed. No changes made."; \
 	fi
