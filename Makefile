@@ -56,7 +56,7 @@ pip:
 	@echo "Checking for pip..."
 	@if ! command -v pip > /dev/null; then \
   		echo "Installing distutils..."; \
-	    sudo apt-get install python3-distutils;\
+	    sudo apt-get install python3-distutils
 		echo "Installing pip..."; \
 		curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py; \
 		sudo python3 get-pip.py; \
