@@ -108,5 +108,5 @@ app.get('/api/get-ngrok-url', (req, res) => {
 
 
 app.listen(expressPort, () => {
-  console.log(`Express app listening at http://localhost:${expressPort}`);
+  console.log(`Express app listening on port ${expressPort}`);
 });

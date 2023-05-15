@@ -5,11 +5,11 @@ let flask = 'initial_flask';
 
 if (window.location.port === '8080') {
   // Vue app is running on port 8080
-  axios.defaults.baseURL = 'http://localhost:5000';
+  axios.defaults.baseURL = 'http://127.0.0.1:5000';
   flask = '';
 } else if (window.location.port === '3000') {
   // Express is running on port 3000
-  axios.defaults.baseURL = 'http://localhost:3000';
+  axios.defaults.baseURL = 'http://127.0.0.1:3000';
   flask = '/flask';
 }
 
