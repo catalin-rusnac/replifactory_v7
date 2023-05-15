@@ -1,5 +1,5 @@
 install: ngrok swap node-pi pip
-	#cd vue && npm install
+	cd vue && npm install
 	cd flask && pip install -r requirements.txt
 
 run: run-flask run-express
@@ -55,6 +55,8 @@ node-pi:
 pip:
 	@echo "Checking for pip..."
 	@if ! command -v pip > /dev/null; then \
+  		echo "Installing distutils..."; \
+	    sudo apt-get install python3-distutils
 		echo "Installing pip..."; \
 		curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py; \
 		sudo python3 get-pip.py; \
@@ -76,4 +78,3 @@ install_apt_dependencies: swap
 			sudo apt-get install -y $$dep; \
 		fi \
 	done
-
