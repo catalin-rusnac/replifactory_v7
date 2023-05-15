@@ -2,7 +2,7 @@ import logging
 import random
 import time
 
-# from waitress import serve
+from waitress import serve
 from flask import Flask, request, jsonify, render_template, make_response, current_app
 # cors
 from flask_cors import CORS, cross_origin
@@ -14,6 +14,11 @@ from minimal_device.base_device import BaseDevice
 
 
 # setup logging to file, create file if it doesn't exist
+if not os.path.exists('data'):
+    os.makedirs('data')
+if not os.path.exists('data/flask.log'):
+    with open('data/flask.log', 'w') as f:
+        f.write('')
 logging.basicConfig(filename='data/flask.log', level=logging.INFO, format='%(asctime)s %(message)s')
 
 
