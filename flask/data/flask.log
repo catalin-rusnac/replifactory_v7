@@ -1,0 +1,9 @@
+2023-05-16 01:46:19,680 Starting server...
+2023-05-16 01:46:19,711 [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.0.31:5000
+2023-05-16 01:46:19,711 [33mPress CTRL+C to quit[0m
+2023-05-16 01:46:28,675 127.0.0.1 - - [16/May/2023 01:46:28] "POST /connect-device HTTP/1.1" 200 -
+2023-05-16 01:46:28,690 127.0.0.1 - - [16/May/2023 01:46:28] "GET /get-all-device-data HTTP/1.1" 200 -
+2023-05-16 01:46:29,025 127.0.0.1 - - [16/May/2023 01:46:29] "GET /get-all-device-data HTTP/1.1" 200 -
