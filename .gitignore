@@ -4,3 +4,4 @@
 /.idea/
 /poetry.lock
 /pyproject.toml
+/flask/minimal_device/__pycache__/

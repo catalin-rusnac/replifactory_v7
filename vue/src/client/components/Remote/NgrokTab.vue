@@ -13,6 +13,14 @@
 <script>
 import axios from 'axios';
 
+const baseURL = 'http://localhost:3000/tunnels';
+
+const ngrokaxios = axios.create({
+  baseURL: baseURL,
+  timeout: 5000,
+});
+
+
 export default {
   data() {
     return {
@@ -21,7 +29,7 @@ export default {
     };
   },
   created() {
-      axios.get('/api/get-ngrok-url')
+      ngrokaxios.get('/get-ngrok-url')
         .then(response => {
           console.log(response);
           this.ngrokUrl = response.data.ngrokUrl;
@@ -34,7 +42,7 @@ export default {
   methods: {
     sendAuthtoken() {
       axios
-        .post('/api/setNgrokauthtoken', {
+        .post('/set-ngrok-authtoken', {
           authtoken: this.authtoken,
         })
         .then(response => {

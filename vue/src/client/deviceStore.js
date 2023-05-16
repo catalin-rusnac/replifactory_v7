@@ -1,11 +1,15 @@
 
 import axios from 'axios';
 
-if (window.location.port === '8080') {
-  axios.defaults.baseURL = `http://${window.location.hostname}:5000`;
-} else if (window.location.port === '3000') {
-  axios.defaults.baseURL = `http://${window.location.hostname}:3000/flask`;
+let flaskport = "3000/flask";
+if (process.env.NODE_ENV === 'development') {
+    flaskport = 5000;
 }
+let baseURL = `http://127.0.0.1:${flaskport}`;
+
+const flaskAxios = axios.create({
+  baseURL: baseURL,
+});
 
 export default {
   namespaced: true,
@@ -161,7 +165,7 @@ mutations: {
         const endpoint = `/set-${devicePart}-calibration`;
 
         return new Promise((resolve, reject) => {
-            axios.post(endpoint, { partIndex, newCalibration })
+            flaskAxios.post(endpoint, { partIndex, newCalibration })
             .then(response => {
             if (response.data.success) {
               commit('setPartCalibration', { devicePart, partIndex, newCalibration: response.data.newCalibration });
@@ -183,7 +187,7 @@ mutations: {
       const endpoint = `/set-${devicePart}-state`;
 
       return new Promise((resolve, reject) => {
-        axios.post(`${endpoint}`, { partIndex, newState, input })
+        flaskAxios.post(`${endpoint}`, { partIndex, newState, input })
           .then(response => {
             if (response.data.success) {
               commit('setPartState', { devicePart, partIndex, newState: response.data.newState});
@@ -201,9 +205,10 @@ mutations: {
 
     connectDevice({ dispatch }) {
       return new Promise((resolve, reject) => {
-        axios
-          .post('/connect-device')
+          console.log("connect device request", flaskAxios, baseURL);
+        flaskAxios.post('/connect-device')
           .then(response => {
+              console.log("connect device response: ", response.data);
             if (response.data.success) {
               dispatch('getAllDeviceData')
                 .then(() => {
@@ -226,7 +231,7 @@ mutations: {
 
     getAllDeviceData({ commit }) {
         return new Promise((resolve, reject) => {
-            axios.get('/get-all-device-data')
+            flaskAxios.get('/get-all-device-data')
             .then(response => {
                 if (response.data.success) {
                     commit('setAllDeviceStates', response.data.device_states);
@@ -247,7 +252,7 @@ mutations: {
       const endpoint = `/measure-${devicePart}`;
 
       return new Promise((resolve, reject) => {
-        axios.post(endpoint, { partIndex })
+        flaskAxios.post(endpoint, { partIndex })
           .then(response => {
             if (response.data.success) {
                 commit('setAllDeviceStates', response.data.device_states);

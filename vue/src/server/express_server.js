@@ -13,7 +13,7 @@ app.use('/flask', (req, res, next) => {
   next();
 }, createProxyMiddleware({
   target: 'http://127.0.0.1:5000',
-  changeOrigin: false,
+  changeOrigin: true,
   pathRewrite: {
     '^/flask': '', // remove the '/flask' prefix when forwarding to the Flask server
   },
@@ -76,7 +76,6 @@ if (fs.existsSync(ngrokConfigPath)) {
   }
 }
 
-
 async function startNgrok() {
   console.log('Starting ngrok tunnel setup...');
   ngrokUrl = await ngrok.connect({
@@ -85,7 +84,7 @@ async function startNgrok() {
   console.log(`ngrok tunnel started: ${ngrokUrl}`);
 }
 
-app.post('/api/setNgrokauthtoken', async (req, res) => {
+app.post('/tunnels/set-ngrok-authtoken', async (req, res) => {
   const { authtoken } = req.body;
   try {
     console.log('Setting ngrok authtoken...')
@@ -100,7 +99,8 @@ app.post('/api/setNgrokauthtoken', async (req, res) => {
 });
 
 
-app.get('/api/get-ngrok-url', (req, res) => {
+app.get('/tunnels/get-ngrok-url', (req, res) => {
+  console.log('Getting ngrok url from path:',req.path);
   res.json({ ngrokUrl: ngrokUrl });
 });
 

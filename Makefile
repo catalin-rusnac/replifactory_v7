@@ -10,7 +10,7 @@ run-flask:
 run-express:
 	node vue/src/server/express_server.js &
 
-run-vue-dev:
+run-vue:
 	cd vue && npm run serve
 
 build:
