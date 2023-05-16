@@ -8,16 +8,29 @@ const path = require('path');
 const app = express();
 const expressPort = 3000;
 
-app.use('/flask', (req, res, next) => {
-  console.log('Proxying requests to Flask server at http://127.0.0.1:5000');
-  next();
-}, createProxyMiddleware({
+// Added console log before creating the middleware
+console.log('Initializing middleware');
+
+// Wrap the middleware creation inside a variable for easier logging
+const proxyMiddleware = createProxyMiddleware({
   target: 'http://127.0.0.1:5000',
   changeOrigin: true,
   pathRewrite: {
     '^/flask': '', // remove the '/flask' prefix when forwarding to the Flask server
   },
-}));
+});
+
+// Added console log after creating the middleware
+console.log('Middleware created');
+
+app.use('/flask', (req, res, next) => {
+  console.log('Proxying requests to Flask server at http://127.0.0.1:5000');
+  next();
+}, proxyMiddleware);
+
+// Added console log after adding the middleware
+console.log('Middleware added to app');
+
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../../dist')));

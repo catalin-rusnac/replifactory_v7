@@ -13,12 +13,11 @@
 <script>
 import axios from 'axios';
 
-const baseURL = 'http://localhost:3000/tunnels';
-
 const ngrokaxios = axios.create({
-  baseURL: baseURL,
+  baseURL: window.location.origin + '/tunnels',
   timeout: 5000,
 });
+console.log("Created ngrokAxios with baseURL: " + window.location.origin + '/tunnels',);
 
 
 export default {

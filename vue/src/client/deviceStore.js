@@ -1,15 +1,9 @@
-
 import axios from 'axios';
 
-let flaskport = "3000/flask";
-if (process.env.NODE_ENV === 'development') {
-    flaskport = 5000;
-}
-let baseURL = `http://127.0.0.1:${flaskport}`;
-
 const flaskAxios = axios.create({
-  baseURL: baseURL,
+  baseURL: window.location.origin + '/flask',
 });
+console.log("Created flaskAxios with baseURL: " + window.location.origin + '/flask',);
 
 export default {
   namespaced: true,
@@ -205,7 +199,7 @@ mutations: {
 
     connectDevice({ dispatch }) {
       return new Promise((resolve, reject) => {
-          console.log("connect device request", flaskAxios, baseURL);
+          console.log("connect device request", flaskAxios);
         flaskAxios.post('/connect-device')
           .then(response => {
               console.log("connect device response: ", response.data);
