@@ -25,13 +25,13 @@ export default {
     stirrers: {
       states: {1: "stopped", 2: "high", 3: "low", 4: "stopped", 5: "stopped", 6: "stopped", 7: "stopped"},
       calibration: {
-        1: {"low": 40, "high": 50},
-        2: {"low": 40, "high": 50},
-        3: {"low": 40, "high": 50},
-        4: {"low": 40, "high": 50},
-        5: {"low": 40, "high": 50},
-        6: {"low": 40, "high": 50},
-        7: {"low": 40, "high": 50}
+        1: {"low": 0.40, "high": 0.50},
+        2: {"low": 0.40, "high": 0.50},
+        3: {"low": 0.40, "high": 0.50},
+        4: {"low": 0.40, "high": 0.50},
+        5: {"low": 0.40, "high": 0.50},
+        6: {"low": 0.40, "high": 0.50},
+        7: {"low": 0.40, "high": 0.50}
       },
     },
     ods: {
