@@ -1,6 +1,6 @@
 import numpy as np
 import yaml
-
+import gzip
 
 def make_addr_bytes(page=511, byte=63):
     two_bytes = page << 6 | byte
@@ -8,25 +8,12 @@ def make_addr_bytes(page=511, byte=63):
     byte2 = two_bytes & 0b11111111
     return byte1, byte2
 
-
 class EEPROM:
     PAGE_TEST = 511
-    PAGE_VALVES = 510
 
     def __init__(self, device):
         self.device = device
         self.port = None
-        self.loaded_device_keys = [
-            "calibration_coefs_od",
-            "calibration_coefs_pumps",
-            "calibration_fan_speed_to_duty_cycle",
-            "calibration_milk_to_mv",
-            "calibration_milk_to_od",
-            "calibration_od_to_mv",
-            "calibration_pump_rotations_to_ml",
-            "drying_prevention_pump_period_hrs",
-            "drying_prevention_pump_volume",
-        ]
 
         if self.device.is_connected():
             self.connect()
@@ -38,60 +25,48 @@ class EEPROM:
         """
         try:
             self.port = self.device.i2c.get_port(0x53)
+            self.load_config_from_eeprom()
         except Exception:
             print("Not connected to EEPROM")
 
-    def save_config_to_eeprom(self, from_file=False):
+    def save_config_to_eeprom(self):
         """
         Writes the device object config to the EEPROM
         :param from_file: file directory, the config is read from the file instead of the device object
         :return:
         """
-        if from_file:
-            config_directory = from_file
-            config = open(config_directory, "r").read()
-            config_to_write = config
-        else:
-            config_to_write = {
-                k: self.device.__dict__[k]
-                for k in self.device.__dict__
-                if k in self.loaded_device_keys
-            }
-            config_to_write = yaml.dump(config_to_write)
-        config_bytes = bytearray(config_to_write, "utf-8")
+        config_to_write = self.device.device_data
+        config_to_write = yaml.dump(config_to_write)
+        config_to_write = config_to_write.encode("utf-8")
+        config_to_write = gzip.compress(config_to_write)
+        config_bytes = bytearray(config_to_write)
         filler_size = 32768 - len(config_bytes)
+        print(len(config_bytes),"bytes to write to EEPROM")
+        print(filler_size,"bytes of filler to write to EEPROM")
+        # n_pages_to_write = 512
+        n_pages_to_write = int(np.ceil(len(config_bytes) / 64) + 1)
         for i in range(filler_size):
             config_bytes.append(0xFF)
-        for page in range(512):
+        print(n_pages_to_write,"pages to write to EEPROM")
+        for page in range(n_pages_to_write):
             b1, b2 = make_addr_bytes(page=page, byte=0)
             self.port.write(
                 [b1, b2] + [b for b in config_bytes[64 * page : 64 * (page + 1)]]
             )
-            if page % 20 == 0:
-                print(
-                    "Writing to EEPROM: %d%% done" % (page / 5.12),
-                    end="                              \r",
-                )
-        print("Writing new config to EEPROM COMPLETE")
-
-    def read_config_from_device(self):
-        """
-        Reads the config from the device and returns it as a dictionary
-        :return: config dictionary
-        """
-        loaded_text = self.read_eeprom()
-        loaded_config = yaml.load(loaded_text, Loader=yaml.Loader)
-        return loaded_config
+            # if page % 20 == 0:
+            #     print(
+            #         "Writing to EEPROM: %d%% done" % (page / 5.12),
+            #         end="                              \r",
+            #     )
+        # print("Writing new config to EEPROM COMPLETE")
 
     def load_config_from_eeprom(self):
         """
         Loads the config from the EEPROM into the device object
         :return:
         """
-        loaded_config = self.read_config_from_device()
-        if type(loaded_config) is dict:
-            for k in loaded_config:
-                self.device.__dict__[k] = loaded_config[k]
+        loaded_config = self.read_eeprom()
+        self.device.device_data = loaded_config
 
     def write_to_page(self, page, content, byte=0, fill=True):
         assert byte < 64
@@ -144,8 +119,10 @@ class EEPROM:
                 "Reading EEPROM: content found in %d pages" % (page + 1),
                 end="                    \r",
             )
-        decoded_data = bytearray(pages_read).partition(tail)[0].decode("utf-8")
-        return decoded_data
+        loaded_data = gzip.decompress(bytearray(pages_read).partition(tail)[0])
+        loaded_data = loaded_data.decode("utf-8")
+        loaded_data = yaml.load(loaded_data, Loader=yaml.Loader)
+        return loaded_data
 
     def test_memory(self):
         page = self.PAGE_TEST

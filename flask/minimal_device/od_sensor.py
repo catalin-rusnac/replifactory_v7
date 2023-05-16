@@ -173,7 +173,7 @@ class OdSensor:
     def measure_od(self):
         signal = self.measure_signal()
         od = self.calibration_function(signal)
-        return od
+        return od, signal
 
     def check(self):
         assert self.calibration_function is not None

@@ -6,18 +6,22 @@
           type="range"
           class="slider slider-high"
           :class="{ active: currentStirrerState === 'high' }"
-          :min="min"
-          :max="max"
+          :min=min
+          :max=max
+          :step=0.01
           v-model="stirrers.calibration[stirrerId].high"
+          @change="onSliderChange('high', $event)"
           @input="onSliderInput('high', $event)"
         />
         <input
           type="range"
           class="slider slider-low"
           :class="{ active: currentStirrerState === 'low' }"
-          :min="min"
-          :max="max"
+          :min=min
+          :max=max
+          :step=0.01
           v-model="stirrers.calibration[stirrerId].low"
+          @change="onSliderChange('low', $event)"
           @input="onSliderInput('low', $event)"
         />
 
@@ -96,7 +100,7 @@ export default {
   data() {
     return {
       min: 0,
-      max: 100,
+      max: 1,
       lowX1: 0,
       lowY1: 0,
       lowX2: 0,
@@ -132,14 +136,12 @@ export default {
       this.setAllStirrersStateAction(type);
     },
 
-    onSliderInput(type, event) {
+    onSliderChange(type, event) {
       if (type === 'low') {
-        this.stirrers.calibration[this.stirrerId].low = event.target.value;
+        this.stirrers.calibration[this.stirrerId].low = parseFloat(event.target.value);
       } else if (type === 'high') {
-        this.stirrers.calibration[this.stirrerId].high = event.target.value;
+        this.stirrers.calibration[this.stirrerId].high = parseFloat(event.target.value);
       }
-      this.updateLine();
-
       this.setPartCalibrationAction({
         devicePart: 'stirrers',
         partIndex: this.stirrerId,
@@ -147,12 +149,20 @@ export default {
           low: this.stirrers.calibration[this.stirrerId].low,
           high: this.stirrers.calibration[this.stirrerId].high,
         },
-      }).then(() => {
-        this.playSound(event.target.value);
       }).catch((error) => {
         console.error('Error updating stirrer calibration:', error);
       });
     },
+
+    onSliderInput(type, event) {
+      if (type === 'low') {
+        this.stirrers.calibration[this.stirrerId].low = parseFloat(event.target.value);
+      } else if (type === 'high') {
+        this.stirrers.calibration[this.stirrerId].high = parseFloat(event.target.value);
+      }
+      this.updateLine();
+        this.playSound(event.target.value);
+      },
 
     updateLine() {
       this.$nextTick(() => {

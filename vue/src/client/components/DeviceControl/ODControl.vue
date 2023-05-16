@@ -13,7 +13,7 @@
       <tbody v-if="calibrationModeEnabled">
         <tr v-for="(odValue, index) in odValues" :key="index">
           <td>
-            <input :value="odValue" @input="updateODValue($event, index)" type="number" step="0.1" />
+            <input :value="odValue" @input="updateODValue($event, index)" type="number" step=0.01 />
           </td>
           <td>
             <button @click="measure(odValue)">Measure</button>
@@ -45,10 +45,12 @@
       </tr>
       <tr>
         <td v-for="(od, index) in ods.states" :key="index">
-          <span class="od-output-value">{{ parseFloat(ods.states[index].toFixed(2))}}<br></span>
-          <span class="od-output-value">({{ parseFloat(ods.states[index].toFixed(2)) }}mV)</span>
+          <span class="od-output-value" v-if="ods.states && ods.states[index] !== undefined">{{ parseFloat(ods.states[index].toFixed(2)) }}<br></span>
+          <span class="od-output-value" v-if="ods.odsignals && ods.odsignals[index] !== undefined">({{ parseFloat(ods.odsignals[index].toFixed(2)) }}mV)</span>
         </td>
       </tr>
+
+
 
 <!--          <td>-->
 <!--            <input :value="odValue" @input="updateODValue($event, index)" type="number" step="0.1" />-->
@@ -90,7 +92,6 @@ export default {
           partIndex: odIndex,
         });
         await this.getAllDeviceData();
-        console.log(this.ods.states[odIndex]);  // Here is the specific OD state
       },
     clearRow(odValue, index) {
       // Remove the odValue from the odValues array

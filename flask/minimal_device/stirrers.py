@@ -24,26 +24,6 @@ class Stirrers:
             # all GPIO pins output
             self.multiplexer_port.write_to(7, [0x00])
 
-    # def show_parameters(self):
-    #     df = pd.DataFrame.from_dict(self.device.calibration_fan_speed_to_duty_cycle)
-    #     df.index = ["min duty cycle", "normal duty cycle", "max duty cycle"]
-    #     df = df.T
-    #     df.index.name = "Stirrer"
-    #     for vial in range(1, 8):
-    #         slow_speed = self.device.calibration_fan_speed_to_duty_cycle[vial][1]
-    #         hi_speed = self.device.calibration_fan_speed_to_duty_cycle[vial][2]
-    #         if slow_speed is None or hi_speed is None:
-    #             string = "NOT CALIBRATED"
-    #         else:
-    #             too_slow = int(slow_speed * 100)
-    #             working_range = int((hi_speed - slow_speed) * 100)
-    #             too_fast = 100 - too_slow - working_range
-    #
-    #             string = "." * too_slow + "#" * working_range + "." * too_fast
-    #             string = string[:60]
-    #         df.loc[vial, "illustration"] = string
-    #     print(df)
-
     def add_calibration_point(self, vial_number, speed, duty_cycle):
         assert speed in [0, 1, 2, 3]
         assert vial_number in [1, 2, 3, 4, 5, 6, 7]
@@ -52,45 +32,28 @@ class Stirrers:
         self.device.calibration_fan_speed_to_duty_cycle = temp
         self.device.save()
 
-    def set_rpm(self):
-        pass  # TODO
-
     def _set_duty_cycle(self, vial, duty_cycle):
         assert 0 <= duty_cycle <= 1
         led_number = self.led_numbers[vial]
         self.pwm_controller.set_duty_cycle(led_number=led_number, duty_cycle=duty_cycle)
 
-    def get_speed(self, vial):  # TODO
-        assert self.pwm_controller.lock.acquire(timeout=60)
-        try:
-            duty_cycle = self.pwm_controller.get_duty_cycle(
-                led_number=self.led_numbers[vial]
-            )
-        finally:
-            self.pwm_controller.lock.release()
-        if duty_cycle == 0:
-            return 0
-        elif duty_cycle == self.device.calibration_fan_speed_to_duty_cycle[vial][1]:
-            return 1
-        elif duty_cycle == self.device.calibration_fan_speed_to_duty_cycle[vial][2]:
-            return 2
-        else:
-            return duty_cycle
+    def _get_duty_cycle(self, vial):
+        led_number = self.led_numbers[vial]
+        return self.pwm_controller.get_duty_cycle(led_number=led_number)
 
     def set_speed(self, vial, speed, accelerate=True):
-        assert speed in [0, 1, 2, 3]  # stopped, slow, fast
+        assert speed in ["stopped", "low", "high"]  # stopped, slow, fast
         self.check_calibration()
-        if speed == 0:
+        if speed == "stopped":
             duty_cycle = 0
         else:
-            duty_cycle = self.device.calibration_fan_speed_to_duty_cycle[vial][speed]
+            duty_cycle = self.device.device_data["stirrers"]["calibration"][vial][speed]
 
         assert self.pwm_controller.lock.acquire(timeout=60)
         try:
             if 0 < duty_cycle < 0.2 and accelerate:
-                accelerate_duty_cycle = self.device.calibration_fan_speed_to_duty_cycle[
-                    vial
-                ][2]
+                accelerate_duty_cycle = self.device.device_data["stirrers"]["calibration"][vial]["high"]*1.2
+                accelerate_duty_cycle = min(accelerate_duty_cycle, 1)
                 self._set_duty_cycle(vial, accelerate_duty_cycle)
                 time.sleep(0.1)
 
@@ -107,7 +70,7 @@ class Stirrers:
             self.pwm_controller.lock.release()
 
     def set_speed_all(self, speed, accelerate=True):
-        assert speed in [0, 1, 2, 3]  # stopped, slow, normal, max
+        assert speed in ["stopped", "low", "high"]
         # self.check_calibration()
         assert self.pwm_controller.lock.acquire(timeout=60)
         try:
@@ -115,9 +78,7 @@ class Stirrers:
                 if speed == 0:
                     duty_cycle = 0
                 else:
-                    duty_cycle = self.device.calibration_fan_speed_to_duty_cycle[vial][
-                        speed
-                    ]
+                    duty_cycle = self.device.device_data["stirrers"]["calibration"][vial][speed]
                 if 0 < duty_cycle < 0.2 and accelerate:
                     self._set_duty_cycle(vial=vial, duty_cycle=1)
                     time.sleep(0.1)
@@ -131,8 +92,8 @@ class Stirrers:
         else:
             vials_list = [vial]
         for vial in vials_list:
-            duty_cycle_slow = self.device.calibration_fan_speed_to_duty_cycle[vial][1]
-            duty_cycle_fast = self.device.calibration_fan_speed_to_duty_cycle[vial][2]
+            duty_cycle_slow = self.device.device_data["stirrers"]["calibration"][vial]["low"]
+            duty_cycle_fast = self.device.device_data["stirrers"]["calibration"][vial]["high"]
             assert 0 <= duty_cycle_slow <= duty_cycle_fast <= 1
 
 

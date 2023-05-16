@@ -1,7 +1,6 @@
 import os
 import threading
 import time
-import traceback
 
 import pyftdi.i2c
 
@@ -189,11 +188,8 @@ class BaseDevice:
         UsbTools.flush_cache()
 
     def hello(self):
-        try:
-            self.pwm_controller.play_turn_on_sound()
-            self.lasers.blink()
-        except Exception:
-            traceback.print_exc()
+        self.pwm_controller.play_turn_on_sound()
+        self.lasers.blink()
 
     def pump_to(self, vial, p1=0, p2=0, p3=0, p4=0):
         if self.valves.not_all_closed():

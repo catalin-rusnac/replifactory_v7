@@ -12,7 +12,6 @@
           <CFormInput id="volume" type="float" size="lg" :value="pumps.volume[i]" @input="event => onVolumeInput(event, i)" />
         </div>
 
-
         <div v-if="calibrationModeEnabled" class="form-group">
           <label for="calibration">Calibration:</label>
           <PumpCalibration :pumpId="i" />

@@ -24,6 +24,7 @@ logging.basicConfig(filename='data/flask.log', level=logging.INFO, format='%(asc
 
 app = Flask(__name__)
 CORS(app)
+global dev
 
 # try:
 #     dev = BaseDevice(connect=True)
@@ -47,12 +48,12 @@ def set_device_state(devicePart):
     part_index = request.json['partIndex']
     new_state = request.json['newState']
     the_input=None
-    device_data[devicePart]['states'][part_index] = new_state
+    dev.device_data[devicePart]['states'][part_index] = new_state
     if "input" in request.json:
         the_input = request.json['input']
     if devicePart == 'valves':
         time.sleep(0.5)
-        print(f'Toggled  222 valve {part_index} to {new_state} and slept')
+        print(f'Toggled valve {part_index} to {new_state} and slept')
         if new_state=='open':
             dev.valves.open(part_index)
         elif new_state=='closed':
@@ -67,6 +68,10 @@ def set_device_state(devicePart):
     elif devicePart == 'stirrers':
         time.sleep(0.01)
         print(f'Toggled stirrer {part_index} to {new_state} and slept')
+        dev.stirrers.set_speed(part_index, new_state)
+
+    if devicePart != 'stirrers':
+        dev.eeprom.save_config_to_eeprom()
 
     return jsonify({'success': True, 'newState': new_state})
 
@@ -76,9 +81,10 @@ def measure_device_part(devicePart):
     partIndex = int(request.json['partIndex'])
     if devicePart == 'ods':
         print(f'Measuring OD {partIndex} and sleeping')
-        od_value = dev.od_sensors[partIndex].measure_od()
+        od, signal = dev.od_sensors[partIndex].measure_od()
         # od_value = random.randint(0, 100)
-        device_data[devicePart]['states'][partIndex] = od_value
+        dev.device_data[devicePart]['states'][partIndex] = od
+        dev.device_data[devicePart]['odsignals'][partIndex] = signal
 
     elif devicePart == 'temperature':
         device_data[devicePart][partIndex] = random.randint(0, 100)
@@ -88,17 +94,16 @@ def measure_device_part(devicePart):
         device_data[devicePart]['states'][partIndex] = random.randint(0, 100)
     elif devicePart == 'valves':
         device_data[devicePart]['states'][partIndex] = random.randint(0, 100)
-    return jsonify({'success': True, 'device_states': device_data})
+    return jsonify({'success': True, 'device_states': dev.device_data})
 
 
 @app.route('/get-all-device-data', methods=['GET'])
 def get_all_device_states():
     print("Getting all device data")
-    for k in device_data["ods"].keys():
-        jsonify(device_data["ods"][k])
+    print(dev.device_data)
     return jsonify({
         'success': True,
-        'device_states': device_data,
+        'device_states': dev.device_data,
     })
 
 
@@ -107,23 +112,32 @@ def set_part_calibration(devicePart):
     data = request.get_json()
     partIndex = data.get('partIndex')
     newCalibration = data.get('newCalibration')
-
     # implement logic to update the device part calibration based on `devicePart`, `partIndex`, and `newCalibration`
     print(f'Set {devicePart} {partIndex} calibration to {newCalibration}')
-    device_data[devicePart]['calibration'][partIndex] = newCalibration
+    dev.device_data[devicePart]['calibration'][partIndex] = newCalibration
+    if devicePart == 'stirrers':
+        speed = dev.device_data['stirrers']['states'][partIndex]
+        dev.stirrers.set_speed(partIndex, speed, accelerate=False)
+        print("Calibrated and set stirrer speed to", speed)
+    dev.eeprom.save_config_to_eeprom()
     return jsonify(success=True, newCalibration=newCalibration)
 
 
 @app.route('/connect-device', methods=['POST'])
 def connect_device():
     global dev
-    dev = BaseDevice(connect=True)
-    dev.hello()
-    if dev.is_connected():
-        return jsonify({'success': True, 'device_states': device_data})
-    else:
-        return jsonify({'success': False})
-
+    try:
+        if dev.is_connected():
+            return jsonify({'success': True, 'device_states': dev.device_data})
+    except:
+        pass
+    try:
+        BaseDevice().disconnect_all()
+        dev = BaseDevice(connect=True)
+        dev.hello()
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+    return jsonify({'success': True, 'device_states': dev.device_data})
 
 def shutdown_server():
     with open("data/flask_app.pid", "r") as pid_file:
