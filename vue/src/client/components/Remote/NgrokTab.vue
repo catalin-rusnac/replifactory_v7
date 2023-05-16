@@ -40,8 +40,7 @@ export default {
 
   methods: {
     sendAuthtoken() {
-      axios
-        .post('/set-ngrok-authtoken', {
+      ngrokaxios.post('/set-ngrok-authtoken', {
           authtoken: this.authtoken,
         })
         .then(response => {
