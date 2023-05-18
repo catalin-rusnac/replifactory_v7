@@ -1,25 +1,25 @@
 <template>
   <div class="pump-controls">
-    <div class="pump" v-for="i in 3" :key="i">
-      <button class="pump-button" @click="handlePumpClick(i)" :disabled="pumps.states[i] === 'running'">
+    <div class="pump" v-for="i in [1,2,4]" :key="i">
+      <button class="pump-button"
+              :class="{ 'stop-button': pumps.states[i] === 'running' }"
+              @click="handlePumpClick(i)">
         <div v-if="pumps.states[i] === 'running'" class="spinner-border spinner-custom" role="status"></div>
-        <span v-else>Run Pump {{i}}</span>
+        <span v-else>{{pump_names[i]}}<br>pump</span>
+<!--        <span v-if="pumps.states[i] === 'running'">Stop</span>-->
       </button>
 <!--      <input v-model="pumps.input[i].volume" class="volume" placeholder="Volume">-->
       <div class="pump-input">
         <div class="form-group">
-          <label for="volume">Volume (ml):</label>
-          <CFormInput id="volume" type="float" size="lg" :value="pumps.volume[i]" @input="event => onVolumeInput(event, i)" />
+            <CFormInput id="volume" placeholder="volume (mL)" type="number" size="lg" :value="volume[i]" @input="event => onVolumeInput(event, i)" />
         </div>
 
         <div v-if="calibrationModeEnabled" class="form-group">
+          <CFormInput id="rotations" placeholder="rotations" type="float" size="sm" :value="rotations[i]" @input="event => onRotationsInput(event, i)" />
           <label for="calibration">Calibration:</label>
           <PumpCalibration :pumpId="i" />
         </div>
-        <div class="form-group">
-          <label for="rotations">Pump rotations:</label>
-          <CFormInput id="rotations" type="float" size="sm" :value="rotations[i]" @input="event => onRotationsInput(event, i)" />
-        </div>
+
       </div>
     </div>
   </div>
@@ -39,15 +39,28 @@ export default {
   name: 'PumpControl',
   data() {
     return {
-      rotations: {1: 0, 2: 0, 3: 0}};
-  },
+      pump_names: {
+        1: 'MAIN',
+        2: 'DRUG',
+        3: 'MISSING!!!',
+        4: 'WASTE'
+      },
+      rotations: {1:null, 2:null, 3:null, 4:null},
+      volume: {1:null, 2:null, 3:null, 4:null},
+  }},
   computed: {
     ...mapState('device', ['pumps', 'valves', 'calibrationModeEnabled']),
   },
   methods: {
     ...mapActions('device', ['setPartStateAction']),
     async handlePumpClick(pumpId) {
+      if (this.pumps.states[pumpId] === 'running') {
+        await this.setPartStateAction({ devicePart: 'pumps', partIndex: pumpId, newState: 'stopped' });
+        return;
+      }
+
       // Check if at least one valve is open
+      console.log("handlePumpClick, pumpId: " + pumpId);
       const isValveOpen = Object.values(this.valves.states).some((valve) => valve === 'open');
 
       if (!isValveOpen) {
@@ -56,15 +69,16 @@ export default {
       }
 
       // Ensure volume is set
-      const volume = this.pumps.input[pumpId].volume;
+      const volume = parseFloat(this.volume[pumpId]);
+
+      console.log("volume: " + volume);
       if (!volume) {
         alert('Please set the volume before starting the pump');
         return;
       }
 
       try {
-        await this.setPartStateAction({ devicePart: 'pumps', partIndex: pumpId, newState: 'running', input: this.pumps.input[pumpId] });
-
+        await this.setPartStateAction({ devicePart: 'pumps', partIndex: pumpId, newState: 'running', input: {volume: volume}});
         // Send a POST request to the Flask endpoint with the specified pump ID and volume
       } catch (error) {
         // Handle any errors here
@@ -74,10 +88,10 @@ export default {
       }
     },
     onVolumeInput(event, pumpId) {
-      this.volume = event.target.value;
-      const volume = parseFloat(this.volume);
+      this.volume[pumpId] = event.target.value;
+      const volume = parseFloat(this.volume[pumpId]);
       if (!isNaN(volume)) {
-        this.rotations[pumpId] = this.calculateRotations(volume,pumpId).toString();
+        this.rotations[pumpId] = this.calculateRotations(volume,pumpId).toFixed(2);
       } else {
         this.rotations[pumpId] = '';
       }
@@ -86,23 +100,28 @@ export default {
       this.rotations[pumpId] = event.target.value;
       const rotations = parseFloat(this.rotations[pumpId]);
       if (!isNaN(rotations)) {
-        this.pumps.volume[pumpId] = this.calculateVolume(rotations,pumpId).toString();
+        this.volume[pumpId] = this.calculateVolume(rotations,pumpId);
       } else {
-        this.pumps.volume[pumpId] = '';
+        this.volume[pumpId] = '';
       }
     },
 
   calculateRotations(volume, pumpId) {
     // Get the coefficients for the given pumpId
     const pumpCoefficients = this.pumps.calibration[pumpId];
-    // Convert the coefficients into an array of [volume, coefficient] pairs
-    const points = Object.entries(pumpCoefficients).map(([vol, coef]) => [parseInt(vol), coef]).sort((a, b) => a[0] - b[0]);
+    // Convert the coefficients into an array of [rotations, coefficient] pairs
+    const points = Object.entries(pumpCoefficients).map(([rot, coef]) => [parseInt(rot), coef]).sort((a, b) => a[0] - b[0]);
+
+    // If volume is larger than the largest known, use the largest coefficient
+    if (volume >= points[points.length - 1][0] * points[points.length - 1][1]) {
+      return (volume / points[points.length - 1][1]);
+    }
 
     // Find the two points surrounding the given volume
     let lowerPoint = points[0];
     let upperPoint = points[points.length - 1];
     for (let i = 0; i < points.length - 1; i++) {
-      if (volume >= points[i][0] && volume <= points[i + 1][0]) {
+      if (volume >= points[i][0] * points[i][1] && volume <= points[i + 1][0] * points[i + 1][1]) {
         lowerPoint = points[i];
         upperPoint = points[i + 1];
         break;
@@ -110,7 +129,9 @@ export default {
     }
 
     // Calculate the interpolation factor
-    const factor = (volume - lowerPoint[0]) / (upperPoint[0] - lowerPoint[0]);
+    const lowerVolume = lowerPoint[0] * lowerPoint[1];
+    const upperVolume = upperPoint[0] * upperPoint[1];
+    const factor = (volume - lowerVolume) / (upperVolume - lowerVolume);
 
     // Interpolate the coefficient
     const interpolatedCoefficient = lowerPoint[1] + (upperPoint[1] - lowerPoint[1]) * factor;
@@ -122,27 +143,42 @@ export default {
   },
 
 
-    calculateVolume(rotations,pumpId) {
-      //coefficients= {1:0.2, 5:0.19,10:0.17, 50:0.16}
-      //interpolate rotations between coefficients and calculate correction_coefficient
-      const coefficients = this.pumps.calibration[pumpId];
-      let correction_coefficient = 0;
-      if (rotations < 1) {
-        correction_coefficient = coefficients[1];
-      } else if (rotations < 5) {
-        correction_coefficient = coefficients[1] + (rotations - 1) * (coefficients[5] - coefficients[1]) / 4;
-      } else if (rotations < 10) {
-        correction_coefficient = coefficients[5] + (rotations - 5) * (coefficients[10] - coefficients[5]) / 5;
-      } else if (rotations < 50) {
-        correction_coefficient = coefficients[10] + (rotations - 10) * (coefficients[50] - coefficients[10]) / 40;
-      } else {
-        correction_coefficient = coefficients[50];
-      }
-      const volume = rotations * correction_coefficient
-      return volume.toFixed(2);
+
+calculateVolume(rotations, pumpId) {
+  // Get the coefficients for the given pumpId
+  const pumpCoefficients = this.pumps.calibration[pumpId];
+  // Convert the coefficients into an array of [rotations, coefficient] pairs
+  const points = Object.entries(pumpCoefficients).map(([rot, coef]) => [parseInt(rot), coef]).sort((a, b) => a[0] - b[0]);
+
+  // If rotations is more than the largest known, use the largest coefficient
+  if (rotations >= points[points.length - 1][0]) {
+    return (rotations * points[points.length - 1][1]).toFixed(2);
+  }
+
+  // Find the two points surrounding the given number of rotations
+  let lowerPoint = points[0];
+  let upperPoint = points[points.length - 1];
+  for (let i = 0; i < points.length - 1; i++) {
+    if (rotations >= points[i][0] && rotations <= points[i + 1][0]) {
+      lowerPoint = points[i];
+      upperPoint = points[i + 1];
+      break;
     }
+  }
+
+  // Calculate the interpolation factor
+  const factor = (rotations - lowerPoint[0]) / (upperPoint[0] - lowerPoint[0]);
+
+  // Interpolate the coefficient
+  const interpolatedCoefficient = lowerPoint[1] + (upperPoint[1] - lowerPoint[1]) * factor;
+
+  // Calculate the volume
+  const volume = rotations * interpolatedCoefficient;
+
+  return volume.toFixed(2);
+},
   },
-};
+}
 </script>
 
 
@@ -171,17 +207,26 @@ label {
   width: 5rem;
   height: 5rem;
   border-width: 0.5rem;
+  animation: spinner-border 0.95s linear infinite;
 }
 
+
 .pump-button {
+  margin-bottom: 20px;
   background-color: blue;
   color: white;
   font-size: 20px;
   padding: 10px;
-  width: 150px;  /* Adjust as needed */
-  height: 150px;  /* Adjust as needed */
+  width: 130px;  /* Adjust as needed */
+  height: 130px;  /* Adjust as needed */
   text-align: center;
   border-radius: 50%;  /* This makes the button round */
+  box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.5);
+}
+
+.pump-button.stop-button {
+  background-color: red;
+  color: white;
 }
 
 .pump-controls {
@@ -196,6 +241,7 @@ label {
   flex-direction: column;
   align-items: center;
   margin: 0 auto;
+
 }
 
 .pump input {

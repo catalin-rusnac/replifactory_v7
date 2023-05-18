@@ -87,6 +87,26 @@ updatepath:
 		source ~/.bashrc; \
 	fi
 
-kill-services:
+kill-app:
 	sudo fuser -k 3000/tcp
 	sudo fuser -k 5000/tcp
+
+services:
+	# copy from services/flask/flask.service and services/vue/vue.service to /etc/systemd/system/ if not already there
+	@echo "Checking for flask and vue services..."
+	if ! cmp services/flask/flask.service /etc/systemd/system/flask.service >/dev/null 2>&1; then \
+		sudo cp services/flask/flask.service /etc/systemd/system/flask.service; \
+		@echo "Copied services/flask/flask.service to /etc/systemd/system/flask.service"; \
+	fi
+	if ! cmp services/vue/vue.service /etc/systemd/system/vue.service >/dev/null 2>&1; then \
+		sudo cp services/vue/vue.service /etc/systemd/system/vue.service; \
+		@echo "Copied services/vue/vue.service to /etc/systemd/system/vue.service"; \
+	fi
+	@echo "Reloading systemctl daemon..."
+	sudo systemctl daemon-reload
+	@echo "Enabling flask and vue services..."
+	sudo systemctl enable flask.service
+	sudo systemctl enable vue.service
+	@echo "Starting flask and vue services..."
+	sudo systemctl start flask.service
+	sudo systemctl start vue.service

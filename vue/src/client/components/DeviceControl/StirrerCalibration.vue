@@ -1,6 +1,10 @@
 <template>
   <div class="stirrer-calibrator" ref="container">
     <div class="elements-container">
+      <div class="stirrer-name">
+        <header>Stirrer {{ stirrerId }}</header>
+      </div>
+
       <div v-if="calibrationModeEnabled">
         <input
           type="range"
@@ -24,7 +28,6 @@
           @change="onSliderChange('low', $event)"
           @input="onSliderInput('low', $event)"
         />
-
 
         <svg class="svg-container">
           <line
@@ -73,7 +76,7 @@
           @click="onClick('stopped')"
           @dblclick="onDoubleClick('stopped')"
         >
-          Off
+          OFF
         </button>
       </div>
     </div>
@@ -212,6 +215,12 @@ export default {
 </script>
 
 
+<!--<style>-->
+<!--body {-->
+<!--  background-color: #242424; /* or any dark color you prefer */-->
+<!--  /*color: white; !* this is the color for the general text on the page *!*/-->
+<!--}-->
+<!--</style>-->
 
 <style scoped>
 .stirrer-calibrator {
@@ -224,9 +233,12 @@ export default {
 .elements-container {
   display: flex;
   justify-content: center;
+  padding-top: 20px;
   /*align-items: ; bottom */
   align-items: flex-end;
   /*height: 300px;*/
+  border: 1px solid #e3e3e3; /* Sets the color of the border */
+  border-radius: 10px; /* Adjust as needed to create the level of roundness you desire */
 }
 
 .slider {
@@ -246,41 +258,50 @@ export default {
 
 
 .button {
-  background-color: #4CAF50;
-  border: none;
-  color: white;
+  background-color: transparent;
+  border: 1px solid #3aab40; /* green border */
+  color: #3aab40; /* green text */
   text-align: center;
   text-decoration: none;
   display: inline-block;
-  font-size: 16px;
-  margin: 5px 5px;
+  font-size: 14px;
+  margin: 8px 5px;
   cursor: pointer;
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 5px 5px;
   transition-duration: 0.4s;
   opacity: 60%;
-}
-.active {
-  opacity: 100%;
-  color: #fff; /* And this to the text color you want for active buttons */
+  box-shadow: 0px 3px 5px rgba(0, 0, 0, 0.2);
 }
 
 .button:hover {
-  background-color: #45a049;
-  color: white;
+  opacity:80%;
 }
 
 .button-off {
-  background-color: #f44336;
-  opacity: 20%;
-}
-.active {
-  opacity: 100%;
-  color: #fff; /* And this to the text color you want for active buttons */
+  background-color: transparent;
+  border: 1px solid #da190b; /* red border */
+  color: #da190b; /* red text */
+  opacity: 40%;
 }
 
 .button-off:hover {
   background-color: #da190b;
+  opacity:60%;
+}
+
+.active {
+  opacity: 100%;
+  color: #fff; /* white text for active buttons */
+  background-color: #3aab40; /* green background for active buttons */
+}
+
+.button-off.active {
+  background-color: #da190b; /* red background for active off button */
+}
+
+.button:hover, .button-off:hover, .active:hover {
+  opacity: 100%; /* 100% opacity on hover for all buttons */
 }
 
 .buttons-container {
@@ -301,5 +322,14 @@ export default {
   z-index: -1;
 }
 
+.stirrer-name {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translate(-50%, -50%); /* This centers the header */
+  z-index: -1; /* This ensures the header is above everything else */
+  color: #9b9b9b; /* Color of the text */
+  font-size: 14px; /* Adjust as needed */
+}
 
 </style>

@@ -41,7 +41,8 @@ class Valves:
         return self.get_percent_open_pwm(valve=valve_number)
 
     def all_closed(self):
-        return [self.get_percent_open_pwm(valve=v) for v in range(1, 8)] == [0] * 7
+        closed_valves = [self.device.device_data["valves"]["states"][i] == "closed" for i in range(1, 8)]
+        return all(closed_valves)
 
     def not_all_closed(self):
         return not self.all_closed()

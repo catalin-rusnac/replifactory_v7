@@ -96,6 +96,19 @@ export default {
   width: 90px;
   text-align: center;
   margin: 10px;
+  box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.2);
+  /*border: 2px solid red;*/
+  color: black;
+}
+
+.btn-danger, .active{
+  background-color: transparent;
+  color: #960000;
+}
+
+.btn-success, .active{
+  /*background-color: transparent;*/
+  color: white;
 }
 
 .btn-danger, .btn-success, .btn-warning:hover {

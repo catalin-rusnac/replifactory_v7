@@ -11,8 +11,13 @@
       <tr v-for="(row, index) in rows" :key="index">
         <td>{{ row.rotations }}</td>
         <td>{{ row.iterations }}</td>
-        <td><button @click="promptForMl(row)">Pump</button></td>
-        <td><input v-model="row.total_ml" @input="onTotalMlInput(row)" type="number" /></td>
+        <td>
+          <button @click="toggleButtonState(index)" :class="{ 'stop-button': isStopButton[index] }">
+            <span v-if="!isStopButton[index]">Pump</span>
+            <span v-else>Stop</span>
+          </button>
+        </td>
+        <td><input v-model="row.total_ml" @change="onTotalMlInput(row)" type="number" /></td>
         <td>{{pumps.calibration[pumpId][row.rotations].toFixed(3)}}</td>
       </tr>
     </table>
@@ -25,6 +30,8 @@ import {mapActions, mapState} from "vuex";
 export default {
   data() {
     return {
+      isStopButton: {},
+
       rows: [
         { rotations: 1, iterations: 50, total_ml: NaN},
         { rotations: 5, iterations: 10, total_ml: NaN},
@@ -41,11 +48,27 @@ export default {
   },
 
   computed: {
-    ...mapState('device', ['calibrationModeEnabled', 'pumps']),
+    ...mapState('device', ['calibrationModeEnabled', 'pumps', 'valves']),
   },
   methods: {
-    ...mapActions('device', ['setPartCalibrationAction']),
+    ...mapActions('device', ['setPartCalibrationAction', 'startPumpCalibrationSequence', 'setPartStateAction']),
+    toggleButtonState(index) {
+      const isValveOpen = Object.values(this.valves.states).some((valve) => valve === 'open');
 
+      if (!isValveOpen) {
+        alert('At least one valve must be open to start the pump');
+        return;
+      }
+      this.$set(this.isStopButton, index, !this.isStopButton[index]);
+      if (this.isStopButton[index]) {
+        this.promptForMl(this.rows[index]);
+      } else {
+        this.setPartStateAction({devicePart: 'pumps', partIndex: this.pumpId, newState: 'stopped'});
+      }
+    },
+    resetButton(row) {
+      this.$set(this.isStopButton, row, false);
+    },
     onTotalMlInput(row) {
       if (row.total_ml) {
         this.pumps.calibration[this.pumpId][row.rotations] = row.total_ml / row.rotations / row.iterations;
@@ -53,12 +76,20 @@ export default {
       }
     },
     promptForMl(row) {
-      const total_ml = parseFloat(prompt('Enter total mL pumped'));
-      if (!isNaN(total_ml)) {
-        row.total_ml = total_ml;
-        this.onTotalMlInput(row);
-      }
+      console.log("starting pump calibration sequence for pumpId: " + this.pumpId);
+      // alert("Starting pump calibration sequence for pumpId: " + this.pumpId + ". Blank the scale and make sure ~10mL are available."); // Add alert here
+      alert("Pumping " + row.rotations + " rotations " + row.iterations + " times. Please blank the scale"); // Add alert here
+      this.startPumpCalibrationSequence( {pumpId: this.pumpId, rotations: row.rotations, iterations: row.iterations}).then(() => {
+        console.log("pump calibration sequence finished");
+        this.resetButton(row);
+        const total_ml = parseFloat(prompt('Enter total mL pumped'));
+        if (!isNaN(total_ml)) {
+          row.total_ml = total_ml;
+          this.onTotalMlInput(row);
+        }
+      });
     }
+
   },
 };
 </script>
@@ -96,6 +127,9 @@ button {
   cursor: pointer; /* Mouse pointer on hover */
   border-radius: 8px;
   font-size: 0.7rem; /* reduced font size to save space */
+}
+button stop-button {
+  background-color: #f44336;
 }
 
 button:hover {

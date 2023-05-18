@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 import yaml
 import gzip
@@ -35,6 +37,13 @@ class EEPROM:
         :param from_file: file directory, the config is read from the file instead of the device object
         :return:
         """
+        if hasattr(self, "last_write_time"):
+            if self.last_write_time>time.time()-2:
+                if hasattr(self, "eeprom_config"):
+                    if self.eeprom_config['valves'] == self.device.device_data['valves'] and \
+                            self.eeprom_config['ods']['calibration'] == self.device.device_data['ods']['calibration']:
+                        print("Last write was less than 2 seconds ago, no valve or od calibration . Skipping")
+                        return
         config_to_write = self.device.device_data
         config_to_write = yaml.dump(config_to_write)
         config_to_write = config_to_write.encode("utf-8")
@@ -53,6 +62,10 @@ class EEPROM:
             self.port.write(
                 [b1, b2] + [b for b in config_bytes[64 * page : 64 * (page + 1)]]
             )
+        self.last_write_time = time.time()
+        self.eeprom_config = self.device.device_data
+
+
             # if page % 20 == 0:
             #     print(
             #         "Writing to EEPROM: %d%% done" % (page / 5.12),

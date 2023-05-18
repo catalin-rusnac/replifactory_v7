@@ -175,6 +175,10 @@ class OdSensor:
         od = self.calibration_function(signal)
         return od, signal
 
+    def measure_od_calibration(self, odValue):
+        sig = self.measure_signal()
+        self.device.device_data['ods']['calibration'][self.vial_number][odValue] = sig
+
     def check(self):
         assert self.calibration_function is not None
         v = self.vial_number

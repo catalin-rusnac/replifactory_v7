@@ -1,9 +1,20 @@
 import axios from 'axios';
 
+// window.location.origin + '/flask',
+
+let baseURL = window.location.origin + '/flask'
+
+if (process.env.NODE_ENV === 'development') {
+    baseURL = 'http://localhost:5000';
+}
+
 const flaskAxios = axios.create({
-  baseURL: window.location.origin + '/flask',
+  baseURL: baseURL
 });
 console.log("Created flaskAxios with baseURL: " + window.location.origin + '/flask',);
+
+// fix cors
+
 
 export default {
   namespaced: true,
@@ -15,7 +26,7 @@ export default {
 
     pumps: {
       states: {1: "stopped", 2: "stopped", 3: "stopped"},
-      volume: {1: 0, 2: 0, 3: 0},
+      volume: {1: null, 2: null, 3: null, 4: null},
       calibration: {
         1: {1: 0.2, 5: 0.19, 10: 0.18, 50: 0.17},
         2: {1: 0.2, 5: 0.19, 10: 0.18, 50: 0.17},
@@ -138,7 +149,28 @@ mutations: {
       odsIndexes.forEach(odsIndex => {
         state.ods.calibration[odsIndex][newOD] = null;
       });
-      state.ods = { ...state.ods };
+      // state.ods = { ...state.ods };
+    },
+    removeODCalibrationRow(state, oldOD) {
+        const odsIndexes = Object.keys(state.ods.calibration); // Renamed to odsIndexes
+        odsIndexes.forEach(odsIndex => {
+            delete state.ods.calibration[odsIndex][oldOD];
+        });
+        // state.ods = { ...state.ods };
+    },
+
+    updateODCalibrationKey(state, {oldOD, newOD}) {
+      // Loop over each item in the ods.calibration object
+      // Check if the oldOD key exists before trying to replace it
+        console.log(oldOD, newOD, "change")
+        for (let i = 1; i <= 7; i++) {
+            if (state.ods.calibration[i] && state.ods.calibration[i][oldOD]) {
+                // Replace the oldOD key with the newOD key
+                state.ods.calibration[i][newOD] = state.ods.calibration[i][oldOD];
+                // Delete the oldOD key
+                delete state.ods.calibration[i][oldOD];
+            }
+        }
     },
     setDeviceControlEnabled(state, newState) {
         state.deviceControlEnabled = newState;
@@ -154,7 +186,39 @@ mutations: {
           dispatch('setPartStateAction', { devicePart: 'stirrers', partIndex: parseInt(stirrerIndex), newState: newState});
         });
         },
-    setPartCalibrationAction({ commit }, payload) {
+      async addODCalibrationRowAction({ dispatch, commit, state }, newOD) {
+        await commit('addODCalibrationRow', newOD);
+        for (let i = 1; i <= 7; i++) {
+            await dispatch('setPartCalibrationAction', { devicePart: 'ods', partIndex: i, newCalibration: state.ods.calibration[i] })
+            .catch(error => console.error(`Error dispatching setPartCalibrationAction:`, error));
+        }
+      },
+      async updateODCalibrationKeyAction({ dispatch, commit, state }, payload) {
+        const { oldOD, newOD } = payload;
+        await commit('updateODCalibrationKey', {oldOD, newOD}); // Assuming 'updateODCalibrationKey' mutation accepts an object as payload
+          console.log(newOD, state.ods.calibration[1])
+        for (let i = 1; i <= 7; i++) {
+            await dispatch('setPartCalibrationAction', { devicePart: 'ods', partIndex: i, newCalibration: state.ods.calibration[i] })
+            .catch(error => console.error(`Error dispatching setPartCalibrationAction:`, error));
+        }
+    },
+
+    removeODCalibrationRowAction({ dispatch, commit, state }, oldOD) {
+        return new Promise((resolve, reject) => {
+            try {
+                commit('removeODCalibrationRow', oldOD);
+                for (let i = 1; i <= 7; i++) {
+                    dispatch('setPartCalibrationAction', { devicePart: 'ods', partIndex: i, newCalibration: state.ods.calibration[i] });
+                    console.log(state.ods.calibration[i],' setPartCalibrationAction***********************')
+                }
+                resolve();
+            } catch (error) {
+                console.error(`Error removing OD calibration row:`, error);
+                reject(error);
+            }
+        });
+    },
+      setPartCalibrationAction({ commit }, payload) {
         const { devicePart, partIndex, newCalibration } = payload;
         const endpoint = `/set-${devicePart}-calibration`;
 
@@ -163,6 +227,7 @@ mutations: {
             .then(response => {
             if (response.data.success) {
               commit('setPartCalibration', { devicePart, partIndex, newCalibration: response.data.newCalibration });
+
               resolve();
             } else {
               console.error(`Error updating ${devicePart} calibration:`, response.data.message);
@@ -175,16 +240,60 @@ mutations: {
           });
       });
     },
+    measureODCalibrationAction({ dispatch }, payload) {
+        const { odValue } = payload;
+        const endpoint = `/measure-od-calibration`;
+
+        return new Promise((resolve, reject) => {
+            flaskAxios.post(endpoint, { odValue: parseFloat(odValue) })
+                .then(response => {
+                    if (response.data.success) {
+                        dispatch('getAllDeviceData').then(() => {
+                            resolve();
+
+                        })
+                    }
+                })
+                .catch(error => {
+                    console.error(`Error updating od calibration:`, error);
+                    reject();
+                }
+            );
+        });
+    },
+      startPumpCalibrationSequence({ dispatch }, payload) {
+            const { pumpId, rotations, iterations } = payload;
+            const devicePart = 'pumps';
+            const endpoint = `/start-pump-calibration-sequence`;
+            console.log("startPumpCalibrationSequence", payload);
+            return new Promise((resolve, reject) => {
+                flaskAxios.post(endpoint, { pumpId, rotations, iterations })
+                    .then(response => {
+                        if (response.data.success) {
+                            dispatch('setPartStateAction', { devicePart:devicePart, partIndex:pumpId, newState: "stopped" }).then(() => {
+                                resolve();
+                            });}
+                        else {
+                            console.error(`Error updating ${devicePart} calibration:`, response.data.message);
+                            reject();
+                        }
+                    })
+                    .catch(error => {
+                        console.error(`Error updating ${devicePart} calibration:`, error);
+                        reject();
+                    });
+            });
+      },
 
     setPartStateAction({ commit }, payload) {
       const { devicePart, partIndex, newState, input } = payload;
       const endpoint = `/set-${devicePart}-state`;
+      commit('setPartState', { devicePart, partIndex, newState: newState});
 
       return new Promise((resolve, reject) => {
         flaskAxios.post(`${endpoint}`, { partIndex, newState, input })
           .then(response => {
             if (response.data.success) {
-              commit('setPartState', { devicePart, partIndex, newState: response.data.newState});
               resolve();
             } else {
               reject();

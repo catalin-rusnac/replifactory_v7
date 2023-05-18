@@ -60,24 +60,24 @@ class Pump(Stepper):
         self.pump_number = cs + 1
         # self.calibration_function = None
 
-    @property
-    def coefs(self):
-        return self.device.calibration_coefs_pumps[self.pump_number]
+    # @property
+    # def coefs(self):
+    #     return self.device.calibration_coefs_pumps[self.pump_number]
 
-    @coefs.setter
-    def coefs(self, value):
-        self.device.calibration_coefs_pumps[self.pump_number] = list(value)
-        try:
-            self.device.save()
-        except Exception:
-            pass
+    # @coefs.setter
+    # def coefs(self, value):
+    #     self.device.calibration_coefs_pumps[self.pump_number] = list(value)
+    #     try:
+    #         self.device.save()
+    #     except Exception:
+    #         pass
 
-    def calibration_function(self, mL):
-        if len(self.coefs) < 3:
-            return None
-        else:
-            a, b, c = self.coefs
-            return pump_calibration_function(mL, a, b, c)
+    # def calibration_function(self, mL):
+    #     if len(self.coefs) < 3:
+    #         return None
+    #     else:
+    #         a, b, c = self.coefs
+    #         return pump_calibration_function(mL, a, b, c)
 
     def show_parameters(self):
         print("pump_number %d stock volume:" % self.pump_number, self.stock_volume)
@@ -108,8 +108,59 @@ class Pump(Stepper):
         self.device.pump_stock_volumes[self.pump_number] = value
         self.device.save()
 
+    def calculate_rotations(self, volume):
+        # Get the coefficients for the given pumpId
+        coefficients = self.device.device_data['pumps']['calibration'][self.pump_number]
+        # Convert the coefficients into a list of (rotations, coefficient) pairs and sort
+        points = sorted([(int(rot), coef) for rot, coef in coefficients.items()])
+
+        # If volume is larger than the largest known, use the largest coefficient
+        if volume >= points[-1][0] * points[-1][1]:
+            return volume / points[-1][1]
+
+        # Find the two points surrounding the given volume
+        lower_point = points[0]
+        upper_point = points[-1]
+        for i in range(len(points) - 1):
+            if volume >= points[i][0] * points[i][1] and volume <= points[i + 1][0] * points[i + 1][1]:
+                lower_point = points[i]
+                upper_point = points[i + 1]
+                break
+
+        # Calculate the interpolation factor
+        lower_volume = lower_point[0] * lower_point[1]
+        upper_volume = upper_point[0] * upper_point[1]
+        factor = (volume - lower_volume) / (upper_volume - lower_volume)
+
+        # Interpolate the coefficient
+        interpolated_coefficient = lower_point[1] + (upper_point[1] - lower_point[1]) * factor
+
+        # Calculate the rotations
+        rotations = volume / interpolated_coefficient
+
+        return rotations
+
+    def calculate_volume(self, rotations):
+        coefficients = self.device.device_data['pumps']['calibration'][self.pump_number]
+
+        if rotations <= min(coefficients.keys()):
+            correction_coefficient = coefficients[min(coefficients.keys())]
+        else:
+            for i in range(len(coefficients) - 1):
+                if list(coefficients.keys())[i] <= rotations < list(coefficients.keys())[i + 1]:
+                    correction_coefficient = coefficients[list(coefficients.keys())[i]] + \
+                                             (rotations - list(coefficients.keys())[i]) * \
+                                             (coefficients[list(coefficients.keys())[i + 1]] - coefficients[
+                                                 list(coefficients.keys())[i]]) / \
+                                             (list(coefficients.keys())[i + 1] - list(coefficients.keys())[i])
+                    break
+            else:
+                correction_coefficient = coefficients[max(coefficients.keys())]
+        volume = rotations * correction_coefficient
+        return round(volume, 2)
+
     def pump(self, volume, rot_per_sec=None):
-        rotations = self.calibration_function(abs(volume))
+        rotations = self.calculate_rotations(abs(volume))
         if volume < 0:
             rotations *= -1
         if volume != 0:
@@ -120,8 +171,7 @@ class Pump(Stepper):
     def get_pumped_volume(self):
         microsteps = self.get_abs_position()
         n_rotations = microsteps / 25600
-        approx_ml_per_rot = 10 / self.calibration_function(10)
-        vol = approx_ml_per_rot * n_rotations
+        vol = self.calculate_volume(n_rotations)
         return vol
 
     # def add_calibration_point(self, rotations, volume):

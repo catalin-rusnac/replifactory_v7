@@ -1,9 +1,13 @@
 <template>
   <div class="DeviceControl">
-    <label>
-      Calibration mode:
-      <input type="checkbox" :checked="calibrationModeEnabled" @change="toggleCalibrationMode" />
-    </label>
+  <div style="text-align: right;">
+    <CFormSwitch
+      label="Calibration Mode"
+      id="formSwitchCheckChecked"
+      v-model="calibrationModeEnabled"
+      @change="toggleCalibrationMode" />
+  </div>
+
     <template v-if="deviceControlEnabled || controlsVisible">
       <PumpControl />
       <ValveControl />
@@ -24,6 +28,7 @@ import ValveControl from './ValveControl';
 import StirrerControl from './StirrerControl';
 import ODControl from './ODControl';
 import {mapState, mapMutations, mapActions} from 'vuex';
+import { CFormSwitch } from '@coreui/vue';
 
 
 
@@ -33,6 +38,7 @@ export default {
     ValveControl,
     StirrerControl,
     ODControl,
+    CFormSwitch
   },
   computed: {
     ...mapState('device', ['deviceConnected','deviceControlEnabled','calibrationModeEnabled','stirrers','pumps','valves','ods'])
