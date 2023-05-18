@@ -2,34 +2,40 @@
   <div class="pump-data">
     <table>
       <tr>
-        <th>Rots</th>
-        <th>Reps</th>
+<!--        <th>Rots</th>-->
+        <th>Calibration Sequence</th>
         <th></th>
-        <th>Total mLs</th>
-        <th>mL per Rot</th>
+        <th>Volume (mL)</th>
+<!--        <th>mL per Rot</th>-->
       </tr>
       <tr v-for="(row, index) in rows" :key="index">
-        <td>{{ row.rotations }}</td>
-        <td>{{ row.iterations }}</td>
+<!--        <td></td>-->
+        <td>
+          <div class="iteration-rotation-wrapper">
+            <div class="iteration">{{ row.iterations }}</div>
+            <div class="multiplier">x</div>
+            <div class="rotation">{{ row.rotations }} rots</div>
+          </div>
+        </td>
+
         <td>
           <button @click="toggleButtonState(index)" :class="{ 'stop-button': isStopButton[index] }">
             <span v-if="!isStopButton[index]">Pump</span>
             <span v-else>Stop</span>
           </button>
         </td>
-        <td><input v-model="row.total_ml" @change="onTotalMlInput(row)" type="number" /></td>
-        <td>{{pumps.calibration[pumpId][row.rotations].toFixed(3)}}</td>
+        <td><input v-model="row.total_ml" @change="onTotalMlInput(row)" type="float" /></td>
+<!--        <td>{{pumps.calibration[pumpId][row.rotations].toFixed(3)}}</td>-->
       </tr>
     </table>
 
     <div class="chart-container">
           <Bar
-            id="my-chart-id"
+            id="pump-calibration-chart"
             :options="chartOptions"
             class="pump-calibration-chart"
-            v-if="chartData && chartData.labels && chartData.labels.length"
+            v-if="chartData.datasets[0].data.length > 0"
             :data="chartData"
-
           />
         </div>
 
@@ -47,23 +53,40 @@ export default {
   data() {
     return {
       chartData: {
-        labels: [],
         datasets: [{ data: [] }]
       },
       chartOptions: {
         responsive: true,
+        devicePixelRatio: 4,
+        maintainAspectRatio: false,
+        plugins:{
+        legend:{
+          display: false
+        }},
+        //#008CBA
+        backgroundColor: 'rgba(0, 140, 186, 0.3)',
+
+        layout: {
+          padding: {
+            top: 20 // This adds some padding at the top of the chart
+          }
+        },
+
         scales: {
           x: {
             title: {
               display: true,
-              text: 'Rotations',
+              text: 'rotations',
             },
           },
           y: {
             title: {
               display: true,
-              text: 'mL/Rotation',
+              text: 'mL / rotation',
             },
+            beginAtZero: false,
+            suggestedMin: 0.1,
+            suggestedMax: 0.22,
           },
         },
       },
@@ -87,9 +110,6 @@ export default {
     pumpIdCalibrationData() {
       return this.pumps?.calibration[this.pumpId];
     },
-    isValveOpen() {
-      return Object.values(this.valves?.states).some(valve => valve === 'open');
-    }
   },
   methods: {
     ...mapActions('device', ['setPartCalibrationAction', 'startPumpCalibrationSequence', 'setPartStateAction']),
@@ -98,7 +118,7 @@ export default {
       return {
         labels: Object.keys(this.pumpIdCalibrationData),
         datasets: [{
-          label: 'Calibration Data',
+          label: null,
           data: Object.values(this.pumpIdCalibrationData),
           fill: false,
           borderColor: 'rgb(75, 192, 192)',
@@ -109,8 +129,6 @@ export default {
     updateChartData() {
       this.chartData = this.createChartData();
     },
-
-
     toggleButtonState(index) {
       const isValveOpen = Object.values(this.valves.states).some((valve) => valve === 'open');
 
@@ -156,13 +174,15 @@ export default {
         }
       });
     },
-
-
   },
   mounted() {
     if (this.pumpIdCalibrationData) {
-      this.updateChartData();
-    }
+      this.updateChartData();}
+    this.rows.forEach((row) => {
+      // console.log(this.pumps.calibration[this.pumpId][row.rotations], "pumps.calibration")
+      row.total_ml = this.pumps.calibration[this.pumpId][row.rotations] * row.rotations * row.iterations;
+      row.total_ml = row.total_ml.toFixed(2)
+    });
   },
   watch: {
     pumpIdCalibrationData: {
@@ -177,12 +197,19 @@ export default {
 
 
 <style scoped>
+
 .pump-data {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  margin-top: 20px;
-  width: 250px; /* setting the width of the container to 250px */
+  align-items: flex-end;
+  margin-top: 10px;
+  width: 200px; /* setting the width of the container to 250px */
+  border: 1px solid #e3e3e3; /* Sets the color of the border */
+  border-radius: 5px; /* Adjust as needed to create the level of roundness you desire */
+  justify-content: center;
+  padding-left: 5px;
+  padding-right: 5px;
+
 }
 
 table {
@@ -191,14 +218,10 @@ table {
 }
 
 th, td {
-  border: 1px solid #ddd;
+  border: none;
   padding: 4px; /* reduced padding to save space */
   text-align: center;
   font-size: 0.8rem; /* reduced font size to save space */
-}
-
-th {
-  background-color: #f2f2f2;
 }
 
 button {
@@ -225,12 +248,36 @@ td:nth-child(4) {
   width: 60px; /* set the width of the 4th column */
 }
 
-input[type="number"] {
+input[type="float"] {
   width: 100%; /* make the input fields take up the full width of the cell */
+/*  font size 10*/
+  font-size: 12px;
 }
 .pump-calibration-chart {
-  width: 250px;
-  height: 350px;
+  margin-top: 0px;
+  width: 190px;
+  height: 130px;
+}
+.iteration-rotation-wrapper {
+  width: 75px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.iteration {
+  width: 15px;
+  text-align: right;
+}
+
+.multiplier {
+  width: 10px;
+  text-align: center;
+}
+
+.rotation {
+  width: 40px;
+  text-align: left;
 }
 
 </style>

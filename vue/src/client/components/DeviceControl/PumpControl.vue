@@ -16,7 +16,7 @@
 
         <div v-if="calibrationModeEnabled" class="form-group">
           <CFormInput id="rotations" placeholder="rotations" type="float" size="sm" :value="rotations[i]" @input="event => onRotationsInput(event, i)" />
-          <label for="calibration">Calibration:</label>
+<!--          <label for="calibration">Calibration:</label>-->
           <PumpCalibration :pumpId="i" />
         </div>
 
@@ -217,8 +217,8 @@ label {
   color: white;
   font-size: 20px;
   padding: 10px;
-  width: 130px;  /* Adjust as needed */
-  height: 130px;  /* Adjust as needed */
+  width: 160px;  /* Adjust as needed */
+  height: 160px;  /* Adjust as needed */
   text-align: center;
   border-radius: 50%;  /* This makes the button round */
   box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.5);
@@ -232,7 +232,8 @@ label {
 .pump-controls {
   display: flex;
   justify-content: center;
-  width: 800px;
+  align-items: flex-end;
+  width: 660px;
   margin: 0 auto;
 }
 
@@ -245,7 +246,7 @@ label {
 }
 
 .pump input {
-  width: 750px;
+  width: 850px;
   padding: 0px;
   text-align: center;
   margin-top: 10px;  /* Adds a little space between the button and the input */

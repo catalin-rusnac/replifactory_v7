@@ -1,25 +1,14 @@
 <template>
-    <table>
-    </table>
-    <table>
-
-      <tbody>
-      <tr>
-        <td v-for="(od, index) in ods.states" :key="index">
+  <div class="od-control-container">
+        <div class="elements-container" v-for="(od, index) in ods.states" :key="index">
           <button class="od-button" @click="handleOdClick(index)">
             <span>OD {{ index }}</span>
           </button>
-        </td>
-      </tr>
-      <tr>
-        <td v-for="(od, index) in ods.states" :key="index">
-          <span class="od-output-value" v-if="ods.states && ods.states[index] !== undefined">{{ parseFloat(ods.states[index].toFixed(2))}}</span>
+              <span class="od-output-value" v-if="ods.states && ods.states[index] !== undefined">{{ parseFloat(ods.states[index].toFixed(2))}}</span>
           <div style="height: 0.5px;"></div>
-          <span class="od-output-value" v-if="ods.odsignals && ods.odsignals[index] !== undefined">({{ parseFloat(ods.odsignals[index].toFixed(2)) }}mV)</span>
-        </td>
-      </tr>
-      </tbody>
-    </table>
+              <span class="signal-output-value" v-if="ods.odsignals && ods.odsignals[index] !== undefined">({{ parseFloat(ods.odsignals[index].toFixed(2)) }}mV)</span>
+        </div>
+  </div>
 <!--  Header "OD calibration"-->
     <table>
     <thead v-if="calibrationModeEnabled">
@@ -94,6 +83,7 @@ table {
   justify-content: center;
   width: 780px;
   margin: 0 auto;
+  margin-top: 10px;
 }
 
 th, td {
@@ -105,6 +95,31 @@ th, td {
 .calibration-signal {
   width: 60px;
 }
+
+.od-control-container {
+  display: flex;
+  justify-content: center;
+  /*flex-wrap: wrap;*/
+  width: 850px;
+  margin: 0 auto;
+  /*margin-top: 10px;*/
+}
+
+
+.elements-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  margin-right: 10px;
+  margin-left: 10px;
+  margin-top: 0;
+  width: 90px;
+  /*height: 300px;*/
+  border: 1px solid #e3e3e3; /* Sets the color of the border */
+  border-radius: 10px; /* Adjust as needed to create the level of roundness you desire */
+}
+
 
 button {
   background-color: #2a8c93;
@@ -138,17 +153,17 @@ button:hover {
 .od-button{
   text-align: center;
   font-weight: bold;
-  color: darkred;
+  color: #651717;
   font-size: 15px;
-  padding: 2px;
-  width: 60px;
-  height: 60px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   background-color: #f2d388;
   border: none;
   box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.2);
   transition: background-color 0.05s;
-  margin: 0 20px;
+  /*margin: 0 20px;*/
+  margin-top: 10px;
 }
 
 .od-button:active {
@@ -157,11 +172,17 @@ button:hover {
 }
 
 .od-output-value {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: bold;
-  color: darkred;
-  margin: 0;
+  color: rgba(103, 76, 76, 0.54);
+  margin-top: 5px;
   padding: 0;
+}
+
+.signal-output-value {
+  font-size: 9px;
+  color: #808080;
+  margin-top: 0px;
 }
 
 input {
