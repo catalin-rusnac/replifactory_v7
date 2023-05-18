@@ -21,22 +21,58 @@
         <td>{{pumps.calibration[pumpId][row.rotations].toFixed(3)}}</td>
       </tr>
     </table>
+
+    <div class="chart-container">
+          <Bar
+            id="my-chart-id"
+            :options="chartOptions"
+            class="pump-calibration-chart"
+            v-if="chartData && chartData.labels && chartData.labels.length"
+            :data="chartData"
+
+          />
+        </div>
+
   </div>
 </template>
-
 <script>
-import {mapActions, mapState} from "vuex";
+import { mapActions, mapState } from "vuex";
+import { Bar } from 'vue-chartjs'
+import { Chart as ChartJS, Title, Tooltip,  BarElement, CategoryScale, LinearScale } from 'chart.js'
+
+ChartJS.register(Title, Tooltip, BarElement, CategoryScale, LinearScale)
 
 export default {
+  components: { Bar },
   data() {
     return {
+      chartData: {
+        labels: [],
+        datasets: [{ data: [] }]
+      },
+      chartOptions: {
+        responsive: true,
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: 'Rotations',
+            },
+          },
+          y: {
+            title: {
+              display: true,
+              text: 'mL/Rotation',
+            },
+          },
+        },
+      },
       isStopButton: {},
-
       rows: [
-        { rotations: 1, iterations: 50, total_ml: NaN},
-        { rotations: 5, iterations: 10, total_ml: NaN},
-        { rotations: 10, iterations: 5, total_ml: NaN},
-        { rotations: 50, iterations: 1, total_ml: NaN},
+        { rotations: 1, iterations: 50, total_ml: NaN },
+        { rotations: 5, iterations: 10, total_ml: NaN },
+        { rotations: 10, iterations: 5, total_ml: NaN },
+        { rotations: 50, iterations: 1, total_ml: NaN },
       ]
     };
   },
@@ -46,12 +82,35 @@ export default {
       required: true
     }
   },
-
   computed: {
     ...mapState('device', ['calibrationModeEnabled', 'pumps', 'valves']),
+    pumpIdCalibrationData() {
+      return this.pumps?.calibration[this.pumpId];
+    },
+    isValveOpen() {
+      return Object.values(this.valves?.states).some(valve => valve === 'open');
+    }
   },
   methods: {
     ...mapActions('device', ['setPartCalibrationAction', 'startPumpCalibrationSequence', 'setPartStateAction']),
+
+    createChartData() {
+      return {
+        labels: Object.keys(this.pumpIdCalibrationData),
+        datasets: [{
+          label: 'Calibration Data',
+          data: Object.values(this.pumpIdCalibrationData),
+          fill: false,
+          borderColor: 'rgb(75, 192, 192)',
+          tension: 0.1,
+        }]
+      };
+    },
+    updateChartData() {
+      this.chartData = this.createChartData();
+    },
+
+
     toggleButtonState(index) {
       const isValveOpen = Object.values(this.valves.states).some((valve) => valve === 'open');
 
@@ -72,14 +131,22 @@ export default {
     onTotalMlInput(row) {
       if (row.total_ml) {
         this.pumps.calibration[this.pumpId][row.rotations] = row.total_ml / row.rotations / row.iterations;
-        this.setPartCalibrationAction({devicePart: 'pumps', partIndex: this.pumpId, newCalibration: this.pumps.calibration[this.pumpId]});
+        this.setPartCalibrationAction({
+          devicePart: 'pumps',
+          partIndex: this.pumpId,
+          newCalibration: this.pumps.calibration[this.pumpId]
+        });
       }
     },
     promptForMl(row) {
       console.log("starting pump calibration sequence for pumpId: " + this.pumpId);
       // alert("Starting pump calibration sequence for pumpId: " + this.pumpId + ". Blank the scale and make sure ~10mL are available."); // Add alert here
       alert("Pumping " + row.rotations + " rotations " + row.iterations + " times. Please blank the scale"); // Add alert here
-      this.startPumpCalibrationSequence( {pumpId: this.pumpId, rotations: row.rotations, iterations: row.iterations}).then(() => {
+      this.startPumpCalibrationSequence({
+        pumpId: this.pumpId,
+        rotations: row.rotations,
+        iterations: row.iterations
+      }).then(() => {
         console.log("pump calibration sequence finished");
         this.resetButton(row);
         const total_ml = parseFloat(prompt('Enter total mL pumped'));
@@ -88,11 +155,26 @@ export default {
           this.onTotalMlInput(row);
         }
       });
-    }
+    },
 
+
+  },
+  mounted() {
+    if (this.pumpIdCalibrationData) {
+      this.updateChartData();
+    }
+  },
+  watch: {
+    pumpIdCalibrationData: {
+      deep: true,
+      handler() {
+        this.updateChartData();
+      },
+    },
   },
 };
 </script>
+
 
 <style scoped>
 .pump-data {
@@ -145,6 +227,10 @@ td:nth-child(4) {
 
 input[type="number"] {
   width: 100%; /* make the input fields take up the full width of the cell */
+}
+.pump-calibration-chart {
+  width: 250px;
+  height: 350px;
 }
 
 </style>

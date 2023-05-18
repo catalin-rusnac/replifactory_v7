@@ -112,7 +112,10 @@ export default {
       highY1: 0,
       highX2: 0,
       highY2: 0,
-      audioContext: new (window.AudioContext || window.webkitAudioContext)()
+      audioContext: new (window.AudioContext || window.webkitAudioContext)(),
+      oscillator: null,
+      gainNode:null,
+      stopSoundTimeout: null,
     };
   },
 
@@ -194,23 +197,42 @@ export default {
       });
     },
     playSound(speed) {
-      const frequency = 300 + speed * 5;
+    // If an oscillator is not already set up
+    if (!this.oscillator) {
+      this.oscillator = this.audioContext.createOscillator();
+      this.gainNode = this.audioContext.createGain();
 
-      const oscillator = this.audioContext.createOscillator();
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+      this.oscillator.type = 'sine';
+      this.gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);
+      this.oscillator.connect(this.gainNode);
+      this.gainNode.connect(this.audioContext.destination);
+      this.oscillator.start();
+    }
 
-      const gainNode = this.audioContext.createGain();
-      gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);
+    const frequency = 300 + speed * 500;
+    this.oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
 
-      oscillator.connect(gainNode);
-      gainNode.connect(this.audioContext.destination);
+    // Clear any previous stopSound timeout
+    if (this.stopSoundTimeout) {
+      clearTimeout(this.stopSoundTimeout);
+    }
 
-      oscillator.start();
-      setTimeout(() => {
-        oscillator.stop();
-      }, 100);
-    },  },
+    // Set a new timeout to stop the sound in 0.3 seconds
+    this.stopSoundTimeout = setTimeout(this.stopSound, 200);
+  },
+
+  // Call this method when you want to stop the sound
+  stopSound() {
+    if (this.oscillator) {
+      this.gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.01);
+      this.gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime + 0.02);
+      this.oscillator.stop(this.audioContext.currentTime + 0.02);
+      this.oscillator = null;
+      this.gainNode = null;
+    }
+  }
+
+  },
 };
 </script>
 

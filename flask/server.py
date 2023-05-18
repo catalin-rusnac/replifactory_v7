@@ -204,8 +204,8 @@ def connect_device():
         BaseDevice().disconnect_all()
         dev = BaseDevice(connect=True)
         dev.hello()
-        dev.device_data = sample_device_data
-        print("sample device data", sample_device_data)
+        # dev.device_data = sample_device_data
+        # print("sample device data", sample_device_data)
         dev.eeprom.save_config_to_eeprom()
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})

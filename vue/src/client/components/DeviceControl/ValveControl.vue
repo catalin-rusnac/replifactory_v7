@@ -73,9 +73,11 @@ export default {
       oscillator.frequency.linearRampToValueAtTime(endFrequency, this.audioContext.currentTime + 0.3);
 
       oscillator.start();
+      oscillator.stop(this.audioContext.currentTime + 0.3); // Stops the oscillator after 0.3 seconds
 
       return oscillator;
     },
+
   },
 };
 </script>
