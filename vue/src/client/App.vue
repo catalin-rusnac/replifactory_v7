@@ -17,15 +17,15 @@
 
 <script>
 import DeviceControl from './components/DeviceControl/DeviceControl';
-import HomeTab from '@/client/components/HomeTab/HomeTab';
-import ExperimentTab from "@/client/components/ExperimentTab/ExperimentTab";
+// import HomeTab from '@/client/components/HomeTab/HomeTab';
+// import ExperimentTab from "@/client/components/ExperimentTab/ExperimentTab";
 import NgrokTab from "@/client/components/Remote/NgrokTab";
 import HelpTab from "@/client/components/HelpTab/HelpTab";
 export default {
   name: 'App',
   components: {
-    HomeTab,
-    ExperimentTab,
+    // HomeTab,
+    // ExperimentTab,
     DeviceControl,
     NgrokTab,
     HelpTab
@@ -33,7 +33,7 @@ export default {
   data() {
     return {
       currentTab: 'Device',
-      tabs: ['Home', 'Experiment', 'Device', 'Remote', 'Help']
+      tabs: ['Device', 'Remote', 'Help']
     };
   },
 };

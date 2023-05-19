@@ -2,14 +2,14 @@
   <div class="pump-data">
     <table>
       <tr>
-<!--        <th>Rots</th>-->
+
         <th>Calibration Sequence</th>
         <th></th>
         <th>Volume (mL)</th>
-<!--        <th>mL per Rot</th>-->
+
       </tr>
       <tr v-for="(row, index) in rows" :key="index">
-<!--        <td></td>-->
+
         <td>
           <div class="iteration-rotation-wrapper">
             <div class="iteration">{{ row.iterations }}</div>

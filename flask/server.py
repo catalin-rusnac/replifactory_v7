@@ -146,6 +146,8 @@ def set_part_calibration(devicePart):
     if devicePart == 'ods':
         newCalibration = fix_dict_keys_from_javascript(newCalibration)
     dev.device_data[devicePart]['calibration'][partIndex] = newCalibration
+    if devicePart == 'ods':
+        dev.od_sensors[partIndex].fit_calibration_function()
     if devicePart == 'stirrers':
         speed = dev.device_data['stirrers']['states'][partIndex]
         dev.stirrers.set_speed(partIndex, speed, accelerate=False)
@@ -155,7 +157,11 @@ def set_part_calibration(devicePart):
         dev.eeprom.save_config_to_eeprom()
     else:
         print("Not saving to EEPROM because it's an OD sensor<7")
-    return jsonify(success=True, newCalibration=newCalibration)
+
+    response = jsonify(success=True, newCalibration=newCalibration)
+    if devicePart == 'ods':
+        response = jsonify(success=True, newCalibration=newCalibration, coefs=dev.device_data['ods']['calibration_coefs'][partIndex])
+    return response
 
 
 @app.route('/measure-od-calibration', methods=['POST'])
@@ -167,6 +173,8 @@ def measure_od_calibration():
     print(f'Measuring OD calibration with {odValue}')
     for v in range(1,8):
         dev.od_sensors[v].measure_od_calibration(odValue)
+    for v in range(1,8):
+        dev.od_sensors[v].fit_calibration_function()
     dev.eeprom.save_config_to_eeprom()
     return jsonify(success=True, odValue=odValue)
 
@@ -204,8 +212,10 @@ def connect_device():
         BaseDevice().disconnect_all()
         dev = BaseDevice(connect=True)
         dev.hello()
-        # dev.device_data = sample_device_data
+        dev.device_data = sample_device_data
         # print("sample device data", sample_device_data)
+        for v in range(1,8):
+            dev.od_sensors[v].fit_calibration_function()
         dev.eeprom.save_config_to_eeprom()
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})

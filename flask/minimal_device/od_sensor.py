@@ -1,6 +1,9 @@
 import os
 import time
 
+import numpy as np
+from scipy.optimize import curve_fit
+import matplotlib.pyplot as plt
 
 def measure_od_all(device, vials_to_measure=(1, 2, 3, 4, 5, 6, 7)):
     available_vials = []
@@ -94,39 +97,14 @@ class OdSensor:
     def __init__(self, device, vial_number):
         self.device = device
         self.vial_number = vial_number
-        # self.coefs = ()
-        # self.fit_calibration_function()
 
-    # @property
-    # def coefs(self):
-    #     return self.device.device_data['ods']['calibration_coefs'][self.vial_number]
-
-    # @coefs.setter
-    # def coefs(self, value):
-    #     self.device.calibration_coefs_od[self.vial_number] = list(value)
-    #     try:
-    #         self.device.save()
-    #     except Exception:
-    #         pass
-
-    def calibration_function(self, mv):
+    def mv_to_od(self, mv):
         coefs = self.device.device_data['ods']['calibration_coefs'][self.vial_number]
         if len(coefs) < 5:
             return None
         else:
             a, b, c, d, g = coefs
             return od_calibration_function(mv, a, b, c, d, g)
-
-    @property
-    def calibration_od_to_mv(self):
-        return self.device.calibration_od_to_mv[self.vial_number]
-
-    @calibration_od_to_mv.setter
-    def calibration_od_to_mv(self, value):
-        value = float(value)
-        self.device.calibration_od_to_mv[self.vial_number] = value
-        # self.fit_calibration_function()
-        self.device.save()
 
     def measure_transmitted_intensity(self):
         """
@@ -190,6 +168,87 @@ class OdSensor:
         else:
             color = bcolors.FAIL
         print("vial %d OD sensor: " % v + color + "%.2f mV" % signal + bcolors.ENDC)
+
+
+
+    def fit_calibration_function(self):
+        # try:
+
+
+
+        calibration_od = np.array(list(self.device.device_data['ods']['calibration'][self.vial_number].keys()))
+        calibration_mv = np.array(list(self.device.device_data['ods']['calibration'][self.vial_number].values()))
+        if len(calibration_mv.shape)==1:
+            calibration_mv = np.array([[i,i,i] for i in calibration_mv])
+        max_len = len(max(calibration_mv, key=len))
+        calibration_mv_filled = np.array(
+            [list(i) + [np.nan] * (max_len - len(i)) for i in calibration_mv]
+        )
+        calibration_mv_err = np.nanstd(calibration_mv_filled, 1)
+        # calibration_mv = np.array(list(self.calibration_od_to_mv.values())).mean(1)
+        calibration_mv = np.nanmean(calibration_mv_filled, 1)
+
+        calibration_mv_err += 0.01  # allows curve fit with single measurements
+        p0=[210.96, 1.36, 0.0, -0.01, 0.29]
+        # p0=(85, 0.17, 20, -0.01, 0.29)
+        coefs, _ = curve_fit(
+            od_calibration_function_inverse,
+            calibration_od,
+            calibration_mv,
+            maxfev=500000,
+            p0=p0,
+            # bounds=[(3, 0, -1, -0.3, -1), (3000, 10, 3000, 0.1, 50)],
+            sigma=calibration_mv_err,
+        )
+        coefs = [round(i, 3) for i in coefs]
+        print(coefs)
+        # a, b, c, d, g = coefs
+        self.device.device_data['ods']['calibration_coefs'][self.vial_number] = coefs
+        if self.device.is_connected():
+            self.device.eeprom.save_config_to_eeprom()
+
+    def plot_calibration_curve(self):
+
+        plt.figure(figsize=[4, 2], dpi=150)
+
+        calibration_od = np.array(list(self.device.device_data['ods']['calibration'][self.vial_number].keys()))
+        calibration_mv = np.array(list(self.device.device_data['ods']['calibration'][self.vial_number].values()))
+        if len(calibration_mv.shape)==1:
+            calibration_mv = np.array([[i,i+0.1,i-0.1] for i in calibration_mv])
+        max_len = len(max(calibration_mv, key=len))
+        calibration_mv_filled = np.array(
+            [list(i) + [np.nan] * (max_len - len(i)) for i in calibration_mv]
+        )
+        calibration_mv_err = np.nanstd(calibration_mv_filled, 1)
+        calibration_mv = np.nanmean(calibration_mv_filled, 1)
+
+        xmin = 0
+        xmax = max(max(calibration_mv),140) + 10
+        x = np.linspace(xmin, xmax, 501)
+        y = self.mv_to_od(x)
+        a, b, c, d, g = self.device.device_data['ods']['calibration_coefs'][self.vial_number]
+        plt.plot(x, y, "b:", label="function fit")
+        plt.title(
+            "od_max:%.2f slope: %.2f mv_inflec: %.2f od_min: %.2f, g: %.2f"
+            % (a, b, c, d, g),
+            fontsize=8,
+        )
+        #     plt.plot(calibration_mv, calibration_od, "r.")
+        plt.errorbar(
+            calibration_mv,
+            calibration_od,
+            xerr=calibration_mv_err,
+            fmt="b.",
+            label="calibration data",
+        )
+        plt.xlabel("signal[mV] (background-subtracted)")
+        plt.ylabel("OD")
+        plt.ylim([-1, 5])
+        plt.axhline(0, ls="--", c="k", lw=0.5)
+        # plt.title("Vial %d OD calibration" % self.vial_number, fontsize=8)
+
+        plt.legend()
+        plt.show()
 
 class bcolors:
     HEADER = "\033[95m"

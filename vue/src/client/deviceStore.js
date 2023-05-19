@@ -48,6 +48,13 @@ export default {
     },
     ods: {
       states: {1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6:0, 7:0},
+        calibration_coefs: {1: [4,1,10,-0.5,4],
+                              2: [4,1,10,-0.5,4],
+                              3: [4,1,10,-0.5,4],
+                              4: [4,1,10,-0.5,4],
+                              5: [4,1,10,-0.5,4],
+                              6: [4,1,10,-0.5,4],
+                              7: [4,1,10,-0.5,4]},
       calibration: {
         1: {0.00788: 40.375,
             0.0158: 39.781,
@@ -127,8 +134,13 @@ export default {
   },
 
 mutations: {
-    setPartCalibration(state, { devicePart, partIndex, newCalibration }) {
+    setPartCalibration(state, { devicePart, partIndex, newCalibration, coefs}) {
       state[devicePart].calibration[partIndex] = newCalibration;
+     if (coefs) {
+         console.log("vuex setting coefs"+coefs+"v"+partIndex);
+         state[devicePart].calibration_coefs[partIndex] = coefs;
+     }
+
     },
     setPartState(state, { devicePart, partIndex, newState }) {
       state[devicePart].states[partIndex] = newState;
@@ -227,7 +239,8 @@ mutations: {
             flaskAxios.post(endpoint, { partIndex, newCalibration })
             .then(response => {
             if (response.data.success) {
-              commit('setPartCalibration', { devicePart, partIndex, newCalibration: response.data.newCalibration });
+                console.log(response.data, "response.data from setpartcalibrationaction")
+              commit('setPartCalibration', { devicePart, partIndex, newCalibration: response.data.newCalibration, coefs: response.data.coefs });
 
               resolve();
             } else {

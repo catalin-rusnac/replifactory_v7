@@ -10,49 +10,55 @@
         </div>
   </div>
 <!--  Header "OD calibration"-->
-    <table>
-    <thead v-if="calibrationModeEnabled">
-        <tr>
-          <th>OD value</th>
-          <th></th>
-          <th v-for="vial in vials" :key="vial">{{ 'vial ' + vial }}</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody v-if="calibrationModeEnabled">
-        <tr v-for="(index,odValue) in ods.calibration[1]" :key="index">
-          <td>
-            <input :value="odValue" @change="updateODCalibrationKeyAction({oldOD: odValue, newOD: $event.target.value})" type="number" step="0.1" />
-          </td>
-
-          <td>
-            <button @click="measureODCalibrationAction({odValue:odValue})">Measure</button>
-          </td>
-          <td v-for="vial in vials" :key="vial">
-            <input class="calibration-signal" v-model="ods.calibration[vial][odValue]" type="number" style="opacity: 60%"/>
-          </td>
-          <td>
-            <button class="button button-delete" @click="removeODCalibrationRowAction(odValue)">Delete Row</button>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <input v-model="newRowValue" type="number" step="0.1" />
-          </td>
-          <td>
-            <button class="button button-new"
-                @click="addODCalibrationRowAction(newRowValue)">New Probe</button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+  <div v-if="calibrationModeEnabled">
+      <table>
+    <thead>
+      <tr>
+        <th>OD value</th>
+        <th></th>
+        <th v-for="vial in vials" :key="vial">{{ 'vial ' + vial }}</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr v-for="odValue in allOdValues" :key="odValue">
+        <td>
+          <input :value="odValue" @change="updateODCalibrationKeyAction({oldOD: odValue, newOD: $event.target.value})" type="number" step="0.1" />
+        </td>
+        <td>
+          <button @click="measureODCalibrationAction({odValue:odValue})">Measure</button>
+        </td>
+        <td v-for="vial in vials" :key="vial">
+          <input class="calibration-signal" v-model="ods.calibration[vial][odValue]" type="number" style="opacity: 60%" />
+        </td>
+        <td>
+          <button class="button button-delete" @click="removeODCalibrationRowAction(odValue)">Delete Row</button>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <input v-model="newRowValue" type="number" step="0.1" />
+        </td>
+        <td>
+          <button class="button button-new" @click="addODCalibrationRowAction(newRowValue)">New Probe</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+      <div class="chart-container">
+        <ODChart v-for="vial in vials" :partId="vial" :key="vial"></ODChart>
+      </div>
+  </div>
 </template>
 
 <script>
 import {mapState, mapActions} from 'vuex';
-
+import ODChart from './ODChart.vue';
 
 export default {
+  components: {
+    ODChart,
+  },
   data() {
     return {
       // odValues: [0.00788, 0.0158, 0.0315, 0.0630, 0.126, 0.252, 0.504, 1.01, 2.02, 4.03],
@@ -62,6 +68,15 @@ export default {
   },
   computed: {
     ...mapState('device', ['ods', "calibrationModeEnabled"]),
+    allOdValues() {
+      let allOdValuesSet = new Set();
+      for(let vial in this.ods.calibration) {
+        for(let odValue in this.ods.calibration[vial]) {
+          allOdValuesSet.add(odValue);
+        }
+      }
+      return Array.from(allOdValuesSet);
+    }
   },
   methods: {
     ...mapActions("device", ["getAllDeviceData", "setPartStateAction", "measureDevicePart", "measureODCalibrationAction",
@@ -79,6 +94,24 @@ export default {
 </script>
 
 <style scoped>
+.chart-container {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  width: 850px;
+  justify-content: center;
+  align-items: center;
+  margin: 0 auto;
+}
+
+.chart-container > div {
+  /*flex: 1;*/
+  width: 270px;
+  height: 200px;
+  margin-right: 10px;
+  margin-bottom: 10px;
+}
+
 table {
   justify-content: center;
   width: 780px;

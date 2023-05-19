@@ -1,3 +1,18 @@
+#%%
+import sys
+sys.path.append('./flask/')
+import importlib
+import minimal_device
+from minimal_device.base_device import BaseDevice
+
+importlib.reload(minimal_device)
+dev = BaseDevice()
+vial=1
+minimal_device.od_sensor.OdSensor.fit_calibration_function(dev.od_sensors[vial])
+print(dev.device_data['ods']['calibration'][vial])
+dev.od_sensors[vial].mv_to_od(10)
+dev.od_sensors[vial].plot_calibration_curve()
+#%%
 import sys
 sys.path.append('./flask/')
 
@@ -20,3 +35,4 @@ dev.stirrers.set_speed(1, "stopped")
 dev.stirrers._get_duty_cycle(1)
 #%%
 dev.disconnect_all()
+#%%
