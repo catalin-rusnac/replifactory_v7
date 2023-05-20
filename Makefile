@@ -1,4 +1,4 @@
-install: ngrok swap node-pi pip
+install: swap install_apt_dependencies node-pi pip ngrok services-ctl updatepath
 	cd vue && npm install -y
 	cd flask && pip install -r requirements.txt
 
