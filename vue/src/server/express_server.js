@@ -19,12 +19,9 @@ const proxyMiddleware = createProxyMiddleware({
     '^/flask': '', // remove the '/flask' prefix when forwarding to the Flask server
   },
 });
-
-// Added console log after creating the middleware
-console.log('Middleware created');
+console.log('Proxying requests to Flask server at http://127.0.0.1:5000');
 
 app.use('/flask', (req, res, next) => {
-  console.log('Proxying requests to Flask server at http://127.0.0.1:5000');
   next();
 }, proxyMiddleware);
 
@@ -46,7 +43,6 @@ app.use((req, res, next) => {
   next();
 });
 
-const { exec } = require('child_process');
 const fs = require('fs');
 
 const os = require('os');
@@ -71,6 +67,17 @@ let authtoken = null;
 let ngrokUrl = null;
 
 
+async function startNgrok() {
+  console.log('Starting ngrok tunnel setup...');
+  ngrokUrl = await ngrok.connect({
+    addr: expressPort,
+  });
+  console.log(`ngrok tunnel started: ${ngrokUrl}`);
+}
+
+async function checkNgrokStatus() {
+
+
 // Check if ngrok.yml file exists
 if (fs.existsSync(ngrokConfigPath)) {
   // Read the ngrok.yml file
@@ -88,14 +95,23 @@ if (fs.existsSync(ngrokConfigPath)) {
     });
   }
 }
-
-async function startNgrok() {
-  console.log('Starting ngrok tunnel setup...');
-  ngrokUrl = await ngrok.connect({
-    addr: expressPort,
-    });
-  console.log(`ngrok tunnel started: ${ngrokUrl}`);
 }
+
+async function initializeNgrok() {
+  try {
+    await checkNgrokStatus();
+    // Check ngrok status every 5 minutes
+    setInterval(checkNgrokStatus, 5 * 60 * 1000);
+    console.log('Ngrok initialization complete.');
+  } catch (error) {
+    console.error('Error initializing ngrok:', error);
+  }
+}
+
+//
+initializeNgrok().catch(error => {
+  console.error('Failed to initialize ngrok:', error);
+});
 
 app.post('/tunnels/set-ngrok-authtoken', async (req, res) => {
   const { authtoken } = req.body;
@@ -111,9 +127,8 @@ app.post('/tunnels/set-ngrok-authtoken', async (req, res) => {
   }
 });
 
-
 app.get('/tunnels/get-ngrok-url', (req, res) => {
-  console.log('Getting ngrok url from path:',req.path);
+  console.log('Getting ngrok url:',req.path);
   res.json({ ngrokUrl: ngrokUrl });
 });
 
