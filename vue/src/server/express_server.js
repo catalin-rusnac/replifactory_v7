@@ -101,7 +101,7 @@ async function initializeNgrok() {
   try {
     await checkNgrokStatus();
     // Check ngrok status every 5 minutes
-    setInterval(checkNgrokStatus, 5 * 60 * 1000);
+    setInterval(checkNgrokStatus, 60 * 1000);
     console.log('Ngrok initialization complete.');
   } catch (error) {
     console.error('Error initializing ngrok:', error);
