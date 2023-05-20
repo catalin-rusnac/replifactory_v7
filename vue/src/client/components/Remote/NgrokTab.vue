@@ -15,42 +15,30 @@ import axios from 'axios';
 
 const ngrokaxios = axios.create({
   baseURL: window.location.origin + '/tunnels',
-  timeout: 5000,
+  timeout: 15000,
 });
 console.log("Created ngrokAxios with baseURL: " + window.location.origin + '/tunnels',);
+
 
 export default {
   data() {
     return {
       authtoken: '',
       ngrokUrl: '',
-      tunnelEstablished: false,
-      intervalId: null,
     };
   },
   created() {
-    this.intervalId = setInterval(this.getNgrokUrl, 5000); // Try to get ngrok url every 5 seconds
-  },
-  beforeUnmount() {
-    clearInterval(this.intervalId); // Stop interval when component is destroyed
-  },
-  methods: {
-    getNgrokUrl() {
-      if (!this.tunnelEstablished) {
-        ngrokaxios.get('/get-ngrok-url')
-          .then(response => {
-            console.log(response);
-            this.ngrokUrl = response.data.ngrokUrl;
-            if (this.ngrokUrl !== '') {
-              this.tunnelEstablished = true; // Stop future attempts if tunnel is established
-              clearInterval(this.intervalId);
-            }
-          })
-          .catch(error => {
-            console.log(error);
-          });
-      }
+      ngrokaxios.get('/get-ngrok-url')
+        .then(response => {
+          console.log(response);
+          this.ngrokUrl = response.data.ngrokUrl;
+        })
+        .catch(error => {
+          console.log(error);
+        });
     },
+
+  methods: {
     sendAuthtoken() {
       ngrokaxios.post('/set-ngrok-authtoken', {
           authtoken: this.authtoken,
