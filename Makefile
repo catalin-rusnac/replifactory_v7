@@ -96,11 +96,11 @@ services-ctl:
 	@echo "Checking for flask and vue services..."
 	if ! cmp services/flask/flask.service /etc/systemd/system/flask.service >/dev/null 2>&1; then \
 		sudo cp services/flask/flask.service /etc/systemd/system/flask.service; \
-		@echo "Copied services/flask/flask.service to /etc/systemd/system/flask.service"; \
+		echo "Copied services/flask/flask.service to /etc/systemd/system/flask.service"; \
 	fi
 	if ! cmp services/vue/vue.service /etc/systemd/system/vue.service >/dev/null 2>&1; then \
 		sudo cp services/vue/vue.service /etc/systemd/system/vue.service; \
-		@echo "Copied services/vue/vue.service to /etc/systemd/system/vue.service"; \
+		echo "Copied services/vue/vue.service to /etc/systemd/system/vue.service"; \
 	fi
 	@echo "Reloading systemctl daemon..."
 	sudo systemctl daemon-reload
