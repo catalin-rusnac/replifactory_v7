@@ -1,0 +1,14 @@
+[Unit]
+Description=Vue App
+After=network.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/replifactory_v7
+ExecStart=/usr/bin/node /home/pi/replifactory_v7/vue/src/server/express_server.js
+StandardOutput=append:/home/pi/replifactory_v7/logs/express_server.log
+StandardError=append:/home/pi/replifactory_v7/logs/express_server-error.log
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

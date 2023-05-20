@@ -1,0 +1,14 @@
+[Unit]
+Description=Flask App
+After=network.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/replifactory_v7
+ExecStart=/usr/bin/python3 /home/pi/replifactory_v7/flask/server.py
+StandardOutput=append:/home/pi/replifactory_v7/logs/flask.log
+StandardError=append:/home/pi/replifactory_v7/logs/flask-error.log
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
