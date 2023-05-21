@@ -1,4 +1,6 @@
 import time
+import threading
+from queue import Queue
 
 import numpy as np
 import yaml
@@ -13,10 +15,36 @@ def make_addr_bytes(page=511, byte=63):
 class EEPROM:
     PAGE_TEST = 511
 
+    class EepromWriter:
+        def __init__(self, eeprom):
+            print("Starting EEPROM writer worker thread", time.ctime())
+            self.eeprom = eeprom
+            self.data = None
+            self.queue = Queue()
+            self.timer = None
+            self.lock = threading.Lock()
+            self.worker_thread = threading.Thread(target=self.worker)
+            self.worker_thread.start()
+
+        def worker(self):
+            while True:
+                with self.lock:
+                    data = self.data
+                    self.data = None
+                if data is not None:
+                    self.eeprom._write_to_eeprom(data)
+                time.sleep(2)
+
+        def add_data(self, data):
+            with self.lock:
+                self.data = data
+                print("Added data to EEPROM writer queue", time.ctime())
+
     def __init__(self, device):
+        print("Initializing EEPROM", time.ctime())
         self.device = device
         self.port = None
-
+        self.writer = self.EepromWriter(self)
         if self.device.is_connected():
             self.connect()
 
@@ -37,40 +65,34 @@ class EEPROM:
         :param from_file: file directory, the config is read from the file instead of the device object
         :return:
         """
-        if hasattr(self, "last_write_time"):
-            if self.last_write_time>time.time()-2:
-                if hasattr(self, "eeprom_config"):
-                    if self.eeprom_config['valves'] == self.device.device_data['valves'] and \
-                            self.eeprom_config['ods']['calibration'] == self.device.device_data['ods']['calibration']:
-                        print("Last write was less than 2 seconds ago, no valve or od calibration . Skipping")
-                        return
-        config_to_write = self.device.device_data
+        self.writer.add_data(self.device.device_data)
+
+    def _write_to_eeprom(self, data):
+        config_to_write = data
         config_to_write = yaml.dump(config_to_write)
         config_to_write = config_to_write.encode("utf-8")
         config_to_write = gzip.compress(config_to_write)
         config_bytes = bytearray(config_to_write)
-        filler_size = 32768 - len(config_bytes)
-        print(len(config_bytes),"bytes to write to EEPROM")
-        print(filler_size,"bytes of filler to write to EEPROM")
-        # n_pages_to_write = 512
-        n_pages_to_write = int(np.ceil(len(config_bytes) / 64) + 1)
+        # filler_size = 32768 - len(config_bytes)
+        filler_size = 64
+        print("Writing", len(config_bytes), "bytes to EEPROM", time.ctime())
+        # print(filler_size, "bytes of filler to write to EEPROM")
         for i in range(filler_size):
             config_bytes.append(0xFF)
-        print(n_pages_to_write,"pages to write to EEPROM")
+        n_pages_to_write = int(np.ceil(len(config_bytes) / 64))
+        # print(n_pages_to_write,"pages to write to EEPROM")
         for page in range(n_pages_to_write):
             b1, b2 = make_addr_bytes(page=page, byte=0)
             self.port.write(
                 [b1, b2] + [b for b in config_bytes[64 * page : 64 * (page + 1)]]
             )
-        self.last_write_time = time.time()
         self.eeprom_config = self.device.device_data
 
-
-            # if page % 20 == 0:
-            #     print(
-            #         "Writing to EEPROM: %d%% done" % (page / 5.12),
-            #         end="                              \r",
-            #     )
+        #     if page % 20 == 0:
+        #         print(
+        #             "Writing to EEPROM: %d%% done" % (page / 5.12),
+        #             end="                              \r",
+        #         )
         # print("Writing new config to EEPROM COMPLETE")
 
     def load_config_from_eeprom(self):

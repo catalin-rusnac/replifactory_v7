@@ -29,7 +29,7 @@
           <button @click="measureODCalibrationAction({odValue:odValue})">Measure</button>
         </td>
         <td v-for="vial in vials" :key="vial">
-          <input class="calibration-signal" v-model="ods.calibration[vial][odValue]" type="number" style="opacity: 60%" />
+          <input class="calibration-signal" @change="updateODCalibrationValueAction({od: odValue, odsIndex:vial, newValue:$event.target.value})" v-model="ods.calibration[vial][odValue]" type="number" style="opacity: 60%" />
         </td>
         <td>
           <button class="button button-delete" @click="removeODCalibrationRowAction(odValue)">Delete Row</button>
@@ -40,11 +40,12 @@
           <input v-model="newRowValue" type="number" step="0.1" />
         </td>
         <td>
-          <button class="button button-new" @click="addODCalibrationRowAction(newRowValue)">New Probe</button>
+          <button class="button button-new" @click="measureODCalibrationAction({odValue: newRowValue})">Measure new probe</button>
         </td>
       </tr>
     </tbody>
   </table>
+
       <div class="chart-container">
         <ODChart v-for="vial in vials" :partId="vial" :key="vial"></ODChart>
       </div>
@@ -80,7 +81,7 @@ export default {
   },
   methods: {
     ...mapActions("device", ["getAllDeviceData", "setPartStateAction", "measureDevicePart", "measureODCalibrationAction",
-      "setPartCalibrationAction","removeODCalibrationRowAction", 'updateODCalibrationKeyAction', "addODCalibrationRowAction"]),
+      "setPartCalibrationAction","removeODCalibrationRowAction", 'updateODCalibrationKeyAction', "updateODCalibrationValueAction"]),
       async handleOdClick(odIndex) {
         await this.measureDevicePart({
           devicePart: "ods",

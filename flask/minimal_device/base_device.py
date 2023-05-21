@@ -42,6 +42,7 @@ class BaseDevice:
 
     def __init__(self, ftdi_address="ftdi://ftdi:2232h", connect=False, directory=None):
         t0 = time.time()
+        print("Initializing device", time.ctime())
         self.ftdi_address = ftdi_address
         self.directory = directory
 

@@ -37,15 +37,18 @@ export default {
   computed: {
     ...mapState('device', ['ods', 'calibrationModeEnabled']),
 
-        partData() {
+        calibrationData() {
       return this.ods?.calibration[this.partId];
     },
     calibrationCoefs() {
       return this.ods?.calibration_coefs[this.partId];
     },
+    currentOD() {
+      return {od:this.ods?.states[this.partId], signal:this.ods?.odsignals[this.partId]};
+    },
     chartData() {
-      if (this.partData && typeof this.partData === 'object' && this.calibrationCoefs) {
-        const dataPoints = Object.entries(this.partData).map(([key, value]) => ({x: Number(value), y: Number(key)})).sort((a, b) => a.x - b.x);
+      if (this.calibrationData && typeof this.calibrationData === 'object' && this.calibrationCoefs) {
+        const dataPoints = Object.entries(this.calibrationData).map(([key, value]) => ({x: Number(value), y: Number(key)})).sort((a, b) => a.x - b.x);
 
         const min_x = Math.min(...dataPoints.map(point => point.x));
         const max_x = Math.max(...dataPoints.map(point => point.x));
@@ -59,22 +62,28 @@ export default {
         return {
           datasets: [
             {
-              label: `Vial ${this.partId} OD`,
+              label: `Vial ${this.partId} Calibration OD`,
               data: dataPoints,
-              borderColor: '#cb6060',
-              backgroundColor: 'rgba(255,83,83,0.64)',
+              borderColor: '#607ecb',
+              backgroundColor: 'rgba(83,158,255,0.64)',
             },
-            // {
-            //   label: `Vial ${this.partId} Calibration`,
-            //   data: calibrationDataPoints,
-            //   pointRadius: 0,
-            //   borderColor: 'rgba(255,83,83,0.64)',
-            //   //line width
-            //   borderWidth: 2,
-            //   showLine: true,
-            //   fill: false,
-            //   borderDash: [2, 2]
-            // },
+            {
+              label: `Vial ${this.partId} Current OD`,
+              data: [{x: this.currentOD.signal, y: this.currentOD.od}],
+              pointRadius: 5,
+              backgroundColor: 'rgba(255,1,60,0.64)',
+            },
+            {
+              label: `Vial ${this.partId} Fit`,
+              data: calibrationDataPoints,
+              pointRadius: 0,
+              borderColor: 'rgba(0,70,220,0.38)',
+              //line width
+              borderWidth: 2,
+              showLine: true,
+              fill: false,
+              borderDash: [2, 2]
+            },
           ],
         };
       }

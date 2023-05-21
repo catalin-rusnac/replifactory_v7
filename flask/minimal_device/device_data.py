@@ -116,6 +116,6 @@ device_data = {
                               6: [4,1,10,-0.5,4],
                               7: [4,1,10,-0.5,4]},
     },
-    'temperature': {
+    'thermometers': {
         'states': {1:0, 2:0}}
 }

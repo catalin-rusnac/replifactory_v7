@@ -7,6 +7,7 @@ from minimal_device.base_device import BaseDevice
 
 importlib.reload(minimal_device)
 dev = BaseDevice()
+dev.connect()
 vial=1
 minimal_device.od_sensor.OdSensor.fit_calibration_function(dev.od_sensors[vial])
 print(dev.device_data['ods']['calibration'][vial])
@@ -31,6 +32,11 @@ dev.eeprom.save_config_to_eeprom()
 print(dev.device_data)
 print(time.time()-t)
 
+dev.stirrers.set_speed(7, "high")
+dev.stirrers._get_duty_cycle(1)
+time.sleep(2)
+dev.stirrers.set_speed(1, "stopped")
+dev.stirrers._get_duty_cycle(1)
 dev.stirrers.set_speed(1, "stopped")
 dev.stirrers._get_duty_cycle(1)
 #%%

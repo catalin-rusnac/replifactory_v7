@@ -100,11 +100,8 @@ class OdSensor:
 
     def mv_to_od(self, mv):
         coefs = self.device.device_data['ods']['calibration_coefs'][self.vial_number]
-        if len(coefs) < 5:
-            return None
-        else:
-            a, b, c, d, g = coefs
-            return od_calibration_function(mv, a, b, c, d, g)
+        a, b, c, d, g = coefs
+        return od_calibration_function(mv, a, b, c, d, g)
 
     def measure_transmitted_intensity(self):
         """
@@ -150,7 +147,7 @@ class OdSensor:
 
     def measure_od(self):
         signal = self.measure_signal()
-        od = self.calibration_function(signal)
+        od = self.mv_to_od(signal)
         return od, signal
 
     def measure_od_calibration(self, odValue):
@@ -158,7 +155,6 @@ class OdSensor:
         self.device.device_data['ods']['calibration'][self.vial_number][odValue] = sig
 
     def check(self):
-        assert self.calibration_function is not None
         v = self.vial_number
         signal = self.device.od_sensors[v].measure_signal()
         if signal >= 15:
@@ -169,35 +165,35 @@ class OdSensor:
             color = bcolors.FAIL
         print("vial %d OD sensor: " % v + color + "%.2f mV" % signal + bcolors.ENDC)
 
-
-
     def fit_calibration_function(self):
-        # try:
-
-
-
         calibration_od = np.array(list(self.device.device_data['ods']['calibration'][self.vial_number].keys()))
         calibration_mv = np.array(list(self.device.device_data['ods']['calibration'][self.vial_number].values()))
+
+        mask = np.array([item is not None for item in calibration_mv])
+        calibration_mv = calibration_mv[mask]
+        calibration_od = calibration_od[mask]
+
         if len(calibration_mv.shape)==1:
             calibration_mv = np.array([[i,i,i] for i in calibration_mv])
         max_len = len(max(calibration_mv, key=len))
         calibration_mv_filled = np.array(
             [list(i) + [np.nan] * (max_len - len(i)) for i in calibration_mv]
         )
+        print(calibration_mv_filled)
         calibration_mv_err = np.nanstd(calibration_mv_filled, 1)
+        print(calibration_mv_err)
         # calibration_mv = np.array(list(self.calibration_od_to_mv.values())).mean(1)
         calibration_mv = np.nanmean(calibration_mv_filled, 1)
 
+
         calibration_mv_err += 0.01  # allows curve fit with single measurements
-        p0=[210.96, 1.36, 0.0, -0.01, 0.29]
-        # p0=(85, 0.17, 20, -0.01, 0.29)
         coefs, _ = curve_fit(
             od_calibration_function_inverse,
             calibration_od,
             calibration_mv,
-            maxfev=500000,
-            p0=p0,
-            # bounds=[(3, 0, -1, -0.3, -1), (3000, 10, 3000, 0.1, 50)],
+            maxfev=5000,
+            p0=(20, 5, 0.07, -0.2, 1),
+            bounds=[(3, 0, 0, -0.5, 0), (200, 10, 20, 0.1, 5)],
             sigma=calibration_mv_err,
         )
         coefs = [round(i, 3) for i in coefs]
@@ -206,6 +202,7 @@ class OdSensor:
         self.device.device_data['ods']['calibration_coefs'][self.vial_number] = coefs
         if self.device.is_connected():
             self.device.eeprom.save_config_to_eeprom()
+        # self.plot_calibration_curve()
 
     def plot_calibration_curve(self):
 
@@ -243,7 +240,7 @@ class OdSensor:
         )
         plt.xlabel("signal[mV] (background-subtracted)")
         plt.ylabel("OD")
-        plt.ylim([-1, 5])
+        # plt.ylim([-1, 5])
         plt.axhline(0, ls="--", c="k", lw=0.5)
         # plt.title("Vial %d OD calibration" % self.vial_number, fontsize=8)
 

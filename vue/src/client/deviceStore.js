@@ -48,6 +48,8 @@ export default {
     },
     ods: {
       states: {1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6:0, 7:0},
+    odsignals: {1:40, 2:40, 3:40, 4:40, 5:40, 6:40, 7:40},
+
         calibration_coefs: {1: [4,1,10,-0.5,4],
                               2: [4,1,10,-0.5,4],
                               3: [4,1,10,-0.5,4],
@@ -128,8 +130,7 @@ export default {
             4.03: 1.648}
       },
     },
-      odsignals: {1:40, 2:40, 3:40, 4:40, 5:40, 6:40, 7:40},
-      temperatures:
+      thermometers:
         {states: {1: 0, 2: 0}},
   },
 
@@ -172,6 +173,15 @@ mutations: {
         // state.ods = { ...state.ods };
     },
 
+    updateODCalibrationValue(state, {od, odsIndex, newValue}) {
+        if (newValue === "") {
+            delete state.ods.calibration[odsIndex][od]
+        }
+        else {
+        state.ods.calibration[odsIndex][od]  = parseFloat(newValue);
+        }
+    },
+
     updateODCalibrationKey(state, {oldOD, newOD}) {
       // Loop over each item in the ods.calibration object
       // Check if the oldOD key exists before trying to replace it
@@ -199,13 +209,6 @@ mutations: {
           dispatch('setPartStateAction', { devicePart: 'stirrers', partIndex: parseInt(stirrerIndex), newState: newState});
         });
         },
-      async addODCalibrationRowAction({ dispatch, commit, state }, newOD) {
-        await commit('addODCalibrationRow', newOD);
-        for (let i = 1; i <= 7; i++) {
-            await dispatch('setPartCalibrationAction', { devicePart: 'ods', partIndex: i, newCalibration: state.ods.calibration[i] })
-            .catch(error => console.error(`Error dispatching setPartCalibrationAction:`, error));
-        }
-      },
       async updateODCalibrationKeyAction({ dispatch, commit, state }, payload) {
         const { oldOD, newOD } = payload;
         await commit('updateODCalibrationKey', {oldOD, newOD}); // Assuming 'updateODCalibrationKey' mutation accepts an object as payload
@@ -214,6 +217,13 @@ mutations: {
             await dispatch('setPartCalibrationAction', { devicePart: 'ods', partIndex: i, newCalibration: state.ods.calibration[i] })
             .catch(error => console.error(`Error dispatching setPartCalibrationAction:`, error));
         }
+    },
+
+      async updateODCalibrationValueAction({ dispatch, commit, state }, payload) {
+        const i = payload.odsIndex;
+        await commit('updateODCalibrationValue', payload);
+        await dispatch('setPartCalibrationAction', { devicePart: 'ods', partIndex: i, newCalibration: state.ods.calibration[i] })
+            .catch(error => console.error(`Error during updateODCalibrationValueAction:`, error));
     },
 
     removeODCalibrationRowAction({ dispatch, commit, state }, oldOD) {
@@ -234,6 +244,10 @@ mutations: {
       setPartCalibrationAction({ commit }, payload) {
         const { devicePart, partIndex, newCalibration } = payload;
         const endpoint = `/set-${devicePart}-calibration`;
+        for(let key in newCalibration){
+            if(newCalibration[key] === null)
+                delete newCalibration[key];
+        }
 
         return new Promise((resolve, reject) => {
             flaskAxios.post(endpoint, { partIndex, newCalibration })
