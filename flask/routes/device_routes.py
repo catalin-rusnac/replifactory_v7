@@ -68,11 +68,15 @@ def measure_device_part(devicePart):
 @device_routes.route('/get-all-device-data', methods=['GET'])
 def get_all_device_states():
     print("Getting all device data")
-    # print(dev.device_data)
-
-    return jsonify({
+    try:
+        return jsonify({
         'success': True,
         'device_states': dev.device_data,
+    })
+    except:
+        return jsonify({
+        'success': False,
+        'device_states': sample_device_data,
     })
 
 
@@ -155,9 +159,14 @@ def connect_device():
     try:
         if dev.is_connected():
             return jsonify({'success': True, 'device_states': dev.device_data})
+        elif dev.is_connected() == False:
+            dev.disconnect_all()
     except:
+        print("Device not connected")
         pass
     try:
+        print("Connecting device")
+
         # BaseDevice().disconnect_all()
         dev = BaseDevice(connect=True)
         dev.hello()

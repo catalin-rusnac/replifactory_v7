@@ -38,7 +38,7 @@ class EEPROM:
         def add_data(self, data):
             with self.lock:
                 self.data = data
-                print("Added data to EEPROM writer queue", time.ctime())
+                # print("Added data to EEPROM writer queue", time.ctime())
 
     def __init__(self, device):
         print("Initializing EEPROM", time.ctime())

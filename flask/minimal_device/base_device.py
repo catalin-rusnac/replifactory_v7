@@ -111,7 +111,7 @@ class BaseDevice:
         self.cultures[6] = BlankCulture(directory=self.directory, vial_number=6)
         self.cultures[7] = BlankCulture(directory=self.directory, vial_number=7)
 
-    def connect(self, ftdi_address="ftdi://ftdi:2232h", fit_calibration=False):
+    def connect(self, ftdi_address="ftdi://ftdi:2232h", retries=10):
         # if ftdi_address is None:
         #     ftdi_address = self.ftdi_address
         # else:
@@ -138,14 +138,6 @@ class BaseDevice:
             self.od_worker = QueueWorker(device=self, worker_name="od")
             self.hard_stop_trigger = False
             self.soft_stop_trigger = False
-            if self.directory is not None and fit_calibration:
-                try:
-                    self.fit_calibration_functions()
-                    self.check_parameters()
-                except Exception:
-                    print("Calibration incomplete")
-                self.save()
-            # self.hello()
 
         # except USBError as ex:
         #     raise FtdiError('UsbError: %s' % str(ex)) from None
@@ -153,10 +145,22 @@ class BaseDevice:
         except pyftdi.ftdi.FtdiError as ex:
             raise ConnectionError("Connection failed! %s" % ex) from None
         except pyftdi.usbtools.USBError:
-            print(
-                "Device connected but does not recognize the command.\nPlease reset connections."
-            )
-        except pyftdi.usbtools.UsbToolsError:
+            if retries >0:
+                try:
+                    self.spi.terminate()
+                except Exception:
+                    pass
+                try:
+                    self.i2c.terminate()
+                except Exception:
+                    pass
+                UsbTools.release_all_devices()
+                UsbTools.flush_cache()
+                print("Retrying connection...")
+                self.connect(ftdi_address=ftdi_address, retries=retries - 1)
+            print("Device connected but does not recognize the command.\nPlease reset connections.")
+        except pyftdi.usbtools.UsbToolsError as ex:
+            print("Connection failed! %s" % ex)
             print("Device %s not connected." % ftdi_address)
         for lock in self.locks_vials.values():
             if lock.locked():

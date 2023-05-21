@@ -19,8 +19,6 @@ console.log("Created flaskAxios with baseURL: " + window.location.origin + '/fla
 export default {
   namespaced: true,
   state: {
-      deviceConnected: false,
-      deviceControlEnabled: true,
     calibrationModeEnabled: false,
     valves: {states: {1: "open", 2: "open", 3: "open", 4: "open", 5: "open", 6: "open", 7: "open"}},
 
@@ -138,7 +136,6 @@ mutations: {
     setPartCalibration(state, { devicePart, partIndex, newCalibration, coefs}) {
       state[devicePart].calibration[partIndex] = newCalibration;
      if (coefs) {
-         console.log("vuex setting coefs"+coefs+"v"+partIndex);
          state[devicePart].calibration_coefs[partIndex] = coefs;
      }
 
@@ -322,30 +319,23 @@ mutations: {
       });
     },
 
-    connectDevice({ dispatch }) {
-      return new Promise((resolve, reject) => {
-          console.log("connect device request", flaskAxios);
-        flaskAxios.post('/connect-device')
-          .then(response => {
-              console.log("connect device response: ", response.data);
-            if (response.data.success) {
-              dispatch('getAllDeviceData')
-                .then(() => {
-                  resolve();
+    connect() {
+        return new Promise((resolve, reject) => {
+            console.log("connect device request", flaskAxios);
+            flaskAxios.post('/connect-device')
+                .then(response => {
+                    if (response.data.success) {
+                        resolve(response); // Resolve the response so that it can be used in the connectDevice action
+                    } else {
+                        console.error('Error connecting device: server responded with an error');
+                        reject();
+                    }
                 })
-                .catch(() => {
-                  reject();
+                .catch(error => {
+                    console.error('Error connecting device:', error);
+                    reject(error);
                 });
-            } else {
-              console.error('Error connecting device: server responded with an error');
-              reject();
-            }
-          })
-          .catch(error => {
-            console.error('Error connecting device:', error);
-            reject(error);
-          });
-      });
+        });
     },
 
     getAllDeviceData({ commit }) {

@@ -1,5 +1,6 @@
 <template>
-  <div class="DeviceControl">
+  <div class="DeviceControl" :class="{ 'device-disconnected': deviceConnected === false }">
+  <div class="disconnected-overlay" v-if="deviceConnected === false"></div>
   <div style="text-align: right;">
     <CFormSwitch
       label="Calibration Mode"
@@ -41,7 +42,8 @@ export default {
     CFormSwitch
   },
   computed: {
-    ...mapState('device', ['deviceConnected','deviceControlEnabled','calibrationModeEnabled','stirrers','pumps','valves','ods'])
+    ...mapState(['deviceConnected', 'deviceControlEnabled']),
+    ...mapState('device', ['calibrationModeEnabled','stirrers','pumps','valves','ods'])
   },
   data() {
     return {
@@ -67,14 +69,25 @@ export default {
   },
   methods: {
     ...mapMutations('device',['toggleCalibrationMode', 'setDeviceControlEnabled']),
-    ...mapActions('device',['connectDevice','getAllDeviceData']),
+    ...mapActions('device',['getAllDeviceData']),
+    ...mapActions(['connectDevice']),
   },
 };
 </script>
 
 <style scoped>
-  .row{
-    max-width: 1024px;
-    margin: 0 auto;
-  }
+.disconnected-overlay {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: rgba(128, 128, 128, 0.9); /* gray with 50% opacity */
+  z-index: 1; /* to ensure the overlay is on top */
+}
+
+.device-disconnected {
+  position: relative; /* this is needed to position the overlay correctly */
+}
+
 </style>

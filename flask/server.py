@@ -19,6 +19,7 @@ pid = os.getpid()
 with open("data/flask_app.pid", "w") as pid_file:
     pid_file.write(str(pid))
 
+
 def shutdown_server():
     with open("data/flask_app.pid", "r") as pid_file:
         pid = int(pid_file.read())
