@@ -33,7 +33,7 @@ class EEPROM:
                     self.data = None
                 if data is not None:
                     self.eeprom._write_to_eeprom(data)
-                time.sleep(0.1)
+                time.sleep(1)
 
         def add_data(self, data):
             with self.lock:

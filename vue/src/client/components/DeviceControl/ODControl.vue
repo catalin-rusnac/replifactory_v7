@@ -32,7 +32,7 @@
           <input class="calibration-signal" @change="updateODCalibrationValueAction({od: odValue, odsIndex:vial, newValue:$event.target.value})" v-model="ods.calibration[vial][odValue]" type="number" style="opacity: 60%" />
         </td>
         <td>
-          <button class="button button-delete" @click="removeODCalibrationRowAction(odValue)">Delete Row</button>
+          <button class="button button-delete" :disabled="isLoading" @click="handleDeleteRowClick(odValue)">Delete Row</button>
         </td>
       </tr>
       <tr>
@@ -65,6 +65,7 @@ export default {
       // odValues: [0.00788, 0.0158, 0.0315, 0.0630, 0.126, 0.252, 0.504, 1.01, 2.02, 4.03],
       vials: [1,2,3,4,5,6,7],
       newRowValue: null,
+      isLoading: false,
     }
   },
   computed: {
@@ -89,6 +90,16 @@ export default {
         }).then(() => {
           this.getAllDeviceData();
         });
+      },
+      async handleDeleteRowClick(odValue) {
+        this.isLoading = true;
+        try {
+          await this.removeODCalibrationRowAction(odValue);
+        } catch (e) {
+          console.log(e);
+        } finally {
+          this.isLoading = false;
+        }
       },
   }
 }
@@ -171,6 +182,11 @@ button {
 .button-delete {
   background-color: #f26b6b;
 }
+.button-delete:disabled {
+  cursor: not-allowed;
+  background-color: #f26b6b;
+  opacity: 30%;
+}
 
 .button-new {
   background-color: #04b241;
@@ -204,6 +220,7 @@ button:hover {
   background-color: #f26b6b;
   transition: background-color 0.05s;
 }
+
 
 .od-output-value {
   font-size: 14px;

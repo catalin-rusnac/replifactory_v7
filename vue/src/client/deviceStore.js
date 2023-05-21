@@ -218,21 +218,17 @@ mutations: {
             .catch(error => console.error(`Error during updateODCalibrationValueAction:`, error));
     },
 
-    removeODCalibrationRowAction({ dispatch, commit, state }, oldOD) {
-        return new Promise((resolve, reject) => {
+    async removeODCalibrationRowAction({ dispatch, commit, state }, oldOD) {
             try {
                 commit('removeODCalibrationRow', oldOD);
                 for (let i = 1; i <= 7; i++) {
-                    dispatch('setPartCalibrationAction', { devicePart: 'ods', partIndex: i, newCalibration: state.ods.calibration[i] });
+                    await dispatch('setPartCalibrationAction', { devicePart: 'ods', partIndex: i, newCalibration: state.ods.calibration[i] });
                     console.log(state.ods.calibration[i],' setPartCalibrationAction***********************')
                 }
-                resolve();
             } catch (error) {
                 console.error(`Error removing OD calibration row:`, error);
-                reject(error);
             }
-        });
-    },
+        },
       setPartCalibrationAction({ commit }, payload) {
         const { devicePart, partIndex, newCalibration } = payload;
         const endpoint = `/set-${devicePart}-calibration`;
