@@ -157,14 +157,6 @@ mutations: {
     toggleCalibrationMode(state) {
       state.calibrationModeEnabled = !state.calibrationModeEnabled;
     },
-    addODCalibrationRow(state, newOD) {
-      const odsIndexes = Object.keys(state.ods.calibration); // Renamed to odsIndexes
-        // console.log(odsIndexes);
-      odsIndexes.forEach(odsIndex => {
-        state.ods.calibration[odsIndex][newOD] = null;
-      });
-      // state.ods = { ...state.ods };
-    },
     removeODCalibrationRow(state, oldOD) {
         const odsIndexes = Object.keys(state.ods.calibration); // Renamed to odsIndexes
         odsIndexes.forEach(odsIndex => {
