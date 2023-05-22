@@ -18,22 +18,22 @@
 <script>
 import DeviceControl from './components/DeviceControl/DeviceControl';
 // import HomeTab from '@/client/components/HomeTab/HomeTab';
-// import ExperimentTab from "@/client/components/ExperimentTab/ExperimentTab";
+import ExperimentTab from "@/client/components/ExperimentTab/ExperimentTab";
 import NgrokTab from "@/client/components/Remote/NgrokTab";
 import HelpTab from "@/client/components/HelpTab/HelpTab";
 export default {
   name: 'App',
   components: {
     // HomeTab,
-    // ExperimentTab,
+    ExperimentTab,
     DeviceControl,
     NgrokTab,
     HelpTab
   },
   data() {
     return {
-      currentTab: 'Device',
-      tabs: ['Device', 'Remote', 'Help']
+      currentTab: 'Experiment',
+      tabs: ['Experiment', 'Device', 'Remote', 'Help']
     };
   },
 };

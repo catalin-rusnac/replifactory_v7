@@ -1,6 +1,6 @@
 #%%
 import sys
-sys.path.append('./flask/')
+sys.path.append('../flask/')
 import importlib
 import minimal_device
 from minimal_device.base_device import BaseDevice
