@@ -1,6 +1,7 @@
 install: swap install_apt_dependencies node-pi pip ngrok updatepath
 	cd vue && npm install -y;
 	cd flask && pip install -r requirements.txt;
+	make build
 	make services-ctl
 
 run: run-flask run-express
@@ -69,7 +70,7 @@ copy_to_www:
 	@sudo cp -r vue/dist/* /var/www/html
 	@echo "Copied contents of vue/dist/ to /var/www/html."
 
-APT_DEPENDENCIES = python3-distutils libatlas-base-dev python3-dev gfortran
+APT_DEPENDENCIES = python3-distutils libatlas-base-dev python3-dev gfortran libopenblas-dev
 
 install_apt_dependencies: swap
 	@echo "Checking for apt dependencies..."
@@ -81,7 +82,7 @@ install_apt_dependencies: swap
 	done
 
 updatepath:
-	if echo $$PATH | grep -q "/home/pi/.local/bin"; then \
+	@if echo $$PATH | grep -q "/home/pi/.local/bin"; then \
 		echo "PATH already contains /home/pi/.local/bin. No changes made."; \
 	else \
 		echo "export PATH=\$$PATH:/home/pi/.local/bin" >> ~/.bashrc; \

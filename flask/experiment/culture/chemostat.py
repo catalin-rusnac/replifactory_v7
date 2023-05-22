@@ -1,5 +1,4 @@
 import time
-
 import numpy as np
 
 from replifactory.culture.blank import BlankCulture
@@ -51,9 +50,6 @@ class ChemostatCulture(BlankCulture):
     def make_chemostat_dilution(self):
         self.dilute_lower_od()
 
-    # def make_custom_schedule(self):
-    #     self.scheduler = schedule.Scheduler()
-    #     self.scheduler.every(self.dilution_period_min).minutes.do(self.make_chemostat_dilution)
 
     def update(self):
         """
@@ -96,71 +92,3 @@ dilution factor: 1/{dilution_factor:.2f} ({generations_per_dilution:.2f} generat
   doubling time: {td*60:.1f} min (growth rate: {dilution_rate_per_hr:.2f}/h)
   """
         return t
-
-    def status_text(self):
-        if self.is_active():
-            active = "ACTIVE"
-        else:
-            active = "NOT ACTIVE"
-        print(
-            "*********** Vial %d:" % self.vial_number,
-            self.__class__.__name__,
-            ",",
-            active,
-        )
-        if self.is_active():
-            print("             name:", self.name)
-            print("      description:", self.description)
-            print("               od:", np.round(self.od, 4))
-            print("   medium 2 conc.:", np.round(self.medium2_concentration, 4))
-
-            # print("     od_max_limit:", self.od_max_limit)
-            print(
-                "    last dilution: %.2f minutes ago"
-                % np.float32((time.time() - self.time_last_dilution) / 60)
-            )
-            print(
-                "               mu: %.5f ± %.5f [1/h];        max: %.5f"
-                % tuple(
-                    [
-                        np.float32(x)
-                        for x in (self.mu, self._mu_error, self._mu_max_measured)
-                    ]
-                )
-            )
-            print(
-                "       t_doubling: %.2f ± %.2f [h];          min: %.2f"
-                % tuple(
-                    [
-                        np.float32(x)
-                        for x in (
-                            self.t_doubling,
-                            self._t_doubling_error,
-                            self._t_doubling_min_measured,
-                        )
-                    ]
-                )
-            )
-            print(
-                "    Generation nr: %.2f" % np.float32(self.log2_dilution_coefficient)
-            )
-            print()
-            print("      dead_volume:", self.dead_volume)
-            if hasattr(self, "default_dilution_volume"):
-                print("  dilution_volume:", self.default_dilution_volume)
-            if self._inoculation_time:
-                print("       inoculated:", time.ctime(self._inoculation_time))
-            else:
-                print("       inoculated: NO")
-
-            print("samples_collected:", self._samples_collected)
-            print("       is_aborted:", self._is_aborted)
-            print("         od_blank:", self.od_blank)
-            if hasattr(self, "default_dilution_volume"):
-                vial_volume = self.dead_volume
-                added_volume = self.default_dilution_volume
-                dilution_factor = (vial_volume + added_volume) / vial_volume
-                generations_per_dilution = np.log2(dilution_factor)
-                generations_per_ml = generations_per_dilution / added_volume
-                print("generations/Liter: %.1f" % (generations_per_ml * 1000))
-            print()

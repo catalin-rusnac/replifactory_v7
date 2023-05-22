@@ -5,15 +5,6 @@
   </div>
 </template>
 
-<script>
-
-export default {
-  name: "HomeTab",
-  components: {
-  },
-};
-</script>
-
 
 <style>
 #app {
