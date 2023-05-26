@@ -2,7 +2,6 @@ from flask import Blueprint, request, jsonify
 import time
 import sys
 sys.path.insert(0, '..')
-# cors
 from minimal_device.device_data import device_data as sample_device_data
 from minimal_device.base_device import BaseDevice
 

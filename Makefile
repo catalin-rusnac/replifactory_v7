@@ -1,13 +1,14 @@
 install: swap install_apt_dependencies node-pi pip ngrok updatepath
 	cd vue && npm install -y;
-	cd flask && pip install -r requirements.txt;
+	cd flask_app && pip install -r requirements.txt;
+	chmod 755 ./
 	make build
 	make services-ctl
 
 run: run-flask run-express
 
 run-flask:
-	python flask/server.py &
+	python flask_app/server.py &
 
 run-express:
 	node vue/src/server/express_server.js &
