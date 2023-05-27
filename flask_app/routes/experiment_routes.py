@@ -10,7 +10,7 @@ experiment_routes = Blueprint('experiment_routes', __name__)
 @experiment_routes.route('/experiments', methods=['POST'])
 def create_experiment():
     experiment_data = request.json
-    experiment = Experiment(name=experiment_data['name'], parameters=experiment_data['parameters'])
+    experiment = Experiment(name=experiment_data['name'], parameters=experiment_data.get('parameters', {}))
     db.session.add(experiment)
     db.session.commit()
     return jsonify({'id': experiment.id}), 201
@@ -25,8 +25,23 @@ def get_experiment(id):
 
 @experiment_routes.route('/experiments', methods=['GET'])
 def get_experiments():
-    experiments = Experiment.query.all()
-    return jsonify([experiment.to_dict() for experiment in experiments])
+    experiments = db.session.query(Experiment).all()
+    experiments_clean = []
+    for experiment in experiments:
+        experiments_clean.append({'id': experiment.id, 'name': experiment.name, 'status': experiment.status})
+    return jsonify(experiments_clean)
+
+# '/experiments/current'
+@experiment_routes.route('/experiments/current', methods=['GET'])
+def get_current_experiment():
+    experiment = db.session.query(Experiment).filter(Experiment.status == 'running').first()
+    if not experiment:
+        experiment = db.session.query(Experiment).filter(Experiment.status == 'paused').first()
+    if experiment:
+        return jsonify(experiment.to_dict())
+    else:
+        return jsonify({'error': 'Experiment not found'}), 404
+
 
 @experiment_routes.route('/experiments/<int:id>/parameters', methods=['PUT'])
 def update_experiment_parameters(id):
@@ -42,7 +57,7 @@ def update_experiment_parameters(id):
 @experiment_routes.route('/experiments/<int:id>/status', methods=['PUT'])
 def update_experiment_status(id):
     status = request.json['status']
-    experiment = Experiment.query.get(id)
+    experiment = db.session.get(Experiment, id)
     if experiment:
         experiment.status = status
         db.session.commit()
@@ -52,7 +67,7 @@ def update_experiment_status(id):
 
 @experiment_routes.route('/experiments/<int:id>', methods=['DELETE'])
 def delete_experiment(id):
-    experiment = Experiment.query.get(id)
+    experiment = db.session.get(Experiment, id)
     if experiment:
         db.session.delete(experiment)
         db.session.commit()
@@ -62,7 +77,7 @@ def delete_experiment(id):
 
 @experiment_routes.route('/experiments/<int:experiment_id>/cultures/<int:id>', methods=['GET'])
 def get_culture(experiment_id, id):
-    culture = Culture.query.get(id)
+    culture = db.session.get(Culture, id)
     if culture and culture.experiment_id == experiment_id:
         return jsonify(culture.to_dict())
     else:
@@ -71,7 +86,7 @@ def get_culture(experiment_id, id):
 @experiment_routes.route('/experiments/<int:experiment_id>/cultures/<int:id>/parameters', methods=['PUT'])
 def update_culture_parameters(experiment_id, id):
     parameters = request.json['parameters']
-    culture = Culture.query.get(id)
+    culture = db.session.get(Culture, id)
     if culture and culture.experiment_id == experiment_id:
         culture.parameters.update(parameters)
         db.session.commit()
@@ -82,7 +97,7 @@ def update_culture_parameters(experiment_id, id):
 # Get all parameter histories for a particular experiment
 @experiment_routes.route('/experiments/<int:id>/history', methods=['GET'])
 def get_experiment_history(id):
-    history = ExperimentParameterHistory.query.filter_by(experiment_id=id).all()
+    history = db.session.query(ExperimentParameterHistory).filter_by(experiment_id=id).all()
     if history:
         return jsonify([h.to_dict() for h in history])
     else:
@@ -105,7 +120,7 @@ def add_experiment_history(id):
 
 @experiment_routes.route('/experiments/<int:experiment_id>/cultures/<int:culture_id>/history', methods=['GET'])
 def get_culture_history(experiment_id, culture_id):
-    history = CultureParameterHistory.query.filter_by(culture_id=culture_id).all()
+    history = db.session.query(CultureParameterHistory).filter_by(culture_id=culture_id).all()
     if history:
         return jsonify([h.to_dict() for h in history])
     else:

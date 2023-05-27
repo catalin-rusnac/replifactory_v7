@@ -15,8 +15,14 @@ global dev
 from experiment.models import db
 from routes.experiment_routes import experiment_routes
 
+base_dir = os.path.dirname(os.path.abspath(__file__))
+pid_file_path = os.path.join(base_dir, "data/flask_app.pid")
 
 def create_app():
+    pid = os.getpid()
+    with open(pid_file_path, "w+") as pid_file:
+        pid_file.write(str(pid))
+
     app = Flask(__name__)
     app.register_blueprint(device_routes)
     app.register_blueprint(experiment_routes)
@@ -26,8 +32,7 @@ def create_app():
     @app.route('/shutdown')
     def shutdown():
         print("Shutting down server...")
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        with open(os.path.join(base_dir, "data/flask_app.pid"), "r") as pid_file:
+        with open(pid_file_path, "r") as pid_file:
             pid = int(pid_file.read())
         try:
             dev.disconnect_all()

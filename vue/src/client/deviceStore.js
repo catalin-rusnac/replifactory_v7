@@ -13,8 +13,6 @@ const flaskAxios = axios.create({
 });
 console.log("Created flaskAxios with baseURL: " + window.location.origin + '/flask',);
 
-// fix cors
-
 
 export default {
   namespaced: true,
@@ -337,7 +335,6 @@ mutations: {
                 });
         });
     },
-
     getAllDeviceData({ commit }) {
         return new Promise((resolve, reject) => {
             flaskAxios.get('/get-all-device-data')
