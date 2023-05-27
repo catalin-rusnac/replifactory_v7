@@ -1,10 +1,9 @@
-import Vue from 'vue';
 import axios from 'axios';
 
 let baseURL = window.location.origin + '/flask';
 
 if (process.env.NODE_ENV === 'development') {
-    baseURL = 'http://localhost:5000';
+  baseURL = 'http://localhost:5000';
 }
 
 const flaskAxios = axios.create({
@@ -15,38 +14,35 @@ export default {
   namespaced: true,
   state: {
     experiments: [],
-    currentExperiment: null,
-    experimentStatus: {},
+    currentExperiment: {
+      id: null,
+      name: null,
+      parameters: null,
+      data: null,
+    },
   },
   mutations: {
-    SET_EXPERIMENTS(state, experiments) {
+    setExperiments(state, experiments) {
       state.experiments = experiments;
     },
-    SET_CURRENT_EXPERIMENT(state, experiment) {
-      console.log('SET_CURRENT_EXPERIMENT called with', experiment);
+    setCurrentExperiment(state, experiment) {
       state.currentExperiment = experiment;
     },
-    SET_EXPERIMENT_STATUS(state, { id, status }) {
-      Vue.set(state.experimentStatus, id, status);
+    setExperimentData(state, data) {
+      state.currentExperiment.data = data;
     },
   },
   actions: {
-    resetCurrentExperiment({ commit }) {
-      commit('SET_CURRENT_EXPERIMENT', null);
-    },
-    async fetchExperiments({ commit }) {
+    async fetchExperiments({ commit, dispatch}) {
       const response = await flaskAxios.get('/experiments');
-      commit('SET_EXPERIMENTS', response.data);
+      commit('setExperiments', response.data);
+      console.log("dispatching fetchCurrentExperiment");
+      dispatch('fetchCurrentExperiment')
     },
-    async setCurrentExperiment({ commit }, experimentId) {
-      console.log('setCurrentExperiment called with', experimentId);
-
-      if (experimentId !== null) {
+    async setCurrentExperimentAction({ commit }, experimentId) {
+      if (experimentId != null) {
         const response = await flaskAxios.get(`/experiments/${experimentId}`);
-        console.log(response.data, 'experiment data');
-        commit('SET_CURRENT_EXPERIMENT', response.data);
-      } else {
-        commit('SET_CURRENT_EXPERIMENT', null);
+        commit('setCurrentExperiment', response.data);
       }
     },
     async createExperiment({ dispatch }, experimentData) {
@@ -54,18 +50,15 @@ export default {
       dispatch('fetchExperiments');
       return response.data.id;
     },
-    async updateExperimentStatus({ commit, dispatch }, { id, status }) {
-      await flaskAxios.put(`/experiments/${id}/status`, { status });
-      commit('SET_EXPERIMENT_STATUS', { id, status });
-      dispatch('fetchExperiments');
+    async fetchExperimentData({ commit }, experimentId) {
+      const response = await flaskAxios.get(`/experiments/${experimentId}/data`);
+      commit('setExperimentData', response.data);
     },
-    async fetchExperimentStatus({ commit }, id) {
-      const response = await flaskAxios.get(`/experiments/${id}/status`);
-      commit('SET_EXPERIMENT_STATUS', { id, status: response.data.status });
-    },
+    async fetchCurrentExperiment({ dispatch }) {
+      const response = await flaskAxios.get('/experiments/current');
+      dispatch('setCurrentExperimentAction', response.data.id);
+      console.log("dispatched setCurrentExperimentAction", response.data.id);
+    }
+
   },
-  getters: {
-    selectedExperimentParameters: state => state.currentExperiment ? state.currentExperiment.parameters : null,
-    currentExperimentStatus: state => (state.currentExperiment && state.experimentStatus[state.currentExperiment.id]) || null,
-  }
 };
