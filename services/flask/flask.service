@@ -9,7 +9,7 @@ ExecStartPre=/bin/bash -c 'mkdir -p /home/pi/replifactory_v7/logs'
 ExecStartPre=/bin/bash -c 'touch /home/pi/replifactory_v7/logs/flask.log || true'
 ExecStartPre=/bin/bash -c 'touch /home/pi/replifactory_v7/logs/flask-error.log || true  '
 
-ExecStart=/usr/bin/python3 /home/pi/replifactory_v7/flask/server.py
+ExecStart=/usr/bin/python3 /home/pi/replifactory_v7/flask_app/server.py
 StandardOutput=append:/home/pi/replifactory_v7/logs/flask.log
 StandardError=append:/home/pi/replifactory_v7/logs/flask-error.log
 Restart=always
