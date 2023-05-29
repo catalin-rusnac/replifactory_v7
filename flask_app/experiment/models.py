@@ -5,8 +5,7 @@ from sqlalchemy import JSON
 db = SQLAlchemy()
 
 
-
-class Experiment(db.Model):
+class ExperimentModel(db.Model):
     __tablename__ = 'experiments'
 
     id = db.Column(db.Integer, primary_key=True)

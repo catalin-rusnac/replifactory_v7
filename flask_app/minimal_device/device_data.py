@@ -1,9 +1,9 @@
 
-device_data = {
+default_device_data = {
     'calibrationModeEnabled': False,
     'valves': {
         'states': {
-            1: 'closed',
+            1: 'open',
             2: 'open',
             3: 'open',
             4: 'open',

@@ -9,17 +9,6 @@ class ExperimentWorker:
     def __init__(self, experiment):
         self.experiment = experiment
         self.thread = None
-        self.logger = logging.Logger(name="run_thread")
-        log_filename = "main_run.log"
-        log_filepath = os.path.join(experiment.directory, log_filename)
-        self.handler = logging.FileHandler(log_filepath, "a", "utf-8")
-        formatter = logging.Formatter(
-            "%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s",
-            "%Y-%m-%d %H:%M:%S",
-        )
-        self.handler.setFormatter(formatter)
-        self.logger.setLevel(logging.DEBUG)
-        self.logger.addHandler(self.handler)
         self.keep_running = True
 
     def start(self):
@@ -59,18 +48,12 @@ class ExperimentWorker:
 
     def stop(self):
         self.keep_running = False
-        self.experiment.device.soft_stop_trigger = True
         while self.thread.is_alive():
             time.sleep(0.5)
-        self.status()
         while (
             self.experiment.device.od_worker.is_performing_operation
-            or self.experiment.device.dilution_worker.is_performing_operation
-        ):
-            self.status()
+            or self.experiment.device.dilution_worker.is_performing_operation):
             time.sleep(5)
-        print(time.ctime(), "main thread and workers safely STOPPED")
-        self.experiment.device.soft_stop_trigger = False
         if self.thread._tstate_lock:
             self.thread._tstate_lock.release()
         self.thread._stop()
@@ -90,24 +73,10 @@ class QueueWorker:
     def __init__(self, device, worker_name):
         self.name = worker_name
         self.device = device
-        self.logger = None
         self.queue = queue.Queue(maxsize=1)
         self.thread = threading.Thread(
             target=self.process_queue, args=[self.queue], daemon=False
         )
-        if self.device.directory is not None:
-            self.logger = logging.Logger(name=worker_name)
-            log_filename = worker_name + "_thread.log"
-            log_filepath = os.path.join(device.directory, log_filename)
-            handler = logging.FileHandler(log_filepath, "a", "utf-8")
-            formatter = logging.Formatter(
-                "%(asctime)s %(created)f %(levelname)s %(module)s - %(funcName)s: %(message)s",
-                "%Y-%m-%d %H:%M:%S",
-            )
-            handler.setFormatter(formatter)
-            self.logger.setLevel(logging.DEBUG)
-            self.logger.addHandler(handler)
-            self.logger.info("Started Logger")
         self.is_performing_operation = False
         self.thread.start()
 
@@ -134,35 +103,12 @@ class QueueWorker:
                     self.is_performing_operation = True
                     queued_operation()
                     self.is_performing_operation = False
-                except Exception:
+                except Exception as e:
                     try:
-                        self.logger.exception("**** Fatal ERROR in loop ****")
+                        print("************** Fatal ERROR in loop **************")
+                        print(e)
                         self.is_performing_operation = False
                     except Exception:  # if there is no logger file
                         pass
-
             except queue.Empty:
                 time.sleep(0.5)
-
-    #
-    #     self.keep_running = True
-    #     self.start()
-    #
-    # def start(self):
-    #     self.keep_running = True
-    #     self.thread = threading.Thread(target=self.process_queue,
-    #                                    args=[self.queue], daemon=False)
-    #     self.thread.start()
-    #
-    # def is_alive(self):
-    #     if self.thread is None:
-    #         return False
-    #     else:
-    #         return self.thread.is_alive()
-    #
-    #
-    # def stop(self):
-    #     self.keep_running = False
-    #     while self.thread.is_alive():
-    #         time.sleep(0.5)
-    #     print("%s worker stopped safely." % self.name)

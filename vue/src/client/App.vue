@@ -6,7 +6,7 @@
       </li>
     </ul>
     <div class="tab-content">
-      <HomeTab v-if="currentTab === 'Home'"/>
+<!--      <HomeTab v-if="currentTab === 'Home'"/>-->
       <ExperimentTab v-if="currentTab === 'Experiment'"/>
       <DeviceControl v-if="currentTab === 'Device'" />
       <NgrokTab v-if="currentTab === 'Remote'" />

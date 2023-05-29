@@ -1,31 +1,10 @@
 import threading
 import time
 import queue
+import logging
 import schedule
 
-default_parameters = {"stock_concentration_drug": 100,
-              "stock_volume_drug": 1000,
-              "stock_volume_main": 2000,
-              "stock_volume_waste": 5000,
-              }
-culture_parameters = {"name": "Species 1",
-                      "description": "Strain 1",
-
-                      "volume_fixed": 15,
-                      "volume_added": 10,
-
-                      "od_threshold": 0.3,
-                      "od_threshold_first_dilution": 0.4,
-                      "stress_dose_first_dilution": 2.0,
-
-                      "stress_increase_delay_generations": 3.0,
-                      "stress_increase_tdoubling_min_hrs": 4,
-
-                      "stress_decrease_delay_hrs": 16,
-                      "stress_decrease_tdoubling_max_hrs": 24,
-                      }
-cultures = {i: culture_parameters for i in range(1, 8)}
-default_parameters['cultures'] = cultures
+logging.basicConfig(level=logging.INFO)
 
 
 class ExperimentWorker:

@@ -52,7 +52,7 @@ class Stirrers:
         assert self.pwm_controller.lock.acquire(timeout=60)
         try:
             if 0 < duty_cycle < 0.2 and accelerate:
-                accelerate_duty_cycle = self.device.device_data["stirrers"]["calibration"][vial]["high"]*1.2
+                accelerate_duty_cycle = self.device.device_data["stirrers"]["calibration"][vial]["high"] * 1.2
                 accelerate_duty_cycle = min(accelerate_duty_cycle, 1)
                 self._set_duty_cycle(vial, accelerate_duty_cycle)
                 time.sleep(0.1)
@@ -75,7 +75,7 @@ class Stirrers:
         assert self.pwm_controller.lock.acquire(timeout=60)
         try:
             for vial in range(1, 8):
-                if speed == 0:
+                if speed == "stopped":
                     duty_cycle = 0
                 else:
                     duty_cycle = self.device.device_data["stirrers"]["calibration"][vial][speed]

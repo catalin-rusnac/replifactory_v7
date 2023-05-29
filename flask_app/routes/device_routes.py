@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 import time
 import sys
 sys.path.insert(0, '..')
-from minimal_device.device_data import device_data as sample_device_data
+from minimal_device.device_data import default_device_data
 from minimal_device.base_device import BaseDevice
 
 device_routes = Blueprint('device_routes', __name__)
@@ -75,7 +75,7 @@ def get_all_device_states():
     except:
         return jsonify({
         'success': False,
-        'device_states': sample_device_data,
+        'device_states': default_device_data,
     })
 
 
@@ -166,14 +166,13 @@ def connect_device():
     try:
         print("Connecting device")
 
-        # BaseDevice().disconnect_all()
         dev = BaseDevice(connect=True)
         dev.hello()
-        dev.device_data = sample_device_data
-        # print("sample device data", sample_device_data)
-        for v in range(1,8):
-            dev.od_sensors[v].fit_calibration_function()
-        dev.eeprom.save_config_to_eeprom()
+        # dev.device_data = default_device_data
+        # print("sample device data", default_device_data)
+        # for v in range(1,8):
+        #     dev.od_sensors[v].fit_calibration_function()
+        # dev.eeprom.save_config_to_eeprom()
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
     return jsonify({'success': True, 'device_states': dev.device_data})

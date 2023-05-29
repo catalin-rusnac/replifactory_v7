@@ -5,54 +5,6 @@ import numpy as np
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 
-def measure_od_all(device, vials_to_measure=(1, 2, 3, 4, 5, 6, 7)):
-    available_vials = []
-    for v in vials_to_measure:
-        if device.locks_vials[v].acquire(blocking=False):
-            available_vials += [v]
-
-    od_values = {}
-    if len(available_vials) > 0:
-        # Stop stirrers completely and wait 10 seconds for vortex to settle bubbles to raise above laser level.
-        # Waiting enough time for the smallest bubbles to raise improves the measurement precision.
-        # for vial in available_vials:
-        #     device.stirrers.set_speed(vial=vial, speed=3)
-        # time.sleep(2)
-        # Stir at minimum speed (without forming vortex) to homogenize turbidity and prevent precipitation
-        for vial in available_vials:
-            device.stirrers.set_speed(vial=vial, speed=0)
-        time.sleep(4)
-        # for vial in available_vials:
-        #     device.stirrers.set_speed(vial=vial, speed=1)
-        # time.sleep(3)
-        # for vial in available_vials:
-        #     device.stirrers.set_speed(vial=vial, speed=0)
-        # time.sleep(1)
-        for vial in available_vials:
-            od = device.od_sensors[vial].measure_od()
-            od_values[vial] = od
-        for vial in available_vials:
-            device.stirrers.set_speed(vial=vial, speed=2)
-        # time.sleep(2)
-        # for vial in available_vials:
-        #     device.stirrers.set_speed(vial=vial, speed=3)
-        # time.sleep(5)
-        # for vial in available_vials:
-        #     device.stirrers.set_speed(vial=vial, speed=2)
-        # for vial in available_vials:
-        #     device.stirrers.set_speed(vial=vial, speed=3)
-        # time.sleep(2)
-        # for vial in available_vials:
-        #     device.stirrers.set_speed(vial=vial, speed=2)
-        # time.sleep(1)
-        for v in available_vials:
-            device.locks_vials[v].release()
-
-        # assign values to culture.od parameter, which writes to csv file and calculates mu
-        for v in od_values.keys():
-            device.cultures[v].od = od_values[v]
-    return od_values
-
 
 def od_calibration_function(x, a, b, c, d, g):
     """
@@ -184,7 +136,6 @@ class OdSensor:
         print(calibration_mv_err)
         # calibration_mv = np.array(list(self.calibration_od_to_mv.values())).mean(1)
         calibration_mv = np.nanmean(calibration_mv_filled, 1)
-
 
         calibration_mv_err += 0.01  # allows curve fit with single measurements
         coefs, _ = curve_fit(

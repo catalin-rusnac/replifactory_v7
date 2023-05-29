@@ -15,54 +15,38 @@ def make_dilution(
     assert not device.is_pumping(), "pumping in progress"
     # assert not device.hard_stop_trigger
     try:
-        device.stirrers.set_speed(vial=vial, speed=2)
-        time.sleep(1)
-        device.valves.open(
-            vial
-        )  # valve number might be different for e.g. a lagoon setup
+        device.stirrers.set_speed(vial=vial, speed="high")
+        time.sleep(0.2)
+        device.valves.open(vial)
 
         if pump1_volume > 0:
             device.pump1.pump(pump1_volume)
-            device.pump1.stock_volume -= pump1_volume
-            device.cultures[vial]._time_last_dilution[1] = int(time.time())
         if pump2_volume > 0:
             device.pump2.pump(pump2_volume)
-            device.pump2.stock_volume -= pump2_volume
-            device.cultures[vial]._time_last_dilution[2] = int(time.time())
-
         if pump3_volume > 0:
             device.pump3.pump(pump3_volume)
-            device.pump3.stock_volume -= pump3_volume
-            device.cultures[vial]._time_last_dilution[3] = int(time.time())
-        log_dilution(
-            device=device,
-            vial_number=vial,
-            pump1_volume=pump1_volume,
-            pump2_volume=pump2_volume,
-            pump3_volume=pump3_volume,
-        )
+
         while device.is_pumping():
             time.sleep(0.5)
             assert not device.hard_stop_trigger
-        device.stirrers.set_speed(vial=vial, speed=1)
+
+        device.stirrers.set_speed(vial=vial, speed="low")
+
         dilution_volume = pump1_volume + pump2_volume + pump3_volume
         waste_volume = dilution_volume + extra_vacuum
-        waste_volume = round(waste_volume, 2)
-
         device.pump4.pump(waste_volume)
-        device.pump4.stock_volume -= dilution_volume
-        device.cultures[vial]._time_last_dilution[4] = int(time.time())
-
+        vacuum_time_0 = time.time()
+        stirrer_stopped = False
         while device.pump4.is_busy():
             time.sleep(0.5)
+            if time.time() - vacuum_time_0 > 3 and not stirrer_stopped:
+                device.stirrers.set_speed(vial=vial, speed="stopped")
+                stirrer_stopped = True
             assert not device.hard_stop_trigger
-        device.stirrers.set_speed(vial=vial, speed=2)
+        device.stirrers.set_speed(vial=vial, speed="high")
         assert not device.is_pumping()  # make sure before closing valves
         time.sleep(2)
         device.valves.close(valve=vial)
-
-        log_dilution(device=device, vial_number=vial, pump4_volume=waste_volume)
-
     finally:
         device.locks_vials[vial].release()
         device.lock_pumps.release()

@@ -1,63 +1,86 @@
 # experiment_routes.py
 import sys
+import time
+
+import sqlalchemy
+
 sys.path.insert(0, "../")
 from flask import Blueprint, request, jsonify
-from experiment.models import Experiment, Culture, ExperimentParameterHistory, CultureParameterHistory, db
-import datetime
-experiment_routes = Blueprint('experiment_routes', __name__)
+from experiment.models import ExperimentModel, Culture, ExperimentParameterHistory, CultureParameterHistory, db
+from experiment.experiment import default_parameters
 
+experiment_routes = Blueprint('experiment_routes', __name__)
 
 @experiment_routes.route('/experiments', methods=['POST'])
 def create_experiment():
     experiment_data = request.json
-    experiment = Experiment(name=experiment_data['name'], parameters=experiment_data.get('parameters', {}))
+    parameters = experiment_data.get('parameters', {})
+    print("got parameters", parameters, "from request" )
+    if parameters is None or parameters == {}:
+        parameters = default_parameters
+
+    experiment = ExperimentModel(name=experiment_data['name'], parameters=parameters)
     db.session.add(experiment)
     db.session.commit()
     return jsonify({'id': experiment.id}), 201
 
 @experiment_routes.route('/experiments/<int:id>', methods=['GET'])
 def get_experiment(id):
-    experiment = db.session.get(Experiment, id)
-    if experiment:
-        return jsonify(experiment.to_dict())
+    experiment_model = db.session.get(ExperimentModel, id)
+    if experiment_model:
+        return jsonify(experiment_model.to_dict())
     else:
         return jsonify({'error': 'Experiment not found'}), 404
 
 @experiment_routes.route('/experiments', methods=['GET'])
 def get_experiments():
-    experiments = db.session.query(Experiment).all()
+    try:
+        experiment_models = db.session.query(ExperimentModel).all()
+    except sqlalchemy.exc.OperationalError:
+        print("Database not initialized")
+        return jsonify([])
     experiments_clean = []
-    for experiment in experiments:
+    for experiment in experiment_models:
         experiments_clean.append({'id': experiment.id, 'name': experiment.name, 'status': experiment.status})
     return jsonify(experiments_clean)
 
-# '/experiments/current'
+
 @experiment_routes.route('/experiments/current', methods=['GET'])
 def get_current_experiment():
-    experiment = db.session.query(Experiment).filter(Experiment.status == 'running').first()
-    if not experiment:
-        experiment = db.session.query(Experiment).filter(Experiment.status == 'paused').first()
-    if experiment:
-        return jsonify(experiment.to_dict())
+    experiment_model = db.session.query(ExperimentModel).filter(ExperimentModel.status == 'running').first()
+    if not experiment_model:
+        experiment_model = db.session.query(ExperimentModel).filter(ExperimentModel.status == 'paused').first()
+    if experiment_model:
+        return jsonify(experiment_model.to_dict())
     else:
-        return jsonify({'error': 'Experiment not found'}), 404
+        return jsonify({"id": None})
 
 
 @experiment_routes.route('/experiments/<int:id>/parameters', methods=['PUT'])
 def update_experiment_parameters(id):
     parameters = request.json['parameters']
-    experiment = db.session.get(Experiment, id)
-    if experiment:
-        experiment.parameters.update(parameters)
+    experiment_model = db.session.get(ExperimentModel, id)
+    print("Updating experiment_model parameters", id, parameters)
+    if experiment_model:
+        experiment_model.parameters = parameters
         db.session.commit()
         return jsonify({'message': 'Experiment parameters updated successfully'})
     else:
         return jsonify({'error': 'Experiment not found'}), 404
 
+
 @experiment_routes.route('/experiments/<int:id>/status', methods=['PUT'])
 def update_experiment_status(id):
     status = request.json['status']
-    experiment = db.session.get(Experiment, id)
+    if status == 'running':
+        running_experiment = db.session.query(ExperimentModel).filter(ExperimentModel.status == 'running').first()
+        if running_experiment:
+            return jsonify({'error': 'Cannot start experiment, another experiment is already running'}), 400
+        paused_experiment = db.session.query(ExperimentModel).filter(ExperimentModel.status == 'paused').first()
+        if paused_experiment:
+            if paused_experiment.id != id:
+                return jsonify({'error': 'Cannot start experiment, another experiment is paused'}), 400
+    experiment = db.session.get(ExperimentModel, id)
     if experiment:
         experiment.status = status
         db.session.commit()
@@ -65,9 +88,10 @@ def update_experiment_status(id):
     else:
         return jsonify({'error': 'Experiment not found'}), 404
 
+
 @experiment_routes.route('/experiments/<int:id>', methods=['DELETE'])
 def delete_experiment(id):
-    experiment = db.session.get(Experiment, id)
+    experiment = db.session.get(ExperimentModel, id)
     if experiment:
         db.session.delete(experiment)
         db.session.commit()
@@ -110,7 +134,7 @@ def add_experiment_history(id):
     history = ExperimentParameterHistory(
         experiment_id=id,
         parameters=history_data['parameters'],
-        timestamp=datetime.utcnow()  # Assuming timestamp is not supplied and should be 'now'
+        timestamp=int(time.time())  # Assuming timestamp is not supplied and should be 'now'
     )
     db.session.add(history)
     db.session.commit()
@@ -133,7 +157,7 @@ def add_culture_history(experiment_id, culture_id):
         culture_id=culture_id,
         parameters=history_data['parameters'],
         active_parameters=history_data['active_parameters'],
-        timestamp=datetime.utcnow()  # Assuming timestamp is not supplied and should be 'now'
+        timestamp=int(time.time())  # Assuming timestamp is not supplied and should be 'now'
     )
     db.session.add(history)
     db.session.commit()

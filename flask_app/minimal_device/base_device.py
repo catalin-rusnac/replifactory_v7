@@ -14,7 +14,7 @@ from .adc import Photodiodes
 from .dilution import make_dilution
 from .eeprom import EEPROM
 from .lasers import Lasers
-from .od_sensor import OdSensor, measure_od_all
+from .od_sensor import OdSensor
 from .pump import Pump
 from .pwm import PwmController
 from .stirrers import Stirrers
@@ -24,7 +24,7 @@ from .valves import Valves
 from .workers import QueueWorker
 from .loading import load_config, load_object, save_object
 from .other import CultureDict
-from .device_data import device_data
+from .device_data import default_device_data
 
 class BaseDevice:
     PORT_ADC = 0x68  # MCP3421A0  1101 000
@@ -56,7 +56,7 @@ class BaseDevice:
 
         self.i2c = None
         self.spi = None
-        self.device_data = device_data
+        self.device_data = default_device_data
 
         self.drying_prevention_pump_period_hrs = 12
         self.drying_prevention_pump_volume = 0.1
@@ -251,21 +251,6 @@ class BaseDevice:
             pump3_volume=pump3_volume,
             extra_vacuum=extra_vacuum,
         )
-
-    def measure_od_all(self):
-        vials_to_measure = []
-        for v in self.cultures.keys():
-            culture = self.cultures[v]
-            if culture is not None:
-                vials_to_measure += [v]
-
-        def queued_function():
-            measure_od_all(device=self, vials_to_measure=vials_to_measure)
-
-        if self.od_worker.queue.empty():
-            self.od_worker.queue.put(queued_function)
-        else:
-            print("OD measurement not queued. od thread queue is not empty.")
 
     def measure_temperature(self):
         def queued_function():
@@ -502,14 +487,6 @@ class BaseDevice:
                 self.__dict__[k] = loaded_dict[k]
         print("Loaded calibration data from %s" % config_path)
         self.fit_calibration_functions()
-
-    def copy_calibration(self, config_path):
-        self.load_calibration(config_path=config_path)
-        # self.check_parameters()
-        self.save()
-
-    def calibrate_pump(self, pump_number):
-        calibrate_pump(device=self, pump_number=pump_number)
 
     def fill_vials(self, volume=15, vials=(1, 2, 3, 4, 5, 6, 7)):
         for v in vials:

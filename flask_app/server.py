@@ -2,7 +2,8 @@
 
 from waitress import serve
 from flask import Flask
-from routes.device_routes import device_routes
+from routes.device_routes import device_routes, connect_device
+
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 import logging
@@ -11,9 +12,9 @@ import signal
 
 global dev
 
-# cors
 from experiment.models import db
 from routes.experiment_routes import experiment_routes
+
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
 pid_file_path = os.path.join(base_dir, "data/flask_app.pid")
@@ -26,8 +27,16 @@ def create_app():
     app = Flask(__name__)
     app.register_blueprint(device_routes)
     app.register_blueprint(experiment_routes)
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///../db/replifactory.db'
+
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    db_path = os.path.join(script_dir, '../db/replifactory.db')
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+
     db.init_app(app)
+    with app.app_context():
+        db.create_all()
+        connect_device()  # connect to device on startup
+
     CORS(app)
     @app.route('/shutdown')
     def shutdown():

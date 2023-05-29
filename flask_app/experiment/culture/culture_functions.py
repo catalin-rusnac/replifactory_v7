@@ -63,7 +63,7 @@ def dilute_adjust_drug1(
         culture.default_dilution_volume, max(0, drugfree_medium_volume)
     )
     culture._last_dilution_start_time = time.time()
-    culture.dilute(
+    culture.attempt_dilute(
         pump1_volume=drugfree_medium_volume, pump2_volume=drug1_pumped_volume
     )
 

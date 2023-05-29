@@ -8,6 +8,10 @@ from minimal_device.base_device import BaseDevice
 importlib.reload(minimal_device)
 dev = BaseDevice()
 dev.connect()
+dev.eeprom.load_config_from_eeprom()
+
+# dev.eeprom.erase_memory()
+#%%
 vial=1
 minimal_device.od_sensor.OdSensor.fit_calibration_function(dev.od_sensors[vial])
 print(dev.device_data['ods']['calibration'][vial])
@@ -23,9 +27,9 @@ dev.hello()
 #%%
 dev.eeprom.read_config_from_device()
 #%%
-from minimal_device.device_data import device_data
-print(device_data)
-dev.device_data = device_data
+from minimal_device.device_data import default_device_data
+print(default_device_data)
+dev.device_data = default_device_data
 import time
 t=time.time()
 dev.eeprom.save_config_to_eeprom()

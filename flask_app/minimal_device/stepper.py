@@ -44,7 +44,7 @@ class Stepper:
     REGISTER_STATUS = 0x19  # Status, 16 bits
 
     min_speed_rps = 0.01
-    max_speed_rps = 1
+    max_speed_rps = 4
     acceleration = 0.01
     deceleration = 0.01
     full_step_speed = 0.1
@@ -139,7 +139,7 @@ class Stepper:
         integer = steps_per_sec * 250e-9 / 2**-24
         self.write_register(self.REGISTER_MIN_SPEED, value=integer / 2**12, n_bits=12, n_bytes=2)
 
-    def set_max_speed(self, rot_per_sec=5.0):
+    def set_max_speed(self, rot_per_sec=4.0):
         correction_factor = 1.322
         rot_per_sec = rot_per_sec * correction_factor
         steps_per_sec = rot_per_sec * 2**22 / 25600  # page 43 in L6470H datasheet
@@ -301,7 +301,6 @@ class Stepper:
         6: 1/64 microstep
         7: 1/128 microstep
         """
-        print(self.cs)
         assert mode in [0, 1, 2, 3, 4, 5, 6, 7]
         assert not self.is_pumping(), "can't set step mode while pumping"
         self.hard_hiz()

@@ -39,7 +39,9 @@ class PwmController:
             #     self.port.write_to(led_on_h, [0x0])
             #     self.port.write_to(led_on_l, [0x00])
 
-            # self.start_all()
+            self.stop_all()
+            self.set_duty_cycle_all(0)
+            self.set_frequency(self.frequency)
         except pyftdi.i2c.I2cNackError:
             self.port = None
             print("PCA9685 PWM controller connection ERROR.")

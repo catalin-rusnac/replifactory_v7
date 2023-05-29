@@ -90,8 +90,6 @@ class CultureDict(dict):
             existing_config = os.path.join(new_culture_directory, "culture_config.yaml")
             if c.directory is None and os.path.exists(existing_config):
                 raise RuntimeError("Culture %d config exists" % vial)
-                # q = input("replace culture %d config?[y/n]" % vial)
-                # assert q == "y"
             if not os.path.exists(new_culture_directory):
                 os.mkdir(new_culture_directory)
             c.vial_number = vial
@@ -115,7 +113,6 @@ def write_variable(culture, variable_name, value):
     culture.sql_db.add_variable(variable_name, value)
 
 # initialize sql lite database storing culture parameters and the following variables: experiment state, culture name, species, od, concentration
-
 def init_sql_db(culture):
     import sqlite3
     import os

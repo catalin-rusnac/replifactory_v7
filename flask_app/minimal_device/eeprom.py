@@ -5,7 +5,7 @@ from queue import Queue
 import numpy as np
 import yaml
 import gzip
-
+from minimal_device.device_data import default_device_data
 def make_addr_bytes(page=511, byte=63):
     two_bytes = page << 6 | byte
     byte1 = two_bytes >> 8
@@ -75,7 +75,7 @@ class EEPROM:
         config_bytes = bytearray(config_to_write)
         # filler_size = 32768 - len(config_bytes)
         filler_size = 64
-        print("Writing", len(config_bytes), "bytes to EEPROM", time.ctime())
+        # print("Writing", len(config_bytes), "bytes to EEPROM", time.ctime())
         # print(filler_size, "bytes of filler to write to EEPROM")
         for i in range(filler_size):
             config_bytes.append(0xFF)
@@ -101,7 +101,29 @@ class EEPROM:
         :return:
         """
         loaded_config = self.read_eeprom()
+
+        try:
+            for k in default_device_data.keys():
+                if k not in loaded_config.keys():
+                    raise Exception("Key not found in EEPROM")
+        except Exception:
+            print("Loading config from EEPROM failed, erasing memory and writing default config")
+            self.device.lasers.switch_all_on()
+            time.sleep(0.3)
+            self.device.lasers.switch_all_off()
+            time.sleep(0.3)
+            self.device.lasers.switch_all_on()
+            time.sleep(1)
+            self.device.lasers.switch_all_off()
+
+            self.erase_memory()
+            self.device.device_data = default_device_data
+            self.save_config_to_eeprom()
+            for v in range(1, 8):
+                self.device.valves.open(v)
+            return
         self.device.device_data = loaded_config
+        print("Loaded config from EEPROM matching default config keys")
 
     def write_to_page(self, page, content, byte=0, fill=True):
         assert byte < 64
