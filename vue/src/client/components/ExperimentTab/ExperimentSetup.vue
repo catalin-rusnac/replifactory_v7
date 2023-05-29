@@ -24,7 +24,7 @@
           </option>
         </CFormSelect>
       </CFormFloating>
-      <CButton color="primary" @click="showCreate = !showCreate" class="ml-3">+</CButton>
+      <CButton color="primary" @click="handleNewExperimentButton" class="ml-3">+</CButton>
     </div>
 
     <div v-if="showCreate" class="d-flex">
@@ -134,11 +134,22 @@ export default {
   },
   methods: {
     ...mapActions('experiment', ['setCurrentExperimentAction', 'createExperiment', 'fetchExperiments', "fetchCurrentExperiment", "startExperiment", "pauseExperiment", "stopExperiment"]),
-    handleExperimentSelected(event) {
+
+    async handleNewExperimentButton() {
+      this.showCreate = !this.showCreate;
+      if (this.currentExperiment.status === 'running' || this.currentExperiment.status === 'paused') {
+        await this.stopExperiment(this.currentExperiment.id);
+      }
+    },
+
+    async handleExperimentSelected(event) {
+      if (this.currentExperiment.status === 'running' || this.currentExperiment.status === 'paused') {
+        await this.stopExperiment(this.currentExperiment.id);
+      }
       const selectedExperimentId = event.target.value;
       if (selectedExperimentId !== this.currentExperimentId) {
         this.currentExperimentId = selectedExperimentId;
-        this.setCurrentExperimentAction(this.currentExperimentId);
+        await this.setCurrentExperimentAction(this.currentExperimentId);
       }
     },
     async createAndSelectExperiment() {

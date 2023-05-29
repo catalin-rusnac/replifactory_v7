@@ -96,7 +96,10 @@ export default {
     },
 
 
-    async pauseExperiment({ dispatch }, experimentId) {
+    async pauseExperiment({ dispatch,state }, experimentId) {
+        if (state.currentExperiment.status === 'stopped') {
+            await flaskAxios.put(`/experiments/${experimentId}/status`, {status: 'running'});
+        }
         await flaskAxios.put(`/experiments/${experimentId}/status`, {status: 'paused'});
         dispatch('reloadExperimentParameters');
     },

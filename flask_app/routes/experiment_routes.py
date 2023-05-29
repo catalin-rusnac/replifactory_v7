@@ -28,8 +28,12 @@ def create_experiment():
 def get_experiment(id):
     experiment_model = db.session.get(ExperimentModel, id)
 
-    experiment = Experiment(current_app.dev, experiment_model)
-    current_app.experiment = experiment
+    try:
+        if current_app.experiment.model.id != id:
+            current_app.experiment = Experiment(current_app.dev, experiment_model)
+    except Exception:
+        current_app.experiment = Experiment(current_app.dev, experiment_model)
+
 
     if experiment_model:
         return jsonify(experiment_model.to_dict())
@@ -85,9 +89,19 @@ def update_experiment_status(id):
             if paused_experiment.id != id:
                 return jsonify({'error': 'Cannot start experiment, another experiment is paused'}), 400
     experiment_model = db.session.get(ExperimentModel, id)
+
     if experiment_model:
         experiment_model.status = status
         db.session.commit()
+
+        if current_app.experiment.model.id == id:
+            if status == 'running':
+                current_app.experiment.start()
+            elif status == 'paused':
+                current_app.experiment.pause_dilution_worker()
+            elif status == 'stopped':
+                current_app.experiment.stop()
+
         return jsonify({'message': 'Experiment status updated successfully'})
     else:
         return jsonify({'error': 'Experiment not found'}), 404
