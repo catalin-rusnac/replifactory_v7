@@ -10,11 +10,11 @@ import logging
 import os
 import signal
 
-global dev
-
 from experiment.models import db
 from routes.experiment_routes import experiment_routes
 
+global dev
+global experiment
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
 pid_file_path = os.path.join(base_dir, "data/flask_app.pid")

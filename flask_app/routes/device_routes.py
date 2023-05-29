@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 import time
 import sys
 sys.path.insert(0, '..')
@@ -6,7 +6,6 @@ from minimal_device.device_data import default_device_data
 from minimal_device.base_device import BaseDevice
 
 device_routes = Blueprint('device_routes', __name__)
-
 
 @device_routes.route('/set-<string:devicePart>-state', methods=['POST'])
 def set_device_state(devicePart):
@@ -168,6 +167,8 @@ def connect_device():
 
         dev = BaseDevice(connect=True)
         dev.hello()
+        current_app.dev = dev
+
         # dev.device_data = default_device_data
         # print("sample device data", default_device_data)
         # for v in range(1,8):

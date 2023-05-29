@@ -89,6 +89,18 @@ class QueueWorker:
 
 
 class Experiment:
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is not None:
+            if cls._instance.status != "stopped":
+                print("Experiment instance already exists and is not stopped. Stopping it now.")
+            else:
+                print("Experiment instance already exists")
+            cls._instance.stop()
+        cls._instance = super(Experiment, cls).__new__(cls)
+        return cls._instance
+
     def __init__(self, device, experiment_model):
         self.status = "stopped"
         self.device = device
@@ -117,8 +129,9 @@ class Experiment:
     def stop(self):
         if self.status == "stopped":
             print("Experiment is already stopped.")
-            if self.experiment_worker.dilution_worker.thread.is_alive() or self.experiment_worker.od_worker.thread.is_alive():
-                print("Worker is finishing up. Waiting for it to finish.")
+            if self.experiment_worker is not None:
+                if self.experiment_worker.dilution_worker.thread.is_alive() or self.experiment_worker.od_worker.thread.is_alive():
+                    print("Worker is finishing up. Waiting for it to finish.")
             return
         self.status = "stopped"
 
@@ -200,15 +213,14 @@ class Experiment:
     #     else:
     #         print("Culture update not queued. dilution thread queue is not empty.")
 
-
     def make_schedule(self):
         print("Making schedule")
         self.schedule.clear()
         self.schedule.every().minute.at(":57").do(
             self.device.thermometers.measure_temperature_background_thread
         )
-        self.schedule.every().minute.at(":00").do(self.update_cultures)
-        self.schedule.every().minute.at(":03").do(self.measure_od_in_background)
+        self.schedule.every().minute.at(":05").do(self.update_cultures)
+        self.schedule.every().minute.at(":00").do(self.measure_od_in_background)
 
     def get_experiment_status(self):
         # Simulated method to get experiment status from database

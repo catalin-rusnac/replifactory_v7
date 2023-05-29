@@ -5,9 +5,9 @@ import time
 import sqlalchemy
 
 sys.path.insert(0, "../")
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from experiment.models import ExperimentModel, Culture, ExperimentParameterHistory, CultureParameterHistory, db
-from experiment.experiment import default_parameters
+from experiment.experiment import default_parameters, Experiment
 
 experiment_routes = Blueprint('experiment_routes', __name__)
 
@@ -19,14 +19,18 @@ def create_experiment():
     if parameters is None or parameters == {}:
         parameters = default_parameters
 
-    experiment = ExperimentModel(name=experiment_data['name'], parameters=parameters)
-    db.session.add(experiment)
+    experiment_model = ExperimentModel(name=experiment_data['name'], parameters=parameters)
+    db.session.add(experiment_model)
     db.session.commit()
-    return jsonify({'id': experiment.id}), 201
+    return jsonify({'id': experiment_model.id}), 201
 
 @experiment_routes.route('/experiments/<int:id>', methods=['GET'])
 def get_experiment(id):
     experiment_model = db.session.get(ExperimentModel, id)
+
+    experiment = Experiment(current_app.dev, experiment_model)
+    current_app.experiment = experiment
+
     if experiment_model:
         return jsonify(experiment_model.to_dict())
     else:
@@ -40,8 +44,8 @@ def get_experiments():
         print("Database not initialized")
         return jsonify([])
     experiments_clean = []
-    for experiment in experiment_models:
-        experiments_clean.append({'id': experiment.id, 'name': experiment.name, 'status': experiment.status})
+    for experiment_model in experiment_models:
+        experiments_clean.append({'id': experiment_model.id, 'name': experiment_model.name, 'status': experiment_model.status})
     return jsonify(experiments_clean)
 
 
@@ -80,9 +84,9 @@ def update_experiment_status(id):
         if paused_experiment:
             if paused_experiment.id != id:
                 return jsonify({'error': 'Cannot start experiment, another experiment is paused'}), 400
-    experiment = db.session.get(ExperimentModel, id)
-    if experiment:
-        experiment.status = status
+    experiment_model = db.session.get(ExperimentModel, id)
+    if experiment_model:
+        experiment_model.status = status
         db.session.commit()
         return jsonify({'message': 'Experiment status updated successfully'})
     else:
@@ -91,9 +95,9 @@ def update_experiment_status(id):
 
 @experiment_routes.route('/experiments/<int:id>', methods=['DELETE'])
 def delete_experiment(id):
-    experiment = db.session.get(ExperimentModel, id)
-    if experiment:
-        db.session.delete(experiment)
+    experiment_model = db.session.get(ExperimentModel, id)
+    if experiment_model:
+        db.session.delete(experiment_model)
         db.session.commit()
         return jsonify({'message': 'Experiment deleted successfully'})
     else:
