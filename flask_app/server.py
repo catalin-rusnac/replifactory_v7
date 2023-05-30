@@ -1,7 +1,7 @@
 #server.py
 
 from waitress import serve
-from flask import Flask
+from flask import Flask, current_app
 from routes.device_routes import device_routes, connect_device
 
 from flask_cors import CORS
@@ -41,7 +41,7 @@ def create_app():
         with open(pid_file_path, "r") as pid_file:
             pid = int(pid_file.read())
         try:
-            dev.disconnect_all()
+            current_app.dev.disconnect_all()
         except:
             pass
         os.kill(pid, signal.SIGTERM)

@@ -34,7 +34,6 @@ def get_experiment(id):
     except Exception:
         current_app.experiment = Experiment(current_app.dev, experiment_model)
 
-
     if experiment_model:
         return jsonify(experiment_model.to_dict())
     else:

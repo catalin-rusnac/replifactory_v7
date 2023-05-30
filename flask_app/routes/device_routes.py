@@ -151,6 +151,33 @@ def start_pump_calibration_sequence():
     return jsonify(success=True)
 
 
+@device_routes.route('/force-connect-device', methods=['POST', 'GET'])
+def force_connect_device():
+    print("Force connecting device")
+    global dev
+    try:
+        if dev.is_connected():
+            dev.disconnect_all()
+            dev.connect()
+            dev.hello()
+            return jsonify({'success': True, 'device_states': dev.device_data})
+    except:
+        print("Device not connected")
+        pass
+    try:
+        print("Connecting device")
+        dev = BaseDevice(connect=True)
+        try:
+            dev.hello()
+        except Exception as e:
+            print("Device connection failed, trying again", e)
+            dev.connect() # try again
+            dev.hello()
+        current_app.dev = dev
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+    return
+
 @device_routes.route('/connect-device', methods=['POST'])
 def connect_device():
     global dev
@@ -166,7 +193,12 @@ def connect_device():
         print("Connecting device")
 
         dev = BaseDevice(connect=True)
-        dev.hello()
+        try:
+            dev.hello()
+        except Exception as e:
+            print("Device connection failed, trying again", e)
+            dev.connect()  # try again
+            dev.hello()
         current_app.dev = dev
 
         # dev.device_data = default_device_data
