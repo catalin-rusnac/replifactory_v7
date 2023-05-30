@@ -1,8 +1,6 @@
 install: swap install_apt_dependencies node-pi pip ngrok updatepath
 	cd vue && npm install -y;
 	cd flask_app && pip install -r requirements.txt;
-	chmod 777 ./
-	make build
 	make services-ctl
 
 run: run-flask run-express
@@ -71,7 +69,7 @@ copy_to_www:
 	@sudo cp -r vue/dist/* /var/www/html
 	@echo "Copied contents of vue/dist/ to /var/www/html."
 
-APT_DEPENDENCIES = python3-distutils libatlas-base-dev python3-dev gfortran libopenblas-dev
+APT_DEPENDENCIES = python3-distutils python3-scipy python3-numpy libatlas-base-dev python3-dev gfortran libopenblas-dev
 
 install_apt_dependencies: swap
 	@echo "Checking for apt dependencies..."
@@ -94,10 +92,20 @@ kill-app:
 	sudo fuser -k 3000/tcp
 	sudo fuser -k 5000/tcp
 
-services-ctl:
-	# copy from services/flask/flask.service and services/vue/vue.service to /etc/systemd/system/ if not already there
+update:
+	git pull
+	sudo systemctl restart flask.service
+
+directories:
+	@chmod 777 ./
+	@mkdir logs
+	@mkdir db
+	@chmod 777 logs
+	@chmod 777 db
+
+services-ctl: directories
 	@echo "Checking for flask and vue services..."
-	if ! cmp services/flask/flask.service /etc/systemd/system/flask.service >/dev/null 2>&1; then \
+	@if ! cmp services/flask/flask.service /etc/systemd/system/flask.service >/dev/null 2>&1; then \
 		sudo cp services/flask/flask.service /etc/systemd/system/flask.service; \
 		echo "Copied services/flask/flask.service to /etc/systemd/system/flask.service"; \
 	fi

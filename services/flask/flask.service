@@ -1,16 +1,13 @@
 [Unit]
 Description=Flask App
-After=network.target
+PermissionsStartOnly=true
 
 [Service]
 User=pi
 WorkingDirectory=/home/pi/replifactory_v7
-ExecStartPre=/bin/bash -c 'mkdir -p /home/pi/replifactory_v7/logs'
 ExecStartPre=/bin/bash -c 'touch /home/pi/replifactory_v7/logs/flask.log || true'
 ExecStartPre=/bin/bash -c 'touch /home/pi/replifactory_v7/logs/flask-error.log || true  '
 
-ExecStartPre=/bin/bash -c 'chmod 644 /home/pi/replifactory_v7/logs/flask.log'
-ExecStartPre=/bin/bash -c 'chmod 644 /home/pi/replifactory_v7/logs/flask-error.log'
 
 ExecStart=/usr/bin/python3 /home/pi/replifactory_v7/flask_app/server.py
 StandardOutput=append:/home/pi/replifactory_v7/logs/flask.log
