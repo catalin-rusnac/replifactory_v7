@@ -1,4 +1,11 @@
+#git clone http://github.com/catalin-rusnac/replifactory_v7; cd replifactory_v7; make install
+
 install: swap install_apt_dependencies node-pi pip ngrok updatepath
+	cd vue && npm install -y;
+	cd flask_app && pip install -r requirements.txt;
+	make services-ctl
+
+windows-install:
 	cd vue && npm install -y;
 	cd flask_app && pip install -r requirements.txt;
 	make services-ctl
@@ -98,10 +105,16 @@ update:
 
 directories:
 	@chmod 777 ./
-	@mkdir logs
-	@mkdir db
-	@chmod 777 logs
-	@chmod 777 db
+	@if [ ! -d "logs" ]; then \
+		echo "Creating logs directory..."; \
+		mkdir logs; \
+		chmod 777 logs; \
+	fi
+	@if [ ! -d "db" ]; then \
+		echo "Creating db directory..."; \
+		mkdir db; \
+		chmod 777 db; \
+	fi
 
 services-ctl: directories
 	@echo "Checking for flask and vue services..."

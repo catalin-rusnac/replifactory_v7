@@ -27,6 +27,31 @@ class ExperimentModel(db.Model):
         }
 
 
+class CultureData(db.Model):
+    __tablename__ = 'culture_data'
+
+    id = db.Column(db.Integer, primary_key=True)
+    experiment_id = db.Column(db.Integer, db.ForeignKey('experiments.id'), nullable=False)
+    vial_number = db.Column(db.Integer, nullable=False)
+    timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+    od_reading = db.Column(db.Float, nullable=False)
+    growth_rate = db.Column(db.Float, nullable=False)
+
+    # To represent the relationship between an experiment and its cultures
+    experiment = db.relationship('ExperimentModel', backref='culture_data')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'experiment_id': self.experiment_id,
+            'vial_number': self.vial_number,
+            'timestamp': self.timestamp.isoformat(),
+            'od_reading': self.od_reading,
+            'growth_rate': self.growth_rate,
+        }
+
+
 class Culture(db.Model):
     __tablename__ = 'cultures'
     id = db.Column(db.Integer, primary_key=True)
@@ -46,40 +71,3 @@ class Culture(db.Model):
             'experiment_id': self.experiment_id,
             'parameters': self.parameters,
             'active_parameters': self.active_parameters}
-
-
-class ExperimentParameterHistory(db.Model):
-    __tablename__ = 'experiment_parameter_history'
-
-    id = db.Column(db.Integer, primary_key=True)
-    experiment_id = db.Column(db.Integer, db.ForeignKey('experiments.id'), nullable=False)
-    parameters = db.Column(JSON, nullable=False)
-    timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
-
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'experiment_id': self.experiment_id,
-            'parameters': self.parameters,
-            'timestamp': self.timestamp,
-        }
-
-
-class CultureParameterHistory(db.Model):
-    __tablename__ = 'culture_parameter_history'
-
-    id = db.Column(db.Integer, primary_key=True)
-    culture_id = db.Column(db.Integer, db.ForeignKey('cultures.id'), nullable=False)
-    parameters = db.Column(JSON, nullable=False)
-    active_parameters = db.Column(JSON, nullable=False)
-    timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
-
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'culture_id': self.culture_id,
-            'parameters': self.parameters,
-            'active_parameters': self.active_parameters,
-            'timestamp': self.timestamp,
-        }
-

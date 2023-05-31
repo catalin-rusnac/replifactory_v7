@@ -46,7 +46,7 @@ class ExperimentWorker:
                 break
             else:
                 self.experiment.schedule.run_pending()
-                print("ran pending", time.ctime())
+                # print("ran pending", time.ctime())
             time.sleep(1)
 
     def stop(self):
