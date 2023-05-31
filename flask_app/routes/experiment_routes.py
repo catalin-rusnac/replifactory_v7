@@ -6,7 +6,7 @@ import sqlalchemy
 
 sys.path.insert(0, "../")
 from flask import Blueprint, request, jsonify, current_app
-from experiment.models import ExperimentModel, Culture, ExperimentParameterHistory, CultureParameterHistory, db
+from experiment.models import ExperimentModel, Culture, db
 from experiment.experiment import default_parameters, Experiment
 
 experiment_routes = Blueprint('experiment_routes', __name__)

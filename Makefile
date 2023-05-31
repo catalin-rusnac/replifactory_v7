@@ -6,9 +6,8 @@ install: swap install_apt_dependencies node-pi pip ngrok updatepath
 	make services-ctl
 
 windows-install:
-	cd vue && npm install -y;
-	cd flask_app && pip install -r requirements.txt;
-	make services-ctl
+	cd vue && npm install -y
+	cd flask_app && pip install -r requirements.txt
 
 run: run-flask run-express
 
