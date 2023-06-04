@@ -13,7 +13,7 @@ def get_sheet(spreadsheet_id, sheet_name):
 
     # relative to script dir
     script_dir = os.path.dirname(__file__)
-    secrets_file = os.path.join(script_dir, '../../../../secrets/googlekey.json')
+    secrets_file = os.path.join(script_dir, '../../../secrets/googlekey.json')
     creds = ServiceAccountCredentials.from_json_keyfile_name(secrets_file, scope)
     client = gspread.authorize(creds)
     try:
