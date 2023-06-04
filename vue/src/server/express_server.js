@@ -66,13 +66,27 @@ function getNgrokConfigPath() {
 let authtoken = null;
 let ngrokUrl = null;
 
+const { spawn } = require('child_process');
+
 
 async function startNgrok() {
   console.log('Starting ngrok tunnel setup...');
-  ngrokUrl = await ngrok.connect({
-    addr: expressPort,
-  });
-  console.log(`ngrok tunnel started: ${ngrokUrl}`);
+  //if not running
+    if (!ngrokUrl) {
+      ngrokUrl = await ngrok.connect({
+        addr: expressPort,
+      });
+        const pythonScriptPath = path.join(__dirname, 'url_into_sheet.py');
+        const pythonScript = spawn('python', [pythonScriptPath]);
+      pythonScript.stdout.on('data', (data) => {
+      console.log(`Python script output: ${data}`);
+        });
+
+      console.log(`ngrok tunnel started: ${ngrokUrl}`);
+    }
+    else {
+      console.log('ngrok tunnel already running at:', ngrokUrl);
+    }
 }
 
 async function checkNgrokStatus() {
