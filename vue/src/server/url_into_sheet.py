@@ -24,7 +24,7 @@ def get_sheet(spreadsheet_id, sheet_name):
     return sheet
 
 
-def edit_row(spreadsheet_id, sheet_name):
+def edit_hostname_sheet(spreadsheet_id, sheet_name):
     sheet = get_sheet(spreadsheet_id, sheet_name)
     # get current ip using dev.get_ip()
     url = get_ngrok_url()
@@ -33,6 +33,21 @@ def edit_row(spreadsheet_id, sheet_name):
     sheet.update('B1', url)
     sheet.update('A2', "last update")
     sheet.update('B2', time.ctime())
+
+def edit_main_sheet(spreadsheet_id):
+    sheet = get_sheet(spreadsheet_id, "main")
+    # get current ip using dev.get_ip()
+    url = get_ngrok_url()
+    # Update the specified row with the given values
+#     find row containing hostname in column A. if not exist, add new row
+    hostname = socket.gethostname()
+    try:
+        row = sheet.find(hostname).row
+    except Exception as e:
+        row = len(sheet.col_values(1)) + 1
+        sheet.update(f'A{row}', hostname)
+    sheet.update(f'B{row}', time.ctime())
+    sheet.update(f'C{row}', url)
 
 
 def get_ngrok_url():
@@ -51,7 +66,8 @@ def write_url_to_google_sheet():
     with open('secrets/googlesheet.json') as f:
         spreadsheet_id = json.load(f)['id']
     hostname = socket.gethostname()
-    edit_row(spreadsheet_id, hostname)
+    edit_hostname_sheet(spreadsheet_id, hostname)
+    edit_main_sheet(spreadsheet_id)
 
 
 if __name__ == '__main__':
