@@ -16,6 +16,8 @@
 </template>
 
 <script>
+import { mapState } from 'vuex';
+
 import DeviceControl from './components/DeviceControl/DeviceControl';
 // import HomeTab from '@/client/components/HomeTab/HomeTab';
 import ExperimentTab from "@/client/components/ExperimentTab/ExperimentTab";
@@ -23,8 +25,15 @@ import NgrokTab from "@/client/components/Remote/NgrokTab";
 import HelpTab from "@/client/components/HelpTab/HelpTab";
 export default {
   name: 'App',
+  computed: {
+  ...mapState(['hostname']),
+  },
+  async mounted() {
+    await this.$store.dispatch('fetchHostname');
+  document.title = this.hostname;
+},
+
   components: {
-    // HomeTab,
     ExperimentTab,
     DeviceControl,
     NgrokTab,

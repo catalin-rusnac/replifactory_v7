@@ -48,7 +48,7 @@ def calculate_growth_rate(time_values, od_values):
         popt, pcov = curve_fit(growth_function, hours, od_values, p0=(1e-3, 0.3))
     except Exception:
         return np.nan, np.nan, np.nan
-    timepoint = (time_values[0] + time_values[-1]) / 2
+    timepoint = (float(time_values[0]) + time_values[-1]) / 2
     growth_rate = popt[1]
     growth_rate_error = np.sqrt(np.diag(pcov))[1]
     return timepoint, growth_rate, growth_rate_error

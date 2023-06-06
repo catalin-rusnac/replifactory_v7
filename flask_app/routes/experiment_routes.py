@@ -1,4 +1,5 @@
 # experiment_routes.py
+import socket
 import sys
 import time
 
@@ -118,6 +119,13 @@ def delete_experiment(id):
     else:
         return jsonify({'error': 'Experiment not found'}), 404
 
+
+@experiment_routes.route('/hostname', methods=['GET'])
+def get_hostname():
+    hostname = socket.gethostname()
+    return jsonify({'hostname': hostname})
+
+
 @experiment_routes.route('/experiments/<int:experiment_id>/cultures/<int:id>', methods=['GET'])
 def get_culture_data(experiment_id, id):
     culture = db.session.get(CultureData, id)
@@ -126,4 +134,9 @@ def get_culture_data(experiment_id, id):
     else:
         return jsonify({'error': 'Culture not found'}), 404
 
-# Similar routes for CultureParameterHistory...
+
+@experiment_routes.route('/plot/<int:vial>', methods=['GET'])
+def get_culture_plot(vial):
+    fig=current_app.experiment.cultures[vial].plot()
+    fig_json = fig.to_json()
+    return jsonify(fig_json)

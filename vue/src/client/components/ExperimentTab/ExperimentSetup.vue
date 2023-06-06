@@ -97,6 +97,8 @@
           </CRow>
         </div>
       </div>
+
+<!--      <ExperimentChart/>-->
     </div>
   </div>
 </template>
@@ -105,10 +107,13 @@
 import { mapActions, mapState } from "vuex";
 import { CButton, CFormFloating, CFormInput, CFormSelect, CRow, CCol, CToast, CToastBody, CToastHeader } from '@coreui/vue';
 import CultureConfig from './CultureConfig.vue';
+// import ExperimentChart from './ExperimentChart.vue';
 
 export default {
   components: {
+    // ExperimentChart,
     CultureConfig,
+
     CButton,
     CFormFloating,
     CFormInput,

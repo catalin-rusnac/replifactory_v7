@@ -5,7 +5,7 @@ import numpy as np
 from experiment.models import CultureData, PumpData, CultureGenerationData
 from experiment.growth_rate import calculate_last_growth_rate
 import time
-
+from .plot import plot_culture
 from copy import deepcopy
 
 class AutoCommitDict:
@@ -52,6 +52,8 @@ class Culture:
             experiment_model=experiment.model
         )
 
+    def plot(self, *args, **kwargs):
+        return plot_culture(self, *args, **kwargs)
     # @property
     # def parameters(self):
     #     return self.experiment.model.parameters["cultures"][str(self.vial)]
@@ -131,6 +133,19 @@ class Culture:
             self.db.session.commit()
             self.get_latest_data_from_db()
 
+    def _log_testing_generation(self, generation, concentration, timestamp=datetime.now()):
+        with self.experiment.app.app_context():
+            new_generation_data = CultureGenerationData(
+                experiment_id=self.experiment.model.id,
+                vial_number=self.vial,
+                generation=generation,
+                drug_concentration=concentration,
+                timestamp=timestamp
+            )
+            self.db.session.add(new_generation_data)
+            self.db.session.commit()
+            self.get_latest_data_from_db()
+
     def _log_testing_od(self,od=None, timestamp=datetime.now()):
         with self.experiment.app.app_context():
             self.new_culture_data = CultureData(
@@ -166,12 +181,13 @@ class Culture:
         if np.isfinite(mu):
             self.new_culture_data.growth_rate = mu
 
-    def get_last_ods(self, include_current=False):
+    def get_last_ods(self, limit=100, include_current=False, since_pump=False):
         culture_data = self.db.session.query(CultureData).filter(
             CultureData.experiment_id == self.experiment.model.id,
             CultureData.vial_number == self.vial
-        ).order_by(CultureData.timestamp.desc()).limit(10).all()
-        if len(culture_data) > 0:
+        ).order_by(CultureData.timestamp.desc()).limit(limit).all()
+
+        if since_pump and len(culture_data) > 0:
             if self.last_dilution_time is not None:
                 culture_data = [data for data in culture_data if data.timestamp > self.last_dilution_time]
 
@@ -180,6 +196,18 @@ class Culture:
             od_dict[self.new_culture_data.timestamp] = self.new_culture_data.od  # Include current uncommitted data
         od_dict = {k: v for k, v in sorted(od_dict.items(), key=lambda item: item[0])}
         return od_dict
+
+    def get_last_generations(self, limit=100):
+        generation_data = self.db.session.query(CultureGenerationData).filter(
+            CultureGenerationData.experiment_id == self.experiment.model.id,
+            CultureGenerationData.vial_number == self.vial
+        ).order_by(CultureGenerationData.timestamp.desc()).limit(limit).all()
+        generation_dict = {data.timestamp: data.generation for data in generation_data}
+        concentration_dict = {data.timestamp: data.drug_concentration for data in generation_data}
+
+        generation_dict = {k: v for k, v in sorted(generation_dict.items(), key=lambda item: item[0])}
+        concentration_dict = {k: v for k, v in sorted(concentration_dict.items(), key=lambda item: item[0])}
+        return generation_dict, concentration_dict
 
     def update(self):
         if self.last_dilution_time is not None:

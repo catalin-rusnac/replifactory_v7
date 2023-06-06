@@ -51,9 +51,11 @@ class PumpData(db.Model):
     __tablename__ = 'pump_data'
 
     id = db.Column(db.Integer, primary_key=True)
-    experiment_id = db.Column(db.Integer, db.ForeignKey('experiments.id'), nullable=False)
-    vial_number = db.Column(db.Integer, nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.now)
+
+    experiment_id = db.Column(db.Integer, db.ForeignKey('experiments.id'), nullable=False, index=True)
+    vial_number = db.Column(db.Integer, nullable=False, index=True)
+    timestamp = db.Column(db.DateTime, default=datetime.now, index=True)
+
     volume_main = db.Column(db.Float, nullable=False)
     volume_drug = db.Column(db.Float, nullable=False)
     volume_waste = db.Column(db.Float, nullable=False)
@@ -76,9 +78,10 @@ class CultureGenerationData(db.Model):
     __tablename__ = 'generation_data'
 
     id = db.Column(db.Integer, primary_key=True)
-    experiment_id = db.Column(db.Integer, db.ForeignKey('experiments.id'), nullable=False)
-    vial_number = db.Column(db.Integer, nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.now)
+
+    experiment_id = db.Column(db.Integer, db.ForeignKey('experiments.id'), nullable=False, index=True)
+    vial_number = db.Column(db.Integer, nullable=False, index=True)
+    timestamp = db.Column(db.DateTime, default=datetime.now, index=True)
 
     generation = db.Column(db.Integer, nullable=False)
     drug_concentration = db.Column(db.Float, nullable=False)
@@ -101,10 +104,10 @@ class CultureData(db.Model):
     __tablename__ = 'culture_data'
 
     id = db.Column(db.Integer, primary_key=True)
-    experiment_id = db.Column(db.Integer, db.ForeignKey('experiments.id'), nullable=False)
-    vial_number = db.Column(db.Integer, nullable=False)
 
-    timestamp = db.Column(db.DateTime, default=datetime.now)
+    experiment_id = db.Column(db.Integer, db.ForeignKey('experiments.id'), nullable=False, index=True)
+    vial_number = db.Column(db.Integer, nullable=False,index=True)
+    timestamp = db.Column(db.DateTime, default=datetime.now, index=True)
 
     od = db.Column(db.Float, nullable=True)
     growth_rate = db.Column(db.Float, nullable=True)

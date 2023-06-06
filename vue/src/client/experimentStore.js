@@ -13,14 +13,17 @@ const flaskAxios = axios.create({
 export default {
   namespaced: true,
   state: {
+    hostname: "replifactory_GUI",
     errorMessage: null,
     experiments: [],
     currentExperiment: {
       id: null,
       name: null,
       parameters: null,
-      data: null,
+      data: {},
     },
+    plot_data: {1: null, 2: null, 3: null, 4: null, 5: null, 6: null, 7: null},
+
   },
   mutations: {
     setExperiments(state, experiments) {
@@ -29,12 +32,13 @@ export default {
     setCurrentExperiment(state, experiment) {
       state.currentExperiment = experiment;
     },
-    setExperimentData(state, data) {
-      state.currentExperiment.data = data;
+    setExperimentPlotData(state, { data, vial }) {
+      console.log(data,vial,"data,vial replacing current:", state.plot_data[vial])
+    state.plot_data[vial] = data;
     },
     setCurrentExperimentParameters(state, parameters) {
       state.currentExperiment.parameters = parameters;
-    }
+    },
   },
   actions: {
     async fetchExperiments({ commit}) {
@@ -42,6 +46,18 @@ export default {
       const response = await flaskAxios.get('/experiments');
       commit('setExperiments', response.data);
     },
+    async fetchCulturePlot({ commit, state }, vial) {
+      console.log(`fetchCulturePlot for vial ${vial}`);
+      if (!state.plot_data) {
+        console.log('Current experiment or its plot data is not defined');
+        return;
+      }
+      const response = await flaskAxios.get(`/plot/${vial}`);
+      const figure = response.data;
+      commit('setExperimentPlotData', { data: JSON.parse(figure).data, vial }); // Parse the figure and extract data
+    },
+
+
     async setCurrentExperimentAction({ commit, state }, experimentId) {
       console.log("setCurrentExperimentAction");
       if (experimentId !== state.currentExperiment.id) {
@@ -55,11 +71,6 @@ export default {
       await dispatch('fetchExperiments');
       await dispatch('setCurrentExperimentAction', response.data.id);
       return response.data.id;
-    },
-
-    async fetchExperimentData({ commit }, experimentId) {
-      const response = await flaskAxios.get(`/experiments/${experimentId}/data`);
-      commit('setExperimentData', response.data);
     },
 
     async updateExperimentParameters({ commit, state }, {parameters }) {

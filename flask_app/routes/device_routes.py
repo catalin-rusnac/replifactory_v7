@@ -164,6 +164,7 @@ def force_connect_device():
     except:
         print("Device not connected")
         pass
+
     try:
         print("Connecting device")
         dev = BaseDevice(connect=True)
@@ -181,6 +182,7 @@ def force_connect_device():
 @device_routes.route('/connect-device', methods=['POST', 'GET'])
 def connect_device():
     global dev
+    current_app.dev = None
     try:
         if dev.is_connected():
             return jsonify({'success': True, 'device_states': dev.device_data})
