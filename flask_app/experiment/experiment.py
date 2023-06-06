@@ -1,31 +1,11 @@
+import traceback
 import threading
 import time
 import queue
 import schedule
-
-default_parameters = {"stock_concentration_drug": 100,
-              "stock_volume_drug": 1000,
-              "stock_volume_main": 2000,
-              "stock_volume_waste": 5000,
-              }
-culture_parameters = {"name": "Species 1",
-                      "description": "Strain 1",
-
-                      "volume_fixed": 15,
-                      "volume_added": 10,
-
-                      "od_threshold": 0.3,
-                      "od_threshold_first_dilution": 0.4,
-                      "stress_dose_first_dilution": 2.0,
-
-                      "stress_increase_delay_generations": 3.0,
-                      "stress_increase_tdoubling_min_hrs": 4,
-
-                      "stress_decrease_delay_hrs": 16,
-                      "stress_decrease_tdoubling_max_hrs": 24,
-                      }
-cultures = {i: culture_parameters for i in range(1, 8)}
-default_parameters['cultures'] = cultures
+from experiment.models import CultureData
+from .culture import Culture
+from flask import current_app
 
 
 class ExperimentWorker:
@@ -83,7 +63,13 @@ class QueueWorker:
                 print("Worker %s resumed" % self.name)
             self.is_performing_operation = True
             try:
-                operation()
+                with self.experiment.app.app_context():
+                    try:
+                        operation()
+                    except Exception as e:
+                        # print full traceback
+                        traceback.print_exc()
+                        print("Exception in worker %s: %s" % (self.name, e))
             finally:
                 self.is_performing_operation = False
 
@@ -101,13 +87,24 @@ class Experiment:
         cls._instance = super(Experiment, cls).__new__(cls)
         return cls._instance
 
-    def __init__(self, device, experiment_model):
+    def __init__(self, device, experiment_model, db):
+        self.app = current_app._get_current_object()
         self.status = "stopped"
+        self.model = experiment_model  # Store the database model object
         self.device = device
+
         self.schedule = schedule.Scheduler()
         self.locks = {i: threading.Lock() for i in range(1, 8)}
-        self.model = experiment_model  # Store the database model object
         self.experiment_worker = None
+        self.cultures = {i: Culture(self, i, db) for i in range(1, 8)}
+        db.session.commit()
+
+    def _delete_all_data(self):
+        for v in range(1, 8):
+            self.cultures[v]._delete_all_records()
+
+    def create_worker(self):
+        self.experiment_worker = ExperimentWorker(self)
 
     def start(self):
         if self.experiment_worker is None or not self.experiment_worker.thread.is_alive():
@@ -120,8 +117,6 @@ class Experiment:
             if self.experiment_worker.dilution_worker.paused:
                 print("Dilution worker is paused. Resuming.")
                 self.experiment_worker.dilution_worker.paused = False
-
-
 
     def pause_dilution_worker(self):
         self.experiment_worker.dilution_worker.paused = True
@@ -143,32 +138,52 @@ class Experiment:
                     if not self.locks[vial].locked():
                         self.locks[vial].acquire(blocking=False)
                         available_vials.append(vial)
-                self.measure_od_all(vials_to_measure=available_vials)
+                new_ods = self.measure_od_all(vials_to_measure=available_vials)
+                for vial in new_ods.keys():
+                    self.cultures[vial].log_od(new_ods[vial])
             finally:
                 for vial in available_vials:
                     self.locks[vial].release()
+        if self.experiment_worker.od_worker.queue.empty():
+            self.experiment_worker.od_worker.queue.put(task)
+            print("Task to measure optical density in available vials queued for background execution.")
+        else:
+            print("Task to measure optical density already in queue. Skipping.")
 
-        self.experiment_worker.od_worker.queue.put(task)
-        print("Task to measure optical density in available vials queued for background execution.")
+    # def make_dilution_queued(self, vial_number, main_pump_volume, drug_pump_volume, extra_vacuum=5):
+    #     print(f"Attempting to dilute vial {vial_number} in background.")
+    #     if self.experiment_worker.dilution_worker.paused:
+    #         print("Dilution worker paused. Dilution will not be attempted.")
+    #         return
+    #
+    #     def task():
+    #         lock_acquired_here = False
+    #         try:
+    #             self.locks[vial_number].acquire(blocking=True, timeout=15)
+    #             lock_acquired_here = True
+    #             self.cultures[vial_number].make_dilution(
+    #                 pump1_volume=main_pump_volume,
+    #                 pump2_volume=drug_pump_volume,
+    #                 pump3_volume=0,  # pump3 not connected
+    #                 extra_vacuum=extra_vacuum)
+    #         finally:
+    #             if lock_acquired_here:
+    #                 self.locks[vial_number].release()
+    #
+    #     self.experiment_worker.dilution_worker.queue.put(task)
+    #     print(f"Task to dilute vial {vial_number} queued for background execution.")
 
-    def attempt_dilute_in_background(self, vial_number, main_pump_volume, drug_pump_volume, extra_vacuum=5):
-        print(f"Attempting to dilute vial {vial_number} in background.")
-        if self.experiment_worker.dilution_worker.paused:
-            print("Dilution worker paused. Dilution will not be attempted.")
-            return
-
+    def update_cultures_in_background(self):
         def task():
-            lock_acquired_here = False
-            try:
-                self.locks[vial_number].acquire(blocking=True, timeout=15)
-                lock_acquired_here = True
-                self.dilute(vial_number, main_pump_volume, drug_pump_volume, extra_vacuum)
-            finally:
-                if lock_acquired_here:
-                    self.locks[vial_number].release()
-
-        self.experiment_worker.dilution_worker.queue.put(task)
-        print(f"Task to dilute vial {vial_number} queued for background execution.")
+            for vial in range(1, 8):
+                if not self.status == "running":
+                    break
+                self.cultures[vial].update()
+        if self.experiment_worker.dilution_worker.queue.empty():
+            self.experiment_worker.dilution_worker.queue.put(task)
+            print("Task to update cultures queued for background execution.")
+        else:
+            print("Task to update cultures already in queue. Skipping.")
 
     def measure_od_all(self, vials_to_measure=(1, 2, 3, 4, 5, 6, 7)):
         """
@@ -183,44 +198,20 @@ class Experiment:
             time.sleep(4)
 
             for vial in vials_to_measure:
-                od = self.device.od_sensors[vial].measure_od()
+                od, signal = self.device.od_sensors[vial].measure_od()
                 measured_od_values[vial] = od
             for vial in vials_to_measure:
                 self.device.stirrers.set_speed(vial=vial, speed="high")
         return measured_od_values
 
-    def dilute(self, vial_number, main_pump_volume, drug_pump_volume, extra_vacuum=5):
-        self.device.make_dilution(
-                    vial=vial_number,
-                    pump1_volume=main_pump_volume,
-                    pump2_volume=drug_pump_volume,
-                    pump3_volume=0,
-                    extra_vacuum=extra_vacuum)
-
-    def update_cultures(self):
-        self.attempt_dilute_in_background(vial_number=7, main_pump_volume=0, drug_pump_volume=0)
-
-    # def update_cultures(self):
-    #     def queued_function():
-    #         for v, c in self.cultures.items():
-    #             if self.soft_stop_trigger:
-    #                 break
-    #             if c is not None:
-    #                 c.update()
-    #
-    #     if self.dilution_worker.queue.empty():
-    #         self.dilution_worker.queue.put(queued_function)
-    #     else:
-    #         print("Culture update not queued. dilution thread queue is not empty.")
 
     def make_schedule(self):
         print("Making schedule")
         self.schedule.clear()
-        self.schedule.every().minute.at(":57").do(
-            self.device.thermometers.measure_temperature_background_thread
-        )
-        self.schedule.every().minute.at(":05").do(self.update_cultures)
+        self.schedule.every().minute.at(":05").do(self.update_cultures_in_background)
         self.schedule.every().minute.at(":00").do(self.measure_od_in_background)
+        # self.schedule.every().minute.at(":20").do(self.measure_od_in_background)
+        # self.schedule.every().minute.at(":40").do(self.measure_od_in_background)
 
     def get_experiment_status(self):
         # Simulated method to get experiment status from database

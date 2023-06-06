@@ -178,7 +178,7 @@ def force_connect_device():
         return jsonify({'success': False, 'error': str(e)})
     return
 
-@device_routes.route('/connect-device', methods=['POST'])
+@device_routes.route('/connect-device', methods=['POST', 'GET'])
 def connect_device():
     global dev
     try:

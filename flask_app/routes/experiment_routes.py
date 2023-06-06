@@ -6,20 +6,20 @@ import sqlalchemy
 
 sys.path.insert(0, "../")
 from flask import Blueprint, request, jsonify, current_app
-from experiment.models import ExperimentModel, Culture, db
-from experiment.experiment import default_parameters, Experiment
+from experiment.models import ExperimentModel, CultureData, db
+from experiment.experiment import Experiment
 
 experiment_routes = Blueprint('experiment_routes', __name__)
+
 
 @experiment_routes.route('/experiments', methods=['POST'])
 def create_experiment():
     experiment_data = request.json
     parameters = experiment_data.get('parameters', {})
-    print("got parameters", parameters, "from request" )
-    if parameters is None or parameters == {}:
-        parameters = default_parameters
-
-    experiment_model = ExperimentModel(name=experiment_data['name'], parameters=parameters)
+    if parameters == {} or parameters is None:
+        experiment_model = ExperimentModel(name=experiment_data['name'])
+    else:
+        experiment_model = ExperimentModel(name=experiment_data['name'], parameters=parameters)
     db.session.add(experiment_model)
     db.session.commit()
     return jsonify({'id': experiment_model.id}), 201
@@ -27,12 +27,14 @@ def create_experiment():
 @experiment_routes.route('/experiments/<int:id>', methods=['GET'])
 def get_experiment(id):
     experiment_model = db.session.get(ExperimentModel, id)
-
     try:
         if current_app.experiment.model.id != id:
-            current_app.experiment = Experiment(current_app.dev, experiment_model)
+            if current_app.experiment.model.status == 'running':
+                current_app.experiment.stop()
+                print("WARNING! Stopped existing running experiment", current_app.experiment.model.id)
+            current_app.experiment = Experiment(current_app.dev, experiment_model, db)
     except Exception:
-        current_app.experiment = Experiment(current_app.dev, experiment_model)
+        current_app.experiment = Experiment(current_app.dev, experiment_model, db)
 
     if experiment_model:
         return jsonify(experiment_model.to_dict())
@@ -117,65 +119,11 @@ def delete_experiment(id):
         return jsonify({'error': 'Experiment not found'}), 404
 
 @experiment_routes.route('/experiments/<int:experiment_id>/cultures/<int:id>', methods=['GET'])
-def get_culture(experiment_id, id):
-    culture = db.session.get(Culture, id)
+def get_culture_data(experiment_id, id):
+    culture = db.session.get(CultureData, id)
     if culture and culture.experiment_id == experiment_id:
         return jsonify(culture.to_dict())
     else:
         return jsonify({'error': 'Culture not found'}), 404
 
-@experiment_routes.route('/experiments/<int:experiment_id>/cultures/<int:id>/parameters', methods=['PUT'])
-def update_culture_parameters(experiment_id, id):
-    parameters = request.json['parameters']
-    culture = db.session.get(Culture, id)
-    if culture and culture.experiment_id == experiment_id:
-        culture.parameters.update(parameters)
-        db.session.commit()
-        return jsonify({'message': 'Culture parameters updated successfully'})
-    else:
-        return jsonify({'error': 'Culture not found'}), 404
-
-# Get all parameter histories for a particular experiment
-@experiment_routes.route('/experiments/<int:id>/history', methods=['GET'])
-def get_experiment_history(id):
-    history = db.session.query(ExperimentParameterHistory).filter_by(experiment_id=id).all()
-    if history:
-        return jsonify([h.to_dict() for h in history])
-    else:
-        return jsonify({'error': 'Experiment history not found'}), 404
-
-# Add a new parameter history entry for a particular experiment
-@experiment_routes.route('/experiments/<int:id>/history', methods=['POST'])
-def add_experiment_history(id):
-    history_data = request.json
-    history = ExperimentParameterHistory(
-        experiment_id=id,
-        parameters=history_data['parameters'],
-        timestamp=int(time.time())  # Assuming timestamp is not supplied and should be 'now'
-    )
-    db.session.add(history)
-    db.session.commit()
-    return jsonify({'id': history.id}), 201
-
 # Similar routes for CultureParameterHistory...
-
-@experiment_routes.route('/experiments/<int:experiment_id>/cultures/<int:culture_id>/history', methods=['GET'])
-def get_culture_history(experiment_id, culture_id):
-    history = db.session.query(CultureParameterHistory).filter_by(culture_id=culture_id).all()
-    if history:
-        return jsonify([h.to_dict() for h in history])
-    else:
-        return jsonify({'error': 'Culture history not found'}), 404
-
-@experiment_routes.route('/experiments/<int:experiment_id>/cultures/<int:culture_id>/history', methods=['POST'])
-def add_culture_history(experiment_id, culture_id):
-    history_data = request.json
-    history = CultureParameterHistory(
-        culture_id=culture_id,
-        parameters=history_data['parameters'],
-        active_parameters=history_data['active_parameters'],
-        timestamp=int(time.time())  # Assuming timestamp is not supplied and should be 'now'
-    )
-    db.session.add(history)
-    db.session.commit()
-    return jsonify({'id': history.id}), 201

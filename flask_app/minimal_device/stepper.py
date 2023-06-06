@@ -307,7 +307,9 @@ class Stepper:
         self.port.write([self.REGISTER_STEP_MODE])
         self.port.write([mode])
         read_mode = self.read_register(self.REGISTER_STEP_MODE)[0]
-        assert mode == read_mode
+        if mode != read_mode:
+            print("WARNING: step mode not set correctly")
+            self.reset()
         self.step_mode = mode
 
     def get_status(self, verbose=False, reset=False):
