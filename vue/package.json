@@ -27,10 +27,8 @@
     "http-proxy-middleware": "^2.0.6",
     "ngrok": "^5.0.0-beta.2",
     "path": "^0.12.7",
-    "simple-keyboard": "^3.5.56",
     "vue": "^3.2.13",
     "vue-chartjs": "^5.2.0",
-    "vue-touch-keyboard": "^0.3.2",
     "vuex": "^4.1.0"
   },
   "devDependencies": {
