@@ -8,6 +8,7 @@ import time
 from .plot import plot_culture
 from copy import deepcopy
 
+
 class AutoCommitDict:
     def __init__(self, initial_dict, db_session, experiment_model, vial):
         self.inner_dict = deepcopy(initial_dict)
@@ -16,7 +17,10 @@ class AutoCommitDict:
         self.vial = vial
 
     def __getitem__(self, key):
-        return self.inner_dict[key]
+        try:  # If the key is a number, return it as a number
+            return float(self.inner_dict[key])
+        except ValueError:  # If the key is a string, return it as a string
+            return self.inner_dict[key]
 
     def __setitem__(self, key, value):
         self.inner_dict[key] = value
@@ -25,6 +29,8 @@ class AutoCommitDict:
         self.experiment_model.parameters = parameters
         self.db_session.commit()
 
+    def __repr__(self):
+        return repr(self.inner_dict)
 
 class Culture:
     def __init__(self, experiment, vial, db):
@@ -54,16 +60,6 @@ class Culture:
 
     def plot(self, *args, **kwargs):
         return plot_culture(self, *args, **kwargs)
-    # @property
-    # def parameters(self):
-    #     return self.experiment.model.parameters["cultures"][str(self.vial)]
-    #
-    # @parameters.setter
-    # def parameters(self, value):
-    #     pars = copy.deepcopy(self.experiment.model.parameters)
-    #     pars["cultures"][str(self.vial)] = value
-    #     self.experiment.model.parameters = pars
-    #     self.db.session.commit()
 
     def get_latest_data_from_db(self):
         # Get the last culture data for this culture
@@ -97,7 +93,7 @@ class Culture:
                     break
 
     def log_od(self, od=None):
-        # Create a new culture_data object
+        self.od = od
         with self.experiment.app.app_context():
             self.new_culture_data = CultureData(
                 experiment_id=self.experiment.model.id,
@@ -106,6 +102,8 @@ class Culture:
 
             self.db.session.add(self.new_culture_data)
             self.calculate_latest_growth_rate()
+            if self.new_culture_data.growth_rate is not None:
+                self.growth_rate = self.new_culture_data.growth_rate
             self.db.session.commit()
             self.get_latest_data_from_db()  # TODO: speed up by not querying the database again
 
@@ -122,6 +120,8 @@ class Culture:
             self.get_latest_data_from_db()
 
     def log_generation(self, generation, concentration):
+        self.generation = generation
+        self.drug_concentration = concentration
         with self.experiment.app.app_context():
             new_generation_data = CultureGenerationData(
                 experiment_id=self.experiment.model.id,
@@ -134,6 +134,8 @@ class Culture:
             self.get_latest_data_from_db()
 
     def _log_testing_generation(self, generation, concentration, timestamp=datetime.now()):
+        self.generation = generation
+        self.drug_concentration = concentration
         with self.experiment.app.app_context():
             new_generation_data = CultureGenerationData(
                 experiment_id=self.experiment.model.id,
@@ -146,7 +148,9 @@ class Culture:
             self.db.session.commit()
             self.get_latest_data_from_db()
 
-    def _log_testing_od(self,od=None, timestamp=datetime.now()):
+    def _log_testing_od(self, od=None, timestamp=datetime.now()):
+        self.od = od
+
         with self.experiment.app.app_context():
             self.new_culture_data = CultureData(
                 experiment_id=self.experiment.model.id,
@@ -173,7 +177,7 @@ class Culture:
         reads last od values and calculates growth rate
         :return:
         """
-        od_dict = self.get_last_ods(include_current=True)
+        od_dict, _ = self.get_last_ods(include_current=True)
         t = np.array(list(int(dt.timestamp()) for dt in od_dict.keys()))
         od = np.array(list(od_dict.values()))
         od[od <= 0] = 1e-6
@@ -192,10 +196,11 @@ class Culture:
                 culture_data = [data for data in culture_data if data.timestamp > self.last_dilution_time]
 
         od_dict = {data.timestamp: data.od for data in culture_data}
+        mu_dict = {data.timestamp: data.growth_rate for data in culture_data}
         if include_current and self.new_culture_data is not None:
             od_dict[self.new_culture_data.timestamp] = self.new_culture_data.od  # Include current uncommitted data
         od_dict = {k: v for k, v in sorted(od_dict.items(), key=lambda item: item[0])}
-        return od_dict
+        return od_dict, mu_dict
 
     def get_last_generations(self, limit=100):
         generation_data = self.db.session.query(CultureGenerationData).filter(
@@ -210,75 +215,112 @@ class Culture:
         return generation_dict, concentration_dict
 
     def update(self):
-        if self.last_dilution_time is not None:
-            if self.last_dilution_time > datetime.now() - timedelta(minutes=5):
-                print("Not updating, too soon after last dilution")
-                return
         if self.is_time_to_dilute():
             if self.is_time_to_increase_stress():
-                print("Increasing stress")
+                print(f"Increasing {self.vial} stress")
                 self.increase_stress()
             else:
-                print("Diluting to same concentration")
+                print(f"Diluting {self.vial} to same concentration ")
                 self.make_dilution(target_concentration=self.drug_concentration)
+            return
         if self.is_time_to_rescue():
-            print("Rescuing")
+            print(f"Rescuing {self.vial}")
             self.make_dilution(target_concentration=0)  # Decrease drug concentration towards 0
+            return
 
     def increase_stress(self):
         if self.last_stress_increase_generation is None:
             target_concentration = self.parameters["stress_dose_first_dilution"]
         else:
-
             volume_added = self.parameters["volume_added"]
             current_volume = self.parameters["volume_fixed"]
             dilution_factor = volume_added + current_volume / current_volume
             stress_increase_factor = (dilution_factor + 1) / 2
             target_concentration = self.drug_concentration * stress_increase_factor
-
         self.make_dilution(target_concentration=target_concentration)
 
-    def is_time_to_dilute(self):
-        if self.last_dilution_time is not None:
-            if self.last_dilution_time > datetime.now() - timedelta(minutes=10):
-                return False
-        if self.new_culture_data is None:
+    def is_time_to_dilute(self, verbose=False):
+        if verbose:
+            print("Running is_time_to_dilute method...")
+
+        # No OD data
+        if self.od is None:
+            if verbose:
+                print("No OD data. Not time to dilute.")
             return False
-        od_threshold = self.parameters["od_threshold"]
-        if self.last_dilution_time is None:
-            od_threshold = self.parameters["od_threshold_first_dilution"]
-        if self.new_culture_data.od > od_threshold:
+
+        # Not enough time has passed since last dilution
+        minutes_wait = 10
+        if self.last_dilution_time and self.last_dilution_time > datetime.now() - timedelta(minutes=minutes_wait):
+            if verbose:
+                print(f"Not updating {self.vial}, too soon after last dilution.")
+            return False
+
+        od_threshold = self.parameters["od_threshold"] if self.last_dilution_time else self.parameters[
+            "od_threshold_first_dilution"]
+        if self.od < od_threshold:
+            if verbose:
+                print("OD below threshold. Not time to dilute.")
+            return False
+        else:
+            if verbose:
+                print("OD above threshold and checks passed. Time to dilute.")
             return True
 
-    def is_time_to_increase_stress(self):
-        if self.last_dilution_time is None:
+    def is_time_to_increase_stress(self, verbose=False):
+        if self.last_dilution_time is None or self.growth_rate is None or self.last_stress_increase_generation is None:
+            if verbose:
+                print(
+                    "One or more of last dilution time, growth rate, or last stress increase generation is None. Not time to increase stress.")
             return False
-        stress_increase_delay_generations = self.parameters["stress_increase_delay_generations"]
-        if self.last_stress_increase_generation is None:
-            if self.generation > stress_increase_delay_generations:
-                return True
-        elif self.generation - self.last_stress_increase_generation > stress_increase_delay_generations:
-            stress_increase_tdoubling_min_hrs = self.parameters["stress_increase_tdoubling_min_hrs"]
-            if self.growth_rate is None:
-                return False
-            latest_t_doubling = np.log(2) / self.growth_rate
-            if latest_t_doubling < stress_increase_tdoubling_min_hrs:
-                return True
-        return False
 
-    def is_time_to_rescue(self):
+        stress_increase_delay_generations = self.parameters["stress_increase_delay_generations"]
+        if self.generation <= stress_increase_delay_generations or self.growth_rate <= 0:
+            if verbose:
+                print("Generation not greater than delay or growth rate not positive. Not time to increase stress.")
+            return False
+
+        if self.generation - self.last_stress_increase_generation <= stress_increase_delay_generations:
+            if verbose:
+                print(
+                    "Generation difference with last stress increase not greater than delay. Not time to increase stress.")
+            return False
+
+        stress_increase_tdoubling_min_hrs = self.parameters["stress_increase_tdoubling_min_hrs"]
+        latest_t_doubling = np.log(2) / self.growth_rate
+        if latest_t_doubling >= stress_increase_tdoubling_min_hrs:
+            if verbose:
+                print("Doubling time not below threshold. Not time to increase stress.")
+            return False
+
+        if verbose:
+            print("All conditions met. Time to increase stress.")
+        return True
+
+    def is_time_to_rescue(self, verbose=False):
         if self.last_dilution_time is None:
+            if verbose:
+                print("No last dilution time. Not time to rescue.")
+            return False
+        if self.growth_rate is None:
+            if verbose:
+                print("No growth rate. Not time to rescue.")
             return False
         stress_decrease_delay_hrs = self.parameters["stress_decrease_delay_hrs"]
-        if self.last_dilution_time < datetime.now() - timedelta(hours=stress_decrease_delay_hrs):
-            # stress_decrease_tdoubling_max_hrs
-            stress_decrease_tdoubling_max_hrs = self.parameters["stress_decrease_tdoubling_max_hrs"]
-            if self.growth_rate is None:
-                return False
-            latest_t_doubling = np.log(2) / self.growth_rate
-            if latest_t_doubling > stress_decrease_tdoubling_max_hrs:
-                return True
-        return False
+        if self.last_dilution_time > datetime.now() - timedelta(hours=stress_decrease_delay_hrs):
+            if verbose:
+                print("Last dilution too recent. Not time to rescue.")
+            return False
+        stress_decrease_tdoubling_max_hrs = self.parameters["stress_decrease_tdoubling_max_hrs"]
+        latest_t_doubling = np.log(2) / self.growth_rate
+        if 0 < latest_t_doubling < stress_decrease_tdoubling_max_hrs:
+            if verbose:
+                print("Doubling time is positive and below threshold. Not time to rescue.")
+            return False
+        else:
+            if verbose:
+                print("Doubling time is negative or above threshold. Time to rescue.")
+            return True
 
     def make_dilution(self, target_concentration=None):
         if target_concentration is None:
@@ -295,6 +337,7 @@ class Culture:
                                  pump1_volume=main_pump_volume,
                                  pump2_volume=drug_pump_volume,
                                  extra_vacuum=5)
+            self.last_dilution_time = datetime.now()
             self.log_pump_data(main_pump_volume, drug_pump_volume)
             self.calculate_generation_concentration_after_dil(main_pump_volume=main_pump_volume,
                                                               drug_pump_volume=drug_pump_volume)
@@ -303,7 +346,6 @@ class Culture:
                 self.experiment.locks[self.vial].release()
 
     def calculate_pump_volumes(self, target_concentration):
-
         volume_added = self.parameters["volume_added"]
         current_volume = self.parameters["volume_fixed"]
         current_concentration = self.drug_concentration
@@ -327,15 +369,15 @@ class Culture:
         v1 = v0 + main_pump_volume + drug_pump_volume
         dilution_factor = v1 / v0
         if self.generation is None:
-            self.generation = np.log2(dilution_factor)
+            generation = np.log2(dilution_factor)
         else:
-            self.generation += np.log2(dilution_factor)
+            generation = self.generation + np.log2(dilution_factor)
 
         stock_concentration_drug = self.experiment.model.parameters["stock_concentration_drug"]
 
         # Calculate the new drug concentration after dilution and adding drug
-        self.drug_concentration = ((v0 * self.drug_concentration) + (drug_pump_volume * stock_concentration_drug)) / v1
-        self.log_generation(self.generation, self.drug_concentration)
+        drug_concentration = ((v0 * self.drug_concentration) + (drug_pump_volume * stock_concentration_drug)) / v1
+        self.log_generation(generation, drug_concentration)  # also stores to self
         self.get_latest_data_from_db()  # TODO: speed up by not querying db again
 
 
