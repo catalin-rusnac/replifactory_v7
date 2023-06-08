@@ -1,4 +1,5 @@
 # experiment_routes.py
+import os
 import socket
 import sys
 import time
@@ -6,7 +7,7 @@ import time
 import sqlalchemy
 
 sys.path.insert(0, "../")
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, send_file
 from experiment.models import ExperimentModel, CultureData, db
 from experiment.experiment import Experiment
 
@@ -124,6 +125,14 @@ def delete_experiment(id):
 def get_hostname():
     hostname = socket.gethostname()
     return jsonify({'hostname': hostname})
+
+
+@experiment_routes.route('/download_db', methods=['GET'])
+def download_file():
+    script_dir = os.path.dirname(__file__)
+    rel_path = "../../db/replifactory.db"
+    abs_file_path = os.path.join(script_dir, rel_path)
+    return send_file(abs_file_path, as_attachment=True)
 
 
 @experiment_routes.route('/experiments/<int:experiment_id>/cultures/<int:id>', methods=['GET'])
