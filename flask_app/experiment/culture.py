@@ -237,6 +237,8 @@ class Culture:
             dilution_factor = volume_added + current_volume / current_volume
             stress_increase_factor = (dilution_factor + 1) / 2
             target_concentration = self.drug_concentration * stress_increase_factor
+            if target_concentration == 0:
+                target_concentration = self.parameters["stress_dose_first_dilution"]
         self.make_dilution(target_concentration=target_concentration)
         self.last_stress_increase_generation = self.generation
 
