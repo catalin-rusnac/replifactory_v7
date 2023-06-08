@@ -137,3 +137,8 @@ services-ctl: directories
 	@echo "Starting flask and vue services..."
 	sudo systemctl start flask.service
 	sudo systemctl start vue.service
+
+update:
+	git pull
+	make install
+	make kill
