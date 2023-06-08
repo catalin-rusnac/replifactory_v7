@@ -111,6 +111,7 @@ class Experiment:
             self.status = "running"
             self.experiment_worker = ExperimentWorker(self)
             self.device.stirrers.set_speed_all("high")
+            self.device.valves.close_all()
             self.make_schedule()
         else:
             print("Experiment is already running.")
@@ -146,7 +147,7 @@ class Experiment:
                     self.locks[vial].release()
         if self.experiment_worker.od_worker.queue.empty():
             self.experiment_worker.od_worker.queue.put(task)
-            print("Task to measure optical density in available vials queued for background execution.")
+            # print("Task to measure optical density in available vials queued for background execution.")
         else:
             print("Task to measure optical density already in queue. Skipping.")
 
@@ -181,7 +182,7 @@ class Experiment:
                 self.cultures[vial].update()
         if self.experiment_worker.dilution_worker.queue.empty():
             self.experiment_worker.dilution_worker.queue.put(task)
-            print("Task to update cultures queued for background execution.")
+            # print("Task to update cultures queued for background execution.")
         else:
             print("Task to update cultures already in queue. Skipping.")
 

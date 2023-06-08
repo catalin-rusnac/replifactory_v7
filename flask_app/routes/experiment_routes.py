@@ -135,6 +135,16 @@ def download_file():
     return send_file(abs_file_path, as_attachment=True)
 
 
+@experiment_routes.route('/update_software', methods=['GET'])
+def update_software():
+    os.system("git pull")
+    script_path = os.path.dirname(__file__)
+    makefile_dir = os.path.join(script_path, "../../")
+    os.system("make -C " + makefile_dir + " install")
+    os.system("make -C " + makefile_dir + " kill")
+    return jsonify({'message': 'Software updated successfully'})
+
+
 @experiment_routes.route('/experiments/<int:experiment_id>/cultures/<int:id>', methods=['GET'])
 def get_culture_data(experiment_id, id):
     culture = db.session.get(CultureData, id)

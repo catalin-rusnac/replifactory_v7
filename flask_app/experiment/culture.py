@@ -44,7 +44,7 @@ class Culture:
 
         self.drug_concentration = 0
         self.generation = 0
-        self.last_stress_increase_generation = None
+        self.last_stress_increase_generation = 0
         self.last_dilution_time = None
 
         self.new_culture_data = None
@@ -177,7 +177,7 @@ class Culture:
         reads last od values and calculates growth rate
         :return:
         """
-        od_dict, _ = self.get_last_ods(include_current=True)
+        od_dict, _ = self.get_last_ods(limit=200, include_current=True, since_pump=True)
         t = np.array(list(int(dt.timestamp()) for dt in od_dict.keys()))
         od = np.array(list(od_dict.values()))
         od[od <= 0] = 1e-6
@@ -238,6 +238,7 @@ class Culture:
             stress_increase_factor = (dilution_factor + 1) / 2
             target_concentration = self.drug_concentration * stress_increase_factor
         self.make_dilution(target_concentration=target_concentration)
+        self.last_stress_increase_generation = self.generation
 
     def is_time_to_dilute(self, verbose=False):
         if verbose:
@@ -351,7 +352,7 @@ class Culture:
         current_concentration = self.drug_concentration
         if current_concentration is None:
             current_concentration = 0
-        stock_concentration = self.experiment.model.parameters["stock_concentration_drug"]
+        stock_concentration = float(self.experiment.model.parameters["stock_concentration_drug"])
         total_volume = volume_added + current_volume
         drug_total_amount = total_volume * target_concentration
         drug_current_amount = current_volume * current_concentration
@@ -373,7 +374,7 @@ class Culture:
         else:
             generation = self.generation + np.log2(dilution_factor)
 
-        stock_concentration_drug = self.experiment.model.parameters["stock_concentration_drug"]
+        stock_concentration_drug = float(self.experiment.model.parameters["stock_concentration_drug"])
 
         # Calculate the new drug concentration after dilution and adding drug
         drug_concentration = ((v0 * self.drug_concentration) + (drug_pump_volume * stock_concentration_drug)) / v1

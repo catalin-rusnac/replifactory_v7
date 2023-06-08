@@ -3,7 +3,7 @@
     <!-- Add the button here -->
     <button @click="plotAllData">Plot</button>
 
-    <div v-for="vial in vials" :key="vial" :id="`vial-${vial}`"></div>
+    <div class="graph-container" v-for="vial in vials" :key="vial" :id="`vial-${vial}`"></div>
   </div>
 </template>
 
@@ -30,6 +30,7 @@ export default {
         return;
       }
       for (let vial of this.vials) {
+        console.log(this.currentExperiment,"currentExperiment")
         await this.fetchCulturePlot(vial);
         this.plotData(vial);
       }
@@ -57,13 +58,23 @@ export default {
         yaxis3: {
           title: 'Concentration',
           overlaying: 'y',
+          side: 'right',
+          position: 0.92,
+          automargin: true,
+        },
+        yaxis4: {
+          title: 'Growth Rate',
+          overlaying: 'y',
           side: 'left',
           position: 0.08,
           automargin: true,
         },
       };
 
-      Plotly.react(`vial-${vial}`, data, layout);
+      const graphDiv = document.getElementById(`vial-${vial}`);
+      if(graphDiv) {
+        Plotly.react(`vial-${vial}`, data, layout);
+      }
     },
   },
   mounted() {
@@ -73,5 +84,16 @@ export default {
 </script>
 
 <style scoped>
-/* Your styles here */
+#CulturePlot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.graph-container {
+  width: 90vw;
+  height: 80vh;
+}
 </style>
+
