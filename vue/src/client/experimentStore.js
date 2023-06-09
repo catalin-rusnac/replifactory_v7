@@ -1,14 +1,4 @@
-import axios from 'axios';
-
-let baseURL = window.location.origin + '/flask';
-
-if (process.env.NODE_ENV === 'development') {
-  baseURL = 'http://localhost:5000';
-}
-
-const flaskAxios = axios.create({
-  baseURL: baseURL
-});
+import api from '@/api';
 
 export default {
   namespaced: true,
@@ -43,7 +33,7 @@ export default {
   actions: {
     async fetchExperiments({ commit}) {
       console.log("fetchExperiments");
-      const response = await flaskAxios.get('/experiments');
+      const response = await api.get('/experiments');
       commit('setExperiments', response.data);
     },
     async fetchCulturePlot({ commit, state }, vial) {
@@ -52,7 +42,7 @@ export default {
         console.log('Current experiment or its plot data is not defined');
         return;
       }
-      const response = await flaskAxios.get(`/plot/${vial}`);
+      const response = await api.get(`/plot/${vial}`);
       const figure = response.data;
       commit('setExperimentPlotData', { data: JSON.parse(figure).data, vial }); // Parse the figure and extract data
     },
@@ -61,13 +51,13 @@ export default {
     async setCurrentExperimentAction({ commit, state }, experimentId) {
       console.log("setCurrentExperimentAction");
       if (experimentId !== state.currentExperiment.id) {
-        const response = await flaskAxios.get(`/experiments/${experimentId}`);
+        const response = await api.get(`/experiments/${experimentId}`);
         commit('setCurrentExperiment', response.data);
       }
     },
     async createExperiment({ dispatch}, experimentData) {
       console.log("createExperiment");
-      const response = await flaskAxios.post('/experiments', experimentData);
+      const response = await api.post('/experiments', experimentData);
       await dispatch('fetchExperiments');
       await dispatch('setCurrentExperimentAction', response.data.id);
       return response.data.id;
@@ -76,21 +66,21 @@ export default {
     async updateExperimentParameters({ commit, state }, {parameters }) {
       console.log("updateExperimentParameters", state.currentExperiment.id, parameters);
       commit('setCurrentExperimentParameters', parameters);
-      await flaskAxios.put(`/experiments/${state.currentExperiment.id}/parameters`, {parameters: state.currentExperiment.parameters});
+      await api.put(`/experiments/${state.currentExperiment.id}/parameters`, {parameters: state.currentExperiment.parameters});
     },
     async fetchCurrentExperiment({ commit }) {
       console.log("fetchCurrentExperiment");
-      const response = await flaskAxios.get('/experiments/current');
+      const response = await api.get('/experiments/current');
       commit('setCurrentExperiment', response.data);
     },
     async reloadExperimentParameters({commit,state}) {
-        const response = await flaskAxios.get(`/experiments/${state.currentExperiment.id}`);
+        const response = await api.get(`/experiments/${state.currentExperiment.id}`);
         commit('setCurrentExperiment', response.data);
     },
     async startExperiment({ dispatch }, experimentId) {
       console.log("startExperiment");
       try {
-        const response = await flaskAxios.put(`/experiments/${experimentId}/status`, { status: 'running' });
+        const response = await api.put(`/experiments/${experimentId}/status`, { status: 'running' });
         if (response.data.message) {
           // Handle success response
           console.log(response.data.message);
@@ -109,13 +99,13 @@ export default {
 
     async pauseExperiment({ dispatch,state }, experimentId) {
         if (state.currentExperiment.status === 'stopped') {
-            await flaskAxios.put(`/experiments/${experimentId}/status`, {status: 'running'});
+            await api.put(`/experiments/${experimentId}/status`, {status: 'running'});
         }
-        await flaskAxios.put(`/experiments/${experimentId}/status`, {status: 'paused'});
+        await api.put(`/experiments/${experimentId}/status`, {status: 'paused'});
         dispatch('reloadExperimentParameters');
     },
     async stopExperiment({ dispatch }, experimentId) {
-        await flaskAxios.put(`/experiments/${experimentId}/status`, {status: 'stopped'});
+        await api.put(`/experiments/${experimentId}/status`, {status: 'stopped'});
         dispatch('reloadExperimentParameters');
     },
 

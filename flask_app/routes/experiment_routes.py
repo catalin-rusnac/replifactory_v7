@@ -11,6 +11,8 @@ from flask import Blueprint, request, jsonify, current_app, send_file
 from experiment.models import ExperimentModel, CultureData, db
 from experiment.experiment import Experiment
 
+import io
+
 experiment_routes = Blueprint('experiment_routes', __name__)
 
 
@@ -135,13 +137,18 @@ def download_file():
     return send_file(abs_file_path, as_attachment=True)
 
 
+@experiment_routes.route('/get_info', methods=['GET'])
+def get_info():
+    return current_app.experiment.get_info()
+
 @experiment_routes.route('/update_software', methods=['GET'])
 def update_software():
-    os.system("git pull")
     script_path = os.path.dirname(__file__)
     makefile_dir = os.path.join(script_path, "../../")
-    os.system("make -C " + makefile_dir + " install")
-    os.system("make -C " + makefile_dir + " kill")
+    import subprocess
+
+    command = ["make", "-C", makefile_dir, "update-replifactory"]
+    subprocess.Popen(command, close_fds=True)
     return jsonify({'message': 'Software updated successfully'})
 
 
@@ -159,3 +166,17 @@ def get_culture_plot(vial):
     fig=current_app.experiment.cultures[vial].plot()
     fig_json = fig.to_json()
     return jsonify(fig_json)
+
+
+@experiment_routes.route("/capture")
+def capture_image():
+    stream = io.BytesIO()
+    from picamera import PiCamera
+    camera = PiCamera()
+    camera.start_preview()
+    camera.capture(stream, format='jpeg')
+    camera.stop_preview()
+
+    stream.seek(0)
+    camera.close()
+    return send_file(stream, mimetype='image/jpeg')

@@ -26,6 +26,7 @@ from .loading import load_config, load_object, save_object
 from .other import CultureDict
 from .device_data import default_device_data
 
+
 class BaseDevice:
     PORT_ADC = 0x68  # MCP3421A0  1101 000
     # PORT_ADC = 0x69  # MCP3421A1  1101 001
@@ -46,7 +47,7 @@ class BaseDevice:
         self.ftdi_address = ftdi_address
         self.directory = directory
 
-        self.active_pumps = (1, 4)
+        self.active_pumps = (1, 2, 4)
 
         self.dilution_worker = None
         self.od_worker = None

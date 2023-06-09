@@ -234,7 +234,7 @@ class Culture:
         else:
             volume_added = self.parameters["volume_added"]
             current_volume = self.parameters["volume_fixed"]
-            dilution_factor = volume_added + current_volume / current_volume
+            dilution_factor = (volume_added + current_volume) / current_volume
             stress_increase_factor = (dilution_factor + 1) / 2
             target_concentration = self.drug_concentration * stress_increase_factor
             if target_concentration == 0:
@@ -271,7 +271,14 @@ class Culture:
             return True
 
     def is_time_to_increase_stress(self, verbose=False):
-        if self.last_dilution_time is None or self.growth_rate is None or self.last_stress_increase_generation is None:
+        if verbose:
+            print("Running is_time_to_increase_stress method...")
+        if self.growth_rate is None or self.last_stress_increase_generation is None or self.last_dilution_time is None:
+            if self.od > self.parameters["od_threshold"]:
+                if verbose:
+                    print("One or more of last dilution time, growth rate, or last stress increase generation is None. But OD above threshold, first dilution time. Time to increase stress.")
+                return True
+
             if verbose:
                 print(
                     "One or more of last dilution time, growth rate, or last stress increase generation is None. Not time to increase stress.")
@@ -289,11 +296,11 @@ class Culture:
                     "Generation difference with last stress increase not greater than delay. Not time to increase stress.")
             return False
 
-        stress_increase_tdoubling_min_hrs = self.parameters["stress_increase_tdoubling_min_hrs"]
+        stress_increase_tdoubling_max_hrs = self.parameters["stress_increase_tdoubling_max_hrs"]
         latest_t_doubling = np.log(2) / self.growth_rate
-        if latest_t_doubling >= stress_increase_tdoubling_min_hrs:
+        if latest_t_doubling >= stress_increase_tdoubling_max_hrs:
             if verbose:
-                print("Doubling time not below threshold. Not time to increase stress.")
+                print("Doubling time too high. Not time to increase stress.")
             return False
 
         if verbose:
@@ -301,6 +308,7 @@ class Culture:
         return True
 
     def is_time_to_rescue(self, verbose=False):
+        print("Running is_time_to_rescue method...")
         if self.last_dilution_time is None:
             if verbose:
                 print("No last dilution time. Not time to rescue.")

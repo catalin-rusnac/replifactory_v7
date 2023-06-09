@@ -38,9 +38,9 @@ export default {
         od_threshold_first_dilution: "The optical density (OD) threshold for the culture to be diluted for the first time.",
         stress_dose_first_dilution: "The resulting stress dose after the first dilution.",
         stress_increase_delay_generations: "The number of generations to wait before increasing the stress dose.",
-        stress_increase_tdoubling_min_hrs: "The minimum culture doubling time in hours (hrs) for an increase in stress dose to be allowed.",
+        stress_increase_tdoubling_max_hrs: "The maximum culture doubling time in hours (hrs) for an increase in stress dose to be allowed.",
         stress_decrease_delay_hrs: "How long to wait before decreasing the stress dose if the culture does not reach the <i>od_threshold</i>.",
-        stress_decrease_tdoubling_max_hrs: "The maximum culture doubling time in hours (hrs) for a decrease in stress dose to be allowed. If the doubling time is lower than this value, the culture is considered healthy and the stress dose will not be decreased.",
+        stress_decrease_tdoubling_min_hrs: "The minimum culture doubling time in hours (hrs) for a decrease in stress dose to be allowed. If the doubling time is lower than this value, the culture is considered healthy and the stress dose will not be decreased.",
       },
     };
   },

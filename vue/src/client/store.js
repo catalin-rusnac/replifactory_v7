@@ -2,21 +2,9 @@ import Vue from 'vue';
 import Vuex from 'vuex';
 import device from './deviceStore.js';
 import experiment from './experimentStore.js';
-
 Vue.use(Vuex);
 
-import axios from 'axios';
-
-let baseURL = window.location.origin + '/flask';
-
-if (process.env.NODE_ENV === 'development') {
-  baseURL = 'http://localhost:5000';
-}
-
-const flaskAxios = axios.create({
-  baseURL: baseURL
-});
-
+import api from '@/api.js';
 export default new Vuex.Store({
   state:{deviceConnected: false,
   deviceControlEnabled: true,
@@ -40,7 +28,7 @@ export default new Vuex.Store({
         },
   actions: {
       async fetchHostname({ commit }) {
-        const response = await flaskAxios.get('/hostname');
+        const response = await api.get('/hostname');
         commit('setHostname', response.data.hostname);
     },
     async connectDevice({ dispatch, commit }) {

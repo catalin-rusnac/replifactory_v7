@@ -21,10 +21,10 @@ culture_parameters = {"name": "Species 1",
                       "stress_dose_first_dilution": 2.0,
 
                       "stress_increase_delay_generations": 3.0,
-                      "stress_increase_tdoubling_min_hrs": 4,
+                      "stress_increase_tdoubling_max_hrs": 4,
 
                       "stress_decrease_delay_hrs": 16,
-                      "stress_decrease_tdoubling_max_hrs": 24,
+                      "stress_decrease_tdoubling_min_hrs": 24,
                       }
 default_parameters['cultures'] = {i: culture_parameters for i in range(1, 8)}
 

@@ -1,18 +1,4 @@
-import axios from 'axios';
-
-// window.location.origin + '/flask',
-
-let baseURL = window.location.origin + '/flask'
-
-if (process.env.NODE_ENV === 'development') {
-    baseURL = 'http://localhost:5000';
-}
-
-const flaskAxios = axios.create({
-  baseURL: baseURL
-});
-console.log("Created flaskAxios with baseURL: " + window.location.origin + '/flask',);
-
+import api from '@/api.js';
 
 export default {
   namespaced: true,
@@ -233,7 +219,7 @@ mutations: {
         }
 
         return new Promise((resolve, reject) => {
-            flaskAxios.post(endpoint, { partIndex, newCalibration })
+            api.post(endpoint, { partIndex, newCalibration })
             .then(response => {
             if (response.data.success) {
                 console.log(response.data, "response.data from setpartcalibrationaction")
@@ -256,7 +242,7 @@ mutations: {
         const endpoint = `/measure-od-calibration`;
 
         return new Promise((resolve, reject) => {
-            flaskAxios.post(endpoint, { odValue: parseFloat(odValue) })
+            api.post(endpoint, { odValue: parseFloat(odValue) })
                 .then(response => {
                     if (response.data.success) {
                         dispatch('getAllDeviceData').then(() => {
@@ -278,7 +264,7 @@ mutations: {
             const endpoint = `/start-pump-calibration-sequence`;
             console.log("startPumpCalibrationSequence", payload);
             return new Promise((resolve, reject) => {
-                flaskAxios.post(endpoint, { pumpId, rotations, iterations })
+                api.post(endpoint, { pumpId, rotations, iterations })
                     .then(response => {
                         if (response.data.success) {
                             dispatch('setPartStateAction', { devicePart:devicePart, partIndex:pumpId, newState: "stopped" }).then(() => {
@@ -302,7 +288,7 @@ mutations: {
       commit('setPartState', { devicePart, partIndex, newState: newState});
 
       return new Promise((resolve, reject) => {
-        flaskAxios.post(`${endpoint}`, { partIndex, newState, input })
+        api.post(`${endpoint}`, { partIndex, newState, input })
           .then(response => {
             if (response.data.success) {
               resolve();
@@ -319,8 +305,8 @@ mutations: {
 
     connect() {
         return new Promise((resolve, reject) => {
-            console.log("connect device request", flaskAxios);
-            flaskAxios.post('/connect-device')
+            console.log("connect device request", api);
+            api.post('/connect-device')
                 .then(response => {
                     if (response.data.success) {
                         resolve(response); // Resolve the response so that it can be used in the connectDevice action
@@ -337,7 +323,7 @@ mutations: {
     },
     getAllDeviceData({ commit }) {
         return new Promise((resolve, reject) => {
-            flaskAxios.get('/get-all-device-data')
+            api.get('/get-all-device-data')
             .then(response => {
                 if (response.data.success) {
                     commit('setAllDeviceStates', response.data.device_states);
@@ -358,7 +344,7 @@ mutations: {
       const endpoint = `/measure-${devicePart}`;
 
       return new Promise((resolve, reject) => {
-        flaskAxios.post(endpoint, { partIndex })
+        api.post(endpoint, { partIndex })
           .then(response => {
             if (response.data.success) {
                 commit('setAllDeviceStates', response.data.device_states);

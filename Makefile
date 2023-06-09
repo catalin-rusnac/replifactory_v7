@@ -138,7 +138,7 @@ services-ctl: directories
 	sudo systemctl start flask.service
 	sudo systemctl start vue.service
 
-update:
+update-replifactory:
 	git pull
 	make install
 	make kill

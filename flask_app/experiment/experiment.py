@@ -2,6 +2,10 @@ import traceback
 import threading
 import time
 import queue
+
+import sys
+import io
+from pprint import pformat, pprint
 import schedule
 from experiment.models import CultureData
 from .culture import Culture
@@ -19,7 +23,7 @@ class ExperimentWorker:
     def run_loop(self):
         print('Experiment worker started')
         while True:
-            status = self.experiment.get_experiment_status()
+            status = self.experiment.get_status()
             if status == 'stopped':
                 print('Experiment worker stopped. Stopping OD and dilution workers')
                 self.stop()
@@ -205,7 +209,6 @@ class Experiment:
                 self.device.stirrers.set_speed(vial=vial, speed="high")
         return measured_od_values
 
-
     def make_schedule(self):
         print("Making schedule")
         self.schedule.clear()
@@ -214,6 +217,48 @@ class Experiment:
         # self.schedule.every().minute.at(":20").do(self.measure_od_in_background)
         # self.schedule.every().minute.at(":40").do(self.measure_od_in_background)
 
-    def get_experiment_status(self):
+    def get_status(self):
         # Simulated method to get experiment status from database
         return self.status
+    def get_info(self):
+        # Simulated method to get experiment status from database
+        # Create a StringIO object to capture output
+        buffer = io.StringIO()
+        sys.stdout = buffer
+
+        try:
+            for vial in range(1, 8):
+                c = self.cultures[vial]
+                pprint(object_to_dict(c))
+                c.is_time_to_dilute(verbose=True)
+                c.is_time_to_rescue(verbose=True)
+                c.is_time_to_increase_stress(verbose=True)
+            if self.device is not None:
+                pprint(object_to_dict(self.device.__dict__))
+            else:
+                print("Device is None")
+            pprint(object_to_dict(self.__dict__))
+        finally:
+            # Restore sys.stdout
+            sys.stdout = sys.__stdout__
+        # Get the output string from the buffer
+        text = buffer.getvalue()
+        buffer.close()
+        return text
+
+
+def object_to_dict(obj):
+    if not hasattr(obj, "__dict__"):
+        return repr(obj)
+    result = {}
+
+    for key, value in obj.__dict__.items():
+        if isinstance(value, dict):
+            # if the value is a dictionary, we represent it as a multi-line string
+            value = '\n'.join([f'{k}: {v}' for k, v in value.items()])
+        else:
+            value = repr(value)  # Otherwise, we use repr to get a string representation of the attribute value
+
+        result[key] = value
+
+    return result

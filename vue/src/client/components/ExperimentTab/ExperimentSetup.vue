@@ -100,6 +100,9 @@
 
 <!--      <ExperimentChart/>-->
     </div>
+    <div v-else>
+      No active experiment
+    </div>
   </div>
 </template>
 

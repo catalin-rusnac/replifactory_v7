@@ -11,6 +11,7 @@
       <DeviceControl v-if="currentTab === 'Device'" />
       <NgrokTab v-if="currentTab === 'Remote'" />
       <HelpTab v-if="currentTab === 'Help'" />
+      <StatusTab v-if="currentTab === 'Status'"/>
     </div>
   </div>
 </template>
@@ -23,6 +24,8 @@ import DeviceControl from './components/DeviceControl/DeviceControl';
 import ExperimentTab from "@/client/components/ExperimentTab/ExperimentTab";
 import NgrokTab from "@/client/components/Remote/NgrokTab";
 import HelpTab from "@/client/components/HelpTab/HelpTab";
+import StatusTab from "@/client/components/StatusTab/StatusTab";
+
 export default {
   name: 'App',
   computed: {
@@ -37,12 +40,13 @@ export default {
     ExperimentTab,
     DeviceControl,
     NgrokTab,
-    HelpTab
+    HelpTab,
+    StatusTab
   },
   data() {
     return {
       currentTab: 'Experiment',
-      tabs: ['Experiment', 'Device', 'Remote', 'Help']
+      tabs: ['Experiment', 'Device', 'Remote', 'Help', "Status"]
     };
   },
 };
