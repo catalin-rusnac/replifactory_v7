@@ -180,6 +180,8 @@ class Culture:
         od_dict, _ = self.get_last_ods(limit=200, include_current=True, since_pump=True)
         t = np.array(list(int(dt.timestamp()) for dt in od_dict.keys()))
         od = np.array(list(od_dict.values()))
+        t = t[~np.isnan(od)]
+        od = od[~np.isnan(od)]
         od[od <= 0] = 1e-6
         timepoint, mu, error = calculate_last_growth_rate(t, od)
         if np.isfinite(mu):

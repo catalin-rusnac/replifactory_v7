@@ -116,6 +116,7 @@ class Experiment:
             self.experiment_worker = ExperimentWorker(self)
             self.device.stirrers.set_speed_all("high")
             self.device.valves.close_all()
+            self.device.eeprom.save_config_to_eeprom()
             self.make_schedule()
         else:
             print("Experiment is already running.")

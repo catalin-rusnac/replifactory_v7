@@ -28,6 +28,7 @@ def create_experiment():
     db.session.commit()
     return jsonify({'id': experiment_model.id}), 201
 
+
 @experiment_routes.route('/experiments/<int:id>', methods=['GET'])
 def get_experiment(id):
     experiment_model = db.session.get(ExperimentModel, id)
@@ -44,6 +45,7 @@ def get_experiment(id):
         return jsonify(experiment_model.to_dict())
     else:
         return jsonify({'error': 'Experiment not found'}), 404
+
 
 @experiment_routes.route('/experiments', methods=['GET'])
 def get_experiments():
