@@ -179,13 +179,18 @@ class Culture:
         """
         od_dict, _ = self.get_last_ods(limit=200, include_current=True, since_pump=True)
         t = np.array(list(int(dt.timestamp()) for dt in od_dict.keys()))
-        od = np.array(list(od_dict.values()))
-        t = t[~np.isnan(od)]
-        od = od[~np.isnan(od)]
-        od[od <= 0] = 1e-6
-        timepoint, mu, error = calculate_last_growth_rate(t, od)
-        if np.isfinite(mu):
-            self.new_culture_data.growth_rate = mu
+
+        # Ensure the OD values are floats before creating numpy array
+        od = np.array([float(value) if value is not None else np.nan for value in od_dict.values()])
+
+        # Check for NaN values
+        if np.issubdtype(od.dtype, np.number):
+            t = t[~np.isnan(od)]
+            od = od[~np.isnan(od)]
+            od[od <= 0] = 1e-6
+            timepoint, mu, error = calculate_last_growth_rate(t, od)
+            if np.isfinite(mu):
+                self.new_culture_data.growth_rate = mu
 
     def get_last_ods(self, limit=100, include_current=False, since_pump=False):
         culture_data = self.db.session.query(CultureData).filter(
