@@ -2,7 +2,6 @@ import os
 import socket
 import sys
 from flask import Blueprint, jsonify, send_file
-import cv2
 import io
 
 sys.path.insert(0, "../")
@@ -11,10 +10,17 @@ sys.path.insert(0, "../")
 service_routes = Blueprint('service_routes', __name__)
 
 
-
-
 @service_routes.route("/capture")
 def capture_image():
+    try:
+        return capture_image_pi()
+    except:
+        return capture_image_cv2()
+
+
+@service_routes.route("/capture_cv2")
+def capture_image_cv2():
+    import cv2
     cap = cv2.VideoCapture(0)
     ret, frame = cap.read()
     cap.release()
@@ -27,9 +33,9 @@ def capture_image():
 
 
 @service_routes.route("/picapture")
-def capture_image():
-    stream = io.BytesIO()
+def capture_image_pi():
     from picamera import PiCamera
+    stream = io.BytesIO()
     camera = PiCamera()
     camera.start_preview()
     camera.capture(stream, format='jpeg')
