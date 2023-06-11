@@ -91,7 +91,7 @@ updatepath:
 		echo "PATH already contains /home/pi/.local/bin. No changes made."; \
 	else \
 		echo "export PATH=\$$PATH:/home/pi/.local/bin" >> ~/.bashrc; \
-		source ~/.bashrc; \
+		. ~/.bashrc; \
 	fi
 
 kill: kill-flask kill-express

@@ -6,10 +6,6 @@
       <CButton color="info" class="mr-3" @click="capture_image">
         <CIcon name="cil-camera"></CIcon> Camera
       </CButton>
-      <!-- PiCamera button -->
-      <CButton color="info" class="mr-3" @click="picapture_image">
-        <CIcon name="cil-camera"></CIcon> PiCamera
-      </CButton>
       <!-- Download button -->
       <CButton color="success" class="mr-3" @click="download_db">
         <CIcon name="cil-download"></CIcon> Download DB
@@ -102,21 +98,6 @@ export default {
         .catch(error => {
           console.error(error);
           // handle the error
-        });
-    },
-
-    picapture_image: function() {
-      api.get('/picapture', { responseType: 'arraybuffer' })
-        .then(response => {
-          const base64 = btoa(
-            new Uint8Array(response.data)
-              .reduce((data, byte) => data + String.fromCharCode(byte), '')
-          );
-
-          this.camera_image = 'data:image/jpeg;base64,' + base64;
-        })
-        .catch(error => {
-          console.error(error);
         });
     },
 
