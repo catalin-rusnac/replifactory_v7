@@ -97,10 +97,10 @@ updatepath:
 kill: kill-flask kill-express
 
 kill-express:
-	sudo fuser -k 3000/tcp
+	sudo fuser -k 3000/tcp & disown
 
 kill-flask:
-	sudo fuser -k 5000/tcp
+	sudo fuser -k 5000/tcp & disown
 
 directories:
 	@chmod 777 ./
