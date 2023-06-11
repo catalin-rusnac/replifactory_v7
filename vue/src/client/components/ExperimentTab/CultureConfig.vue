@@ -32,8 +32,8 @@ export default {
       tooltips: {
         name: "The name of the culture. For example, <i>Escherichia coli</i> or <i>Saccharomyces cerevisiae</i>.",
         description: "A description of the culture. For example, <i>MG1655</i> or <i>BY4741</i>.",
-        volume_fixed: "The fixed volume of the culture in milliliters (mL).",
-        volume_added: "The total media volume added to the culture at a dilution step in milliliters (mL).",
+        volume_fixed: "The fixed volume of the culture in milliliters (below the waste needle).",
+        volume_added: "The total media volume added to the culture at a dilution step in milliliters.",
         od_threshold: "The optical density (OD) threshold for the culture to be diluted.",
         od_threshold_first_dilution: "The optical density (OD) threshold for the culture to be diluted for the first time.",
         stress_dose_first_dilution: "The resulting stress dose after the first dilution.",

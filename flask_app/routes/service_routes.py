@@ -1,18 +1,32 @@
 import os
 import socket
-import io
-
 import sys
+from flask import Blueprint, jsonify, send_file
+import cv2
+import io
 
 sys.path.insert(0, "../")
 
-from flask import Blueprint, jsonify, send_file
 
 service_routes = Blueprint('service_routes', __name__)
 
 
 
+
 @service_routes.route("/capture")
+def capture_image():
+    cap = cv2.VideoCapture(0)
+    ret, frame = cap.read()
+    cap.release()
+    if not ret:
+        return jsonify({"error": "Failed to capture image"}), 500
+
+    _, img_encoded = cv2.imencode('.jpg', frame)
+    stream = io.BytesIO(img_encoded.tostring())
+    return send_file(stream, mimetype='image/jpeg', as_attachment=False)
+
+
+@service_routes.route("/picapture")
 def capture_image():
     stream = io.BytesIO()
     from picamera import PiCamera
@@ -23,7 +37,7 @@ def capture_image():
 
     stream.seek(0)
     camera.close()
-    return send_file(stream, mimetype='image/jpeg')
+    return send_file(stream, mimetype='image/jpeg', as_attachment=False)
 
 
 @service_routes.route('/update_software', methods=['GET'])
@@ -31,10 +45,26 @@ def update_software():
     script_path = os.path.dirname(__file__)
     makefile_dir = os.path.join(script_path, "../../")
     import subprocess
+    update_log = os.path.join(script_path, "../../logs/update.log")
+    # open the log file in write mode, this will overwrite the old log each time
+    with open(update_log, "w+") as f:
+        command = ["make", "-C", makefile_dir, "update-replifactory"]
+        # run the command and redirect stdout and stderr to the log file
+        subprocess.Popen(command, stdout=f, stderr=subprocess.STDOUT, close_fds=True)
 
-    command = ["make", "-C", makefile_dir, "update-replifactory"]
-    subprocess.Popen(command, close_fds=True)
     return jsonify({'message': 'Software updated successfully'})
+
+
+@service_routes.route('/update_log', methods=['GET'])
+def update_log():
+    try:
+        script_path = os.path.dirname(__file__)
+        update_log = os.path.join(script_path, "../../logs/update.log")
+        with open(update_log, "r") as f:
+            log_content = f.read()
+        return jsonify({'update_log': log_content})
+    except FileNotFoundError:
+        return jsonify({'error': 'Log file not found'}), 404
 
 
 @service_routes.route('/hostname', methods=['GET'])

@@ -102,10 +102,6 @@ kill-express:
 kill-flask:
 	sudo fuser -k 5000/tcp
 
-update:
-	git pull
-	sudo systemctl restart flask.service
-
 directories:
 	@chmod 777 ./
 	@if [ ! -d "logs" ]; then \
