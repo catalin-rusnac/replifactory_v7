@@ -92,7 +92,17 @@ class Culture:
 
         if latest_culture_data is not None:
             self.od = latest_culture_data.od
-            self.growth_rate = latest_culture_data.growth_rate
+            if latest_culture_data.growth_rate is not None:
+                self.growth_rate = latest_culture_data.growth_rate
+            else:
+                latest_generation_data = self.db.session.query(CultureGenerationData).filter(
+                    CultureGenerationData.experiment_id == self.experiment.model.id,
+                    CultureGenerationData.vial_number == self.vial).order_by(
+                    CultureGenerationData.timestamp.desc()).limit(20).all()
+                for d in latest_generation_data:
+                    if d.growth_rate is not None:
+                        self.growth_rate = d.growth_rate
+                        break
 
             # load latest drug increase
         gen_data = self.db.session.query(CultureGenerationData).filter(
