@@ -1,7 +1,8 @@
 <template>
   <div id="CulturePlot">
     <!-- Add the button here -->
-    <button @click="plotAllData">Plot</button>
+    <CButton color="success" @click="plotAllData" class="mt-3 ml-3">Plot</CButton>
+
 
     <div class="graph-container" v-for="vial in vials" :key="vial" :id="`vial-${vial}`"></div>
   </div>
@@ -10,8 +11,12 @@
 <script>
 import Plotly from 'plotly.js';
 import { mapActions, mapState } from 'vuex';
+import {CButton} from "@coreui/vue";
 
 export default {
+  components: {
+    CButton,
+  },
   name: "ExperimentChart",
   computed: {
     ...mapState('experiment', ['plot_data', 'currentExperiment']),
@@ -94,6 +99,10 @@ export default {
 .graph-container {
   width: 90vw;
   height: 80vh;
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  align-items: center;
 }
 </style>
 

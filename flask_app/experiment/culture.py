@@ -162,7 +162,8 @@ class Culture:
         self.is_time_to_rescue(verbose=True)
         self.is_time_to_increase_stress(verbose=True)
         print("Growth rate:", self.growth_rate, "1/h")
-        print("Doubling time:", np.log(2) / self.growth_rate, "h")
+        if self.growth_rate is not None:
+            print("Doubling time:", np.log(2) / self.growth_rate, "h")
 
     def log_od(self, od=None):
         self.od = od

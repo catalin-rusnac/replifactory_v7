@@ -11,7 +11,7 @@
 
   <div class="experiment-setup">
     <div class="d-flex">
-      <CFormFloating class="flex-grow-1">
+      <CFormFloating class="flex-grow-1 mt-3">
         <CFormSelect
           v-model="currentExperimentId"
           id="floatingSelect"
@@ -24,11 +24,44 @@
           </option>
         </CFormSelect>
       </CFormFloating>
-      <CButton color="primary" @click="handleNewExperimentButton" class="ml-3">+</CButton>
+      <CButton color="primary" @click="handleNewExperimentButton" class="mt-3 ml-3">+</CButton>
+
+      <div class="button-container flex-grow-1 ml-5 d-flex align-items-stretch">
+        <CButton class="mt-3 ml-3 flex-grow-1 d-flex align-items-center"
+          :class="{ 'active': currentExperiment.status === 'running' }"
+          :style="{ 'background-color': currentExperiment.status === 'running' ? '#28a745' : 'transparent' }"
+          @click="startExperiment()"
+          color="success"
+          title="Start the experiment loop - measure OD every minute and dilute the cultures as necessary, according to the parameters."
+        >
+          Start
+        </CButton>
+        <CButton class="mt-3 ml-3 flex-grow-1 d-flex align-items-center"
+          :class="{ 'active': currentExperiment.status === 'paused' }"
+          :style="{ 'background-color': currentExperiment.status === 'paused' ? '#ffc107' : 'transparent' }"
+          @click="pauseExperiment()"
+          title = "Pause the dilutions, but keep measuring the OD every minute."
+          color="warning"
+        >
+          Pause
+        </CButton>
+        <CButton class="mt-3 ml-3 flex-grow-1 d-flex align-items-center"
+         :class="{ 'active': currentExperiment.status === 'stopped' }"
+          :style="{ 'background-color': currentExperiment.status === 'stopped' ? '#dc3545' : 'transparent' }"
+          @click="stopExperiment()"
+          @dblclick="forceStopExperiment()"
+          color="danger"
+          title = "Stop gracefully - wait for the current dilution to finish."
+        >
+          Stop
+        </CButton>
+      </div>
+
+
     </div>
 
     <div v-if="showCreate" class="d-flex">
-      <CFormFloating class="flex-grow-1" v-if="showCreate" >
+      <CFormFloating class="flex-grow-1 mt-3" v-if="showCreate" >
         <CFormInput
             :model-value="newExperimentname"
           @update:model-value="v => newExperimentname = v"
@@ -37,47 +70,22 @@
         />
       </CFormFloating>
 
-      <CButton color="success" @click="createAndSelectExperiment" class="ml-3">Create Experiment</CButton>
+      <CButton color="success" @click="createAndSelectExperiment" class="ml-3 mt-3">Create Experiment</CButton>
     </div>
 
-    <div v-if="currentExperiment">
 <!--      <h3>Current Experiment:</h3>-->
 <!--      <p>{{ currentExperiment.name ?? "No Experiment Selected" }}</p>-->
-      <div class="button-container">
-        <CButton
-          :class="{ 'active': currentExperiment.status === 'running' }"
-          :style="{ 'background-color': currentExperiment.status === 'running' ? '#28a745' : 'transparent' }"
-          @click="startExperiment()"
-          color="success"
-        >
-          Start
-        </CButton>
-        <CButton
-          :class="{ 'active': currentExperiment.status === 'paused' }"
-          :style="{ 'background-color': currentExperiment.status === 'paused' ? '#ffc107' : 'transparent' }"
-          @click="pauseExperiment()"
-          color="warning"
-        >
-          Pause
-        </CButton>
-        <CButton
-          :class="{ 'active': currentExperiment.status === 'stopped' }"
-          :style="{ 'background-color': currentExperiment.status === 'stopped' ? '#dc3545' : 'transparent' }"
-          @click="stopExperiment()"
-          color="danger"
-        >
-          Stop
-        </CButton>
-      </div>
 
 
 
-      <div class="experiment-parameters" style="align-items: center; display: flex; flex-direction: column; margin-top: 20px;">
+    <div v-if="currentExperiment">
+
+      <div class="experiment-parameters mt-3" style="align-items: center; display: flex; flex-direction: column;">
 
 
-        <div class="bottle-parameters" style="display: flex; flex-direction: row; margin:20px;">
+        <div class="bottle-parameters" style="display: flex; flex-direction: row;">
         <template v-for="(value, key) in currentExperiment.parameters" :key="key" >
-        <CFormFloating class="flex-grow-1" v-if="key !== 'cultures'">
+        <CFormFloating class="flex-grow-1 ml-3" v-if="key !== 'cultures'">
                 <CFormInput
         :class="{ 'active': currentExperiment.status !== 'running' }"
         :model-value="value"
@@ -86,16 +94,19 @@
         :floating-label="`${key}`"
         :placeholder="`Enter ${key}`"
         :readonly="currentExperiment.status === 'running'"
-        @change="handleInputChange(key, $event.target.value)"
-
-      />
+        @change="handleInputChange(key, $event.target.value)"/>
         </CFormFloating>
-      </template>
-      </div>
+        </template>
+        </div>
 
 
-
-      <div class = "experiment-cultures" v-if="Object.keys(currentExperiment?.parameters?.cultures || {}).length > 0">
+        <CAccordion class="mt-3">
+      <CAccordionItem visible="false">
+        <CAccordionHeader >
+          <CButton block variant="link" color="primary">Experiment Culture Parameters</CButton>
+        </CAccordionHeader>
+        <CAccordionBody>
+      <div class = "experiment-cultures mt-3" v-if="Object.keys(currentExperiment?.parameters?.cultures || {}).length > 0">
           <CRow class="culture-row">
             <CCol
               v-for="(culture, index) in currentExperiment.parameters.cultures"
@@ -106,19 +117,21 @@
             </CCol>
           </CRow>
         </div>
-      </div>
+          </CAccordionBody>
+      </CAccordionItem>
+    </CAccordion>
 
-<!--      <ExperimentChart/>-->
+
+
+      </div>
     </div>
-    <div v-else>
-      No active experiment
-    </div>
+
   </div>
 </template>
 
 <script>
 import { mapActions, mapState } from "vuex";
-import { CButton, CFormFloating, CFormInput, CFormSelect, CRow, CCol, CToast, CToastBody, CToastHeader } from '@coreui/vue';
+import { CButton, CFormFloating, CFormInput, CFormSelect, CRow, CCol, CToast, CToastBody, CToastHeader, CAccordion, CAccordionBody, CAccordionHeader, CAccordionItem } from "@coreui/vue";
 import CultureConfig from './CultureConfig.vue';
 // import ExperimentChart from './ExperimentChart.vue';
 
@@ -135,7 +148,12 @@ export default {
     CCol,
     CToast,
     CToastBody,
-    CToastHeader
+    CToastHeader,
+    CAccordion,
+    CAccordionBody,
+    CAccordionHeader,
+    CAccordionItem,
+
   },
   data() {
     return {
@@ -205,7 +223,18 @@ export default {
 </script>
 
 <style scoped>
+.experiment-setup {
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  align-items: center;
 
+}
+ .button-container {
+    display: flex;
+    justify-content: center; /* Align items along the main axis */
+    align-items: center; /* Align items along the cross axis */
+  }
 .experiment-cultures {
   display: flex;
   justify-content: center;

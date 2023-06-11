@@ -1,7 +1,7 @@
 <template>
   <div>
     <!-- Button Row -->
-    <div class="d-flex justify-content-start">
+    <div class="d-flex justify-content-start mt-3">
       <!-- Camera button -->
       <CButton color="info" class="mr-3" @click="capture_image">
         <CIcon name="cil-camera"></CIcon> Camera
@@ -18,13 +18,14 @@
 
     <!-- Image display -->
     <div class="mt-3">
-      <img :src="camera_image" alt="Camera image" class="img-fluid">
+      <img :src="camera_image" class="img-fluid">
     </div>
 
     <!-- Display status text field -->
     <div class="mt-3" v-html="status_text"></div>
   </div>
 </template>
+
 
 
 <script>

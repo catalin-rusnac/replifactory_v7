@@ -46,8 +46,8 @@ def capture_image_pi():
     return send_file(stream, mimetype='image/jpeg', as_attachment=False)
 
 
-@service_routes.route('/update_software', methods=['GET'])
-def update_software():
+@service_routes.route('/update_replifactory', methods=['GET'])
+def update_replifactory():
     script_path = os.path.dirname(__file__)
     makefile_dir = os.path.join(script_path, "../../")
     import subprocess

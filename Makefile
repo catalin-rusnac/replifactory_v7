@@ -97,10 +97,10 @@ updatepath:
 kill: kill-flask kill-express
 
 kill-express:
-	sudo fuser -k 3000/tcp & disown
+	sudo nohup fuser -k 3000/tcp
 
 kill-flask:
-	sudo fuser -k 5000/tcp & disown
+	sudo nohup fuser -k 5000/tcp
 
 directories:
 	@chmod 777 ./
@@ -133,6 +133,7 @@ services-ctl: directories
 	@echo "Starting flask and vue services..."
 	sudo systemctl start flask.service
 	sudo systemctl start vue.service
+
 
 update-replifactory:
 	git pull
