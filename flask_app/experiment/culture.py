@@ -98,13 +98,61 @@ class Culture:
         gen_data = self.db.session.query(CultureGenerationData).filter(
             CultureGenerationData.experiment_id == self.experiment.model.id,
             CultureGenerationData.vial_number == self.vial
-        ).order_by(CultureGenerationData.timestamp.desc()).limit(20).all()
+        ).order_by(CultureGenerationData.timestamp).all()
+        if len(gen_data) > 0:
+            last_stress_increase_generation = gen_data[0].generation
+            for i in range(len(gen_data) - 1):
+                if gen_data[i + 1].drug_concentration > gen_data[i].drug_concentration:
+                    last_stress_increase_generation = gen_data[i + 1].generation
+            self.last_stress_increase_generation = last_stress_increase_generation
+
+    def get_data_at_timepoint(self, timepoint):
+        self.parameters = AutoCommitDict(
+            self.experiment.model.parameters["cultures"][str(self.vial)],
+            vial=self.vial,
+            db_session=self.experiment.db.session,
+            experiment_model=self.experiment.model)
+
+        # Get the last culture data for this culture
+        latest_culture_data = self.db.session.query(CultureData).filter(
+            CultureData.experiment_id == self.experiment.model.id,
+            CultureData.vial_number == self.vial,
+            CultureData.timestamp <= timepoint).order_by(CultureData.timestamp.desc()).first()
+
+        # Get the last generation data for this culture
+        latest_generation_data = self.db.session.query(CultureGenerationData).filter(
+            CultureGenerationData.experiment_id == self.experiment.model.id,
+            CultureGenerationData.vial_number == self.vial,
+            CultureGenerationData.timestamp <= timepoint).order_by(CultureGenerationData.timestamp.desc()).first()
+
+        if latest_generation_data is not None:
+            self.generation = latest_generation_data.generation
+            self.drug_concentration = latest_generation_data.drug_concentration
+            self.last_dilution_time = latest_generation_data.timestamp
+
+        if latest_culture_data is not None:
+            self.od = latest_culture_data.od
+            self.growth_rate = latest_culture_data.growth_rate
+
+            # load latest drug increase
+        gen_data = self.db.session.query(CultureGenerationData).filter(
+            CultureGenerationData.experiment_id == self.experiment.model.id,
+            CultureGenerationData.vial_number == self.vial,
+            CultureGenerationData.timestamp <= timepoint
+        ).order_by(CultureGenerationData.timestamp).all()
         if gen_data is not None:
-            for data in gen_data:
-                if data.drug_concentration < self.drug_concentration:
-                    # The drug concentration decreased at this generation
-                    self.last_stress_increase_generation = data.generation
-                    break
+            last_stress_increase_generation = 0
+            for i in range(len(gen_data)-1):
+                if gen_data[i+1].drug_concentration > gen_data[i].drug_concentration:
+                    last_stress_increase_generation = gen_data[i+1].generation
+            self.last_stress_increase_generation = last_stress_increase_generation
+
+    def get_info(self):
+        self.is_time_to_dilute(verbose=True)
+        self.is_time_to_rescue(verbose=True)
+        self.is_time_to_increase_stress(verbose=True)
+        print("Growth rate:", self.growth_rate, "1/h")
+        print("Doubling time:", np.log(2) / self.growth_rate, "h")
 
     def log_od(self, od=None):
         self.od = od
@@ -315,12 +363,17 @@ class Culture:
             return False
 
         stress_increase_delay_generations = self.parameters["stress_increase_delay_generations"]
-        if self.generation <= stress_increase_delay_generations or self.growth_rate <= 0:
+        v0 = self.parameters["volume_fixed"]
+        v1 = v0 + self.parameters["volume_added"]
+        dilution_factor = v1 / v0
+
+        future_generation = self.generation + np.log2(dilution_factor)
+        if future_generation <= stress_increase_delay_generations or self.growth_rate <= 0:
             if verbose:
                 print("Generation not greater than delay or growth rate not positive. Not time to increase stress.")
             return False
 
-        if self.generation - self.last_stress_increase_generation <= stress_increase_delay_generations:
+        if future_generation - self.last_stress_increase_generation <= stress_increase_delay_generations:
             if verbose:
                 print(
                     "Generation difference with last stress increase not greater than delay. Not time to increase stress.")
@@ -338,7 +391,8 @@ class Culture:
         return True
 
     def is_time_to_rescue(self, verbose=False):
-        print("Running is_time_to_rescue method...")
+        if verbose:
+            print("Running is_time_to_rescue method...")
         if self.last_dilution_time is None:
             if verbose:
                 print("No last dilution time. Not time to rescue.")

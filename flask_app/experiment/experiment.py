@@ -7,6 +7,8 @@ import sys
 import io
 from copy import deepcopy
 from pprint import pformat, pprint
+
+import numpy as np
 import schedule
 from experiment.models import CultureData, ExperimentModel
 from .culture import Culture
@@ -277,9 +279,7 @@ class Experiment:
             for vial in range(1, 8):
                 c = self.cultures[vial]
                 pprint(object_to_dict(c))
-                c.is_time_to_dilute(verbose=True)
-                c.is_time_to_rescue(verbose=True)
-                c.is_time_to_increase_stress(verbose=True)
+                c.get_info()
             if self.device is not None:
                 pprint(object_to_dict(self.device.__dict__))
             else:
