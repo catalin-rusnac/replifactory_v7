@@ -113,10 +113,7 @@ The stress is decreased by {stress_decrease_percent:.1f}% if over the last {self
                 df[df.index >= self._last_stress_increase_time].iloc[0]
             )
             current_generation = self.log2_dilution_coefficient
-            return (
-                current_generation - last_stress_increase_generation
-                > self.delay_stress_increase_generations
-            )
+            return (current_generation - last_stress_increase_generation> self.delay_stress_increase_generations)
             # hrs_since_stress_increase = (time.time() - self._last_stress_increase_time) / 3600
             # return hrs_since_stress_increase > self.delay_stress_increase_hrs
 

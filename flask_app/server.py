@@ -12,9 +12,11 @@ import signal
 
 from experiment.models import db
 from routes.experiment_routes import experiment_routes
+from routes.service_routes import service_routes
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
 pid_file_path = os.path.join(base_dir, "data/flask_app.pid")
+
 
 def create_app():
     pid = os.getpid()
@@ -24,6 +26,7 @@ def create_app():
     app = Flask(__name__)
     app.register_blueprint(device_routes)
     app.register_blueprint(experiment_routes)
+    app.register_blueprint(service_routes)
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     db_path = os.path.join(script_dir, '../db/replifactory.db')
@@ -32,16 +35,16 @@ def create_app():
     db.init_app(app)
     with app.app_context():
         db.create_all()
-        connect_device()  # connect to device on startup
-
+        # connect_device()  # connect to device on startup
     CORS(app)
+
     @app.route('/shutdown')
     def shutdown():
         print("Shutting down server...")
         with open(pid_file_path, "r") as pid_file:
             pid = int(pid_file.read())
         try:
-            current_app.dev.disconnect_all()
+            current_app.device.disconnect_all()
         except:
             pass
         os.kill(pid, signal.SIGTERM)

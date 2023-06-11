@@ -4,8 +4,8 @@ import sys
 sys.path.insert(0, '..')
 from minimal_device.device_data import default_device_data
 from minimal_device.base_device import BaseDevice
-
 device_routes = Blueprint('device_routes', __name__)
+
 
 @device_routes.route('/set-<string:devicePart>-state', methods=['POST'])
 def set_device_state(devicePart):
@@ -22,7 +22,9 @@ def set_device_state(devicePart):
     elif devicePart == 'pumps':
         print(f'Toggled pump {part_index} to {new_state}')
         # print(request.json)
+
         if new_state=='running':
+            volume = None
             if 'volume' in request.json['input']:
                 volume = float(request.json['input']['volume'])
                 dev.pumps[part_index].pump(volume)
@@ -31,6 +33,9 @@ def set_device_state(devicePart):
                 dev.pumps[part_index].move(rotations)
             while dev.pumps[part_index].is_pumping():
                 time.sleep(0.2)
+            if volume:
+                adjust_stock_volume(pump_index=part_index, volume=volume)
+
         elif new_state=='stopped':
             if dev.pumps[part_index].is_pumping():
                 dev.pumps[part_index].stop()
@@ -42,11 +47,24 @@ def set_device_state(devicePart):
         time.sleep(0.01)
         # print(f'Toggled stirrer {part_index} to {new_state}')
         dev.stirrers.set_speed(part_index, new_state)
-
     if devicePart == 'valves':
         dev.eeprom.save_config_to_eeprom()
-
     return jsonify({'success': True, 'newState': new_state})
+
+
+@device_routes.route('/stock_adjust?pump_index=<int:pump_index>?volume=<int:volume>', methods=['POST'])
+def adjust_stock_volume(pump_index, volume):
+    if pump_index == 1:
+        stock_volume = "stock_volume_main"
+    elif pump_index == 2:
+        stock_volume = "stock_volume_drug"
+    elif pump_index == 4:
+        stock_volume = "stock_volume_waste"
+    if hasattr(current_app, 'experiment'):
+        parameters = current_app.experiment.parameters
+        parameters[stock_volume] = float(parameters[stock_volume]) - volume
+        current_app.experiment.parameters = parameters
+
 
 @device_routes.route('/measure-<string:devicePart>', methods=['POST'])
 def measure_device_part(devicePart):
@@ -174,7 +192,7 @@ def force_connect_device():
             print("Device connection failed, trying again", e)
             dev.connect() # try again
             dev.hello()
-        current_app.dev = dev
+        current_app.device = dev
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
     return
@@ -184,7 +202,7 @@ def connect_device():
     global dev
     try:
         if dev.is_connected():
-            current_app.dev = dev
+            current_app.device = dev
             return jsonify({'success': True, 'device_states': dev.device_data})
         elif dev.is_connected() == False:
             dev.disconnect_all()
@@ -201,7 +219,9 @@ def connect_device():
             print("Device connection failed, trying again", e)
             dev.connect()  # try again
             dev.hello()
-        current_app.dev = dev
+        current_app.device = dev
+        if hasattr(current_app, "experiment"):
+            current_app.experiment.device = current_app.device
 
         # dev.device_data = default_device_data
         # print("sample device data", default_device_data)
@@ -209,5 +229,6 @@ def connect_device():
         #     dev.od_sensors[v].fit_calibration_function()
         # dev.eeprom.save_config_to_eeprom()
     except Exception as e:
+        current_app.device = None
         return jsonify({'success': False, 'error': str(e)})
     return jsonify({'success': True, 'device_states': dev.device_data})

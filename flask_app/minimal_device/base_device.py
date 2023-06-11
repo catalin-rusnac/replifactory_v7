@@ -330,11 +330,6 @@ class BaseDevice:
     #
     #     self.dilution_worker.queue.put(queued_function)
 
-    def is_lagoon_device(self):
-        for v in range(1, 8):
-            if type(self.cultures[v]) is LagoonCulture:
-                return True
-
     def is_pumping(self):
         return any(
             p.is_pumping() for p in [self.pump1, self.pump2, self.pump3, self.pump4]
@@ -548,34 +543,10 @@ class BaseDevice:
                         "Device directory doesn't exist: "
                         + bcolors.FAIL
                         + os.path.abspath(self.directory)
-                        + bcolors.ENDC
-                    )
+                        + bcolors.ENDC)
 
             assert not self.file_lock.locked()
             assert not self.lock_pumps.locked()
             for lock in self.locks_vials.values():
                 assert not lock.locked()
             assert not self.is_pumping()
-            self.check_parameters()
-            self.check_cultures()
-
-    def check_parameters(self):
-        cold, hot = self.thermometers.measure_temperature()
-        print("Temperature Vials:\t%.2f °C\nTemperature Board:\t%.2f °C" % (cold, hot))
-        for pump in [self.pump1, self.pump2, self.pump3, self.pump4]:
-            pump.check()
-        for v in range(1, 8):
-            self.od_sensors[v].check()
-
-    def check_cultures(self):
-        for v in self.cultures.keys():
-            if self.cultures[v] is not None:
-                self.cultures[v].check()
-
-    def fit_calibration_functions(self):
-        for v in range(1, 8):
-            self.od_sensors[v].fit_calibration_function()
-        self.pump1.fit_calibration_function()
-        self.pump2.fit_calibration_function()
-        self.pump3.fit_calibration_function()
-        self.pump4.fit_calibration_function()

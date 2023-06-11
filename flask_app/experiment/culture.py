@@ -2,7 +2,7 @@ import copy
 from datetime import datetime, timedelta
 
 import numpy as np
-from experiment.models import CultureData, PumpData, CultureGenerationData
+from experiment.models import CultureData, PumpData, CultureGenerationData, ExperimentModel
 from experiment.growth_rate import calculate_last_growth_rate
 import time
 from .plot import plot_culture
@@ -49,19 +49,33 @@ class Culture:
 
         self.new_culture_data = None
 
-        self.get_latest_data_from_db()
-
         self.parameters = AutoCommitDict(
             experiment.model.parameters["cultures"][str(vial)],
             vial=vial,
             db_session=db.session,
-            experiment_model=experiment.model
-        )
+            experiment_model=experiment.model)
+        self.get_latest_data_from_db()
 
     def plot(self, *args, **kwargs):
         return plot_culture(self, *args, **kwargs)
 
     def get_latest_data_from_db(self):
+        # self.db.session.commit()
+        # experiment_model = self.db.session.query(ExperimentModel).filter(
+        #     ExperimentModel.id == self.experiment.model.id).first()
+        # for k in experiment_model.parameters["cultures"][str(self.vial)].keys():
+        #     self.parameters[k] = experiment_model.parameters["cultures"][str(self.vial)][k]
+
+        self.parameters = AutoCommitDict(
+            self.experiment.model.parameters["cultures"][str(self.vial)],
+            vial=self.vial,
+            db_session=self.experiment.db.session,
+            experiment_model=self.experiment.model)
+
+
+        # for k in self.experiment.model.parameters["cultures"][str(self.vial)].keys():
+        #     self.parameters[k] = self.experiment.model.parameters["cultures"][str(self.vial)][k]
+
         # Get the last culture data for this culture
         latest_culture_data = self.db.session.query(CultureData).filter(
             CultureData.experiment_id == self.experiment.model.id,
@@ -118,6 +132,13 @@ class Culture:
             self.db.session.add(new_pump_data)
             self.db.session.commit()
             self.get_latest_data_from_db()
+
+            parameters = self.experiment.parameters
+            parameters["stock_volume_main"] = float(parameters["stock_volume_main"]) - main_pump_volume
+            parameters["stock_volume_drug"] = float(parameters["stock_volume_drug"]) - drug_pump_volume
+            parameters["stock_volume_waste"] = float(parameters["stock_volume_waste"]
+                                                     ) - main_pump_volume - drug_pump_volume
+            self.experiment.parameters = parameters
 
     def log_generation(self, generation, concentration):
         self.generation = generation
@@ -281,6 +302,8 @@ class Culture:
         if verbose:
             print("Running is_time_to_increase_stress method...")
         if self.growth_rate is None or self.last_stress_increase_generation is None or self.last_dilution_time is None:
+            if self.od is None:
+                return False
             if self.od > self.parameters["od_threshold"]:
                 if verbose:
                     print("One or more of last dilution time, growth rate, or last stress increase generation is None. But OD above threshold, first dilution time. Time to increase stress.")

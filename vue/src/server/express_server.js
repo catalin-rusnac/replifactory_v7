@@ -16,12 +16,12 @@ const proxyMiddleware = createProxyMiddleware({
   target: 'http://127.0.0.1:5000',
   changeOrigin: true,
   pathRewrite: {
-    '^/flask': '', // remove the '/flask' prefix when forwarding to the Flask server
+    '^/api': '', // remove the '/api' prefix when forwarding to the Flask server
   },
 });
 console.log('Proxying requests to Flask server at http://127.0.0.1:5000');
 
-app.use('/flask', (req, res, next) => {
+app.use('/api', (req, res, next) => {
   next();
 }, proxyMiddleware);
 

@@ -43,8 +43,7 @@ class ExperimentModel(db.Model):
             'id': self.id,
             'name': self.name,
             'status': self.status,
-            'parameters': self.parameters,
-}
+            'parameters': self.parameters}
 
 
 class PumpData(db.Model):

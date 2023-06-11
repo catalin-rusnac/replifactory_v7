@@ -1,7 +1,7 @@
 // api.js
 import axios from 'axios';
 
-let baseURL = window.location.origin + '/flask';
+let baseURL = window.location.origin + '/api';
 
 if (process.env.NODE_ENV === 'development') {
   baseURL = 'http://localhost:5000';

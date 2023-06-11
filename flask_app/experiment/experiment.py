@@ -5,9 +5,10 @@ import queue
 
 import sys
 import io
+from copy import deepcopy
 from pprint import pformat, pprint
 import schedule
-from experiment.models import CultureData
+from experiment.models import CultureData, ExperimentModel
 from .culture import Culture
 from flask import current_app
 
@@ -22,6 +23,7 @@ class ExperimentWorker:
 
     def run_loop(self):
         print('Experiment worker started')
+        self.experiment.device.valves.close_all()
         while True:
             status = self.experiment.get_status()
             if status == 'stopped':
@@ -78,6 +80,24 @@ class QueueWorker:
                 self.is_performing_operation = False
 
 
+class AutoCommitParameters:
+    def __init__(self, model, db):
+        self.model = model
+        self.db = db
+
+    def __getattr__(self, name):
+        return self.model.parameters[name]
+
+    def __setattr__(self, name, value):
+        if name in ["model", "db"]:
+            self.__dict__[name] = value
+        else:
+            self.model.parameters[name] = value
+            self.model.parameters = self.model.parameters
+            self.db.session.add(self.model)
+            self.db.session.commit()
+
+
 class Experiment:
     _instance = None
 
@@ -85,39 +105,61 @@ class Experiment:
         if cls._instance is not None:
             if cls._instance.status != "stopped":
                 print("Experiment instance already exists and is not stopped. Stopping it now.")
+                cls._instance.stop()
             else:
                 print("Experiment instance already exists")
-            cls._instance.stop()
         cls._instance = super(Experiment, cls).__new__(cls)
         return cls._instance
 
     def __init__(self, device, experiment_model, db):
         self.app = current_app._get_current_object()
-        self.status = "stopped"
+        self.db = db
         self.model = experiment_model  # Store the database model object
         self.device = device
-
+        self._status = self.model.status
         self.schedule = schedule.Scheduler()
         self.locks = {i: threading.Lock() for i in range(1, 8)}
         self.experiment_worker = None
         self.cultures = {i: Culture(self, i, db) for i in range(1, 8)}
-        db.session.commit()
+        self.db.session.commit()
+
+    @property
+    def parameters(self):
+        return self.model.parameters
+
+    @parameters.setter
+    def parameters(self, new_parameters):
+        with self.app.app_context():
+            # Make a deep copy of the parameters, modify it, and assign it back
+            id = self.model.id
+            experiment_model = self.db.session.get(ExperimentModel, id)
+            print("Updating experiment_model parameters", id, new_parameters)
+            experiment_model.parameters = new_parameters
+            self.model.parameters = new_parameters
+            self.db.session.commit()
+
+    @property
+    def status(self):
+        return self._status
+
+    @status.setter
+    def status(self, value):
+        self._status = value
+        self.model.status = value
+        self.db.session.commit()
+        print(self.model.status,"status changed to", value)
 
     def _delete_all_data(self):
         for v in range(1, 8):
             self.cultures[v]._delete_all_records()
 
-    def create_worker(self):
-        self.experiment_worker = ExperimentWorker(self)
-
     def start(self):
         if self.experiment_worker is None or not self.experiment_worker.thread.is_alive():
-            self.status = "running"
             self.experiment_worker = ExperimentWorker(self)
             self.device.stirrers.set_speed_all("high")
-            self.device.valves.close_all()
-            self.device.eeprom.save_config_to_eeprom()
+            # self.device.eeprom.save_config_to_eeprom()
             self.make_schedule()
+            self.status = "running"
         else:
             print("Experiment is already running.")
             if self.experiment_worker.dilution_worker.paused:
@@ -125,16 +167,19 @@ class Experiment:
                 self.experiment_worker.dilution_worker.paused = False
 
     def pause_dilution_worker(self):
+        self.status = "paused"
         self.experiment_worker.dilution_worker.paused = True
 
     def stop(self):
         if self.status == "stopped":
             print("Experiment is already stopped.")
-            if self.experiment_worker is not None:
-                if self.experiment_worker.dilution_worker.thread.is_alive() or self.experiment_worker.od_worker.thread.is_alive():
-                    print("Worker is finishing up. Waiting for it to finish.")
-            return
         self.status = "stopped"
+        if self.experiment_worker is not None:
+            if self.experiment_worker.dilution_worker.thread.is_alive() or self.experiment_worker.od_worker.thread.is_alive():
+                print("Worker is finishing up. Waiting for it to finish.")
+            while self.experiment_worker.dilution_worker.thread.is_alive() or self.experiment_worker.od_worker.thread.is_alive():
+                time.sleep(0.5)
+        return
 
     def measure_od_in_background(self):
         def task():
@@ -221,6 +266,7 @@ class Experiment:
     def get_status(self):
         # Simulated method to get experiment status from database
         return self.status
+
     def get_info(self):
         # Simulated method to get experiment status from database
         # Create a StringIO object to capture output
@@ -239,6 +285,8 @@ class Experiment:
             else:
                 print("Device is None")
             pprint(object_to_dict(self.__dict__))
+        except Exception as e:
+            print(e)
         finally:
             # Restore sys.stdout
             sys.stdout = sys.__stdout__

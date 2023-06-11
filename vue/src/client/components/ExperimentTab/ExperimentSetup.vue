@@ -47,7 +47,7 @@
         <CButton
           :class="{ 'active': currentExperiment.status === 'running' }"
           :style="{ 'background-color': currentExperiment.status === 'running' ? '#28a745' : 'transparent' }"
-          @click="startExperiment(currentExperiment.id)"
+          @click="startExperiment()"
           color="success"
         >
           Start
@@ -55,7 +55,7 @@
         <CButton
           :class="{ 'active': currentExperiment.status === 'paused' }"
           :style="{ 'background-color': currentExperiment.status === 'paused' ? '#ffc107' : 'transparent' }"
-          @click="pauseExperiment(currentExperiment.id)"
+          @click="pauseExperiment()"
           color="warning"
         >
           Pause
@@ -63,7 +63,7 @@
         <CButton
           :class="{ 'active': currentExperiment.status === 'stopped' }"
           :style="{ 'background-color': currentExperiment.status === 'stopped' ? '#dc3545' : 'transparent' }"
-          @click="stopExperiment(currentExperiment.id)"
+          @click="stopExperiment()"
           color="danger"
         >
           Stop
@@ -73,17 +73,27 @@
 
 
       <div class="experiment-parameters" style="align-items: center; display: flex; flex-direction: column; margin-top: 20px;">
-      <template v-for="(value, key) in currentExperiment.parameters" :key="key">
+
+
+        <div class="bottle-parameters" style="display: flex; flex-direction: row; margin:20px;">
+        <template v-for="(value, key) in currentExperiment.parameters" :key="key" >
         <CFormFloating class="flex-grow-1" v-if="key !== 'cultures'">
-          <CFormInput
-            :model-value="value"
-            @update:model-value="v => currentExperiment.parameters[key] = v"
-            :id="`floatingInput_${key}`"
-            :floating-label="`${key}`"
-            :placeholder="`Enter ${key}`"
-          />
+                <CFormInput
+        :class="{ 'active': currentExperiment.status !== 'running' }"
+        :model-value="value"
+        @update:model-value="v => currentExperiment.parameters[key] = v"
+        :id="`floatingInput_${key}`"
+        :floating-label="`${key}`"
+        :placeholder="`Enter ${key}`"
+        :readonly="currentExperiment.status === 'running'"
+        @change="handleInputChange(key, $event.target.value)"
+
+      />
         </CFormFloating>
       </template>
+      </div>
+
+
 
       <div class = "experiment-cultures" v-if="Object.keys(currentExperiment?.parameters?.cultures || {}).length > 0">
           <CRow class="culture-row">
@@ -141,7 +151,16 @@ export default {
   },
   },
   methods: {
-    ...mapActions('experiment', ['setCurrentExperimentAction', 'createExperiment', 'fetchExperiments', "fetchCurrentExperiment", "startExperiment", "pauseExperiment", "stopExperiment"]),
+    ...mapActions('experiment', ['updateExperimentParameters', 'setCurrentExperimentAction', 'createExperiment', 'fetchExperiments', "fetchCurrentExperiment", "startExperiment", "pauseExperiment", "stopExperiment"]),
+    async handleInputChange(key, value) {
+  // Update the experiment parameters with the new input value
+      await this.updateExperimentParameters({
+        experimentId: this.currentExperiment.id,
+        parameters: {
+          ...this.currentExperiment.parameters,[key]: value,
+        },
+      });
+    },
 
     async handleNewExperimentButton() {
       this.showCreate = !this.showCreate;
