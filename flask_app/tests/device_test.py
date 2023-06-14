@@ -1,6 +1,9 @@
 #%%
+import os
+print(os.getcwd())
+#%%
 import sys
-sys.path.append('../flask/')
+sys.path.append('./flask_app/')
 import importlib
 import minimal_device
 from minimal_device.base_device import BaseDevice
@@ -8,9 +11,11 @@ from minimal_device.base_device import BaseDevice
 importlib.reload(minimal_device)
 dev = BaseDevice()
 dev.connect()
-dev.eeprom.load_config_from_eeprom()
+dev.hello()
+#%%
+dev.valves.close(1)
 
-# dev.eeprom.erase_memory()
+print(dev.device_data['valves']['states'][1])
 #%%
 vial=1
 minimal_device.od_sensor.OdSensor.fit_calibration_function(dev.od_sensors[vial])

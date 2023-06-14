@@ -95,11 +95,15 @@ class OdSensor:
         if self.device.directory is not None:
             self.log_mv(background=background, transmitted=transmitted)
         signal = transmitted - background
+        if signal < 0:
+            signal = 0
         return signal
 
     def measure_od(self):
         signal = self.measure_signal()
         od = self.mv_to_od(signal)
+        self.device.device_data["ods"]['states'][self.vial_number] = od
+        self.device.device_data["ods"]['odsignals'][self.vial_number] = signal
         return od, signal
 
     def measure_od_calibration(self, odValue):

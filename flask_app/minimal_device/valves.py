@@ -14,12 +14,7 @@ class Valves:
         self.is_open = {1: None, 2: None, 3: None, 4: None, 5: None, 6: None, 7: None}
 
     def connect(self):
-        self.sync_pwm_to_eeprom()
         self.sync_is_open_to_pwm()
-
-    def sync_pwm_to_eeprom(self):
-        # fast
-        pass
 
     def sync_is_open_to_pwm(self):
         for v in range(1, 8):
@@ -85,6 +80,8 @@ class Valves:
             self.set_duty_cycle(valve=valve, duty_cycle=self.DUTY_CYCLE_OPEN)
             time.sleep(self.VALVE_OPEN_TIME)
             self.is_open[valve] = True
+            self.device.device_data["valves"]['states'][valve] = "open"
+            self.device.eeprom.save_config_to_eeprom()
 
     def get_percent_open_pwm(self, valve):
         if self.pwm_controller.is_sleeping():
@@ -97,7 +94,7 @@ class Valves:
         percent_open = 1 - percent_closed
         return percent_open
 
-    def close(self, valve):
+    def close(self, valve, force=False):
         if self.is_open[valve] is not False:
             open_valves = [v for v in range(1, 8) if self.is_open[v]]
             remaining_open_valves = [v for v in open_valves if v != valve]
@@ -108,6 +105,8 @@ class Valves:
             self.set_duty_cycle(valve=valve, duty_cycle=self.DUTY_CYCLE_CLOSED)
             time.sleep(self.VALVE_CLOSE_TIME)
             self.is_open[valve] = False
+            self.device.device_data["valves"]['states'][valve] = "closed"
+            self.device.eeprom.save_config_to_eeprom()
 
     def open_all(self):
         open_valves = self.get_fully_open_valves()
