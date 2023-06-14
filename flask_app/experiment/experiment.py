@@ -26,6 +26,7 @@ class ExperimentWorker:
     def run_loop(self):
         print('Experiment worker started')
         self.experiment.device.valves.close_all()
+        self.experiment.device.eeprom.save_config_to_eeprom()
         while True:
             status = self.experiment.get_status()
             if status == 'stopped':
