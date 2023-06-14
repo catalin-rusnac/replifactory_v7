@@ -2,10 +2,11 @@
 /env/
 /data/
 /.idea/
-/poetry.lock
-/pyproject.toml
+
 /flask_app/minimal_device/__pycache__/
-/flask_app/tests/
 /flask_app/data/
 /secrets/
+/secrets2/
 /logs/
+/venv/
+
