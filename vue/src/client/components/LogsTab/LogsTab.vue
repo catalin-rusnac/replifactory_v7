@@ -31,7 +31,7 @@
 </template>
 
 <script>
-import axios from 'axios';
+import api from "@/api";
 import { CButton, CFormInput, CFormFloating } from "@coreui/vue";
 
 export default {
@@ -48,7 +48,7 @@ export default {
   },
   methods: {
     fetchLogTails() {
-      axios.get(`/log/${this.lines}/`)
+      api.get(`/log/${this.lines}/`)
         .then((response) => {
           this.logs = response.data;
         });
