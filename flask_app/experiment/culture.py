@@ -110,9 +110,10 @@ class Culture:
                     CultureGenerationData.vial_number == self.vial).order_by(
                     CultureGenerationData.timestamp.desc()).limit(20).all()
                 for d in latest_generation_data:
-                    if d.growth_rate is not None:
-                        self.growth_rate = d.growth_rate
-                        break
+                    if hasattr(d, "growth_rate"):
+                        if d.growth_rate is not None:
+                            self.growth_rate = d.growth_rate
+                            break
 
         gen_data = self.db.session.query(CultureGenerationData).filter(
             CultureGenerationData.experiment_id == self.experiment.model.id,
