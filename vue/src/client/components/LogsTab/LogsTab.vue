@@ -15,8 +15,7 @@
           type="number"
           style="background-color: transparent; border: none;"
           id="floatingInput"
-          v-model="lines"
-          min="1"
+          :value="formatNumber(angle)"
           floatingLabel="Number of Lines"
         />
       </CFormFloating>

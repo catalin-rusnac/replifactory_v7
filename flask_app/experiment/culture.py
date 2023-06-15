@@ -63,7 +63,7 @@ class Culture:
         if self.first_od_measurement_time is None:
             try:
                 self.first_od_measurement_time = self.db.session.query(CultureData).filter(
-                CultureData.vial == self.vial).order_by(CultureData.time).first().time
+                CultureData.vial == self.vial).order_by(CultureData.timestamp).first().timestamp
             except:
                 pass
         return self.first_od_measurement_time
