@@ -15,7 +15,7 @@
           type="number"
           style="background-color: transparent; border: none;"
           id="floatingInput"
-          :value="formatNumber(angle)"
+          :value="formatNumber(lines)"
           floatingLabel="Number of Lines"
         />
       </CFormFloating>
@@ -46,6 +46,9 @@ export default {
     };
   },
   methods: {
+    formatNumber(number) {
+      return number !== null ? number.toFixed(0) : 'N/A';
+    },
     fetchLogTails() {
       api.get(`/log/${this.lines}/`)
         .then((response) => {

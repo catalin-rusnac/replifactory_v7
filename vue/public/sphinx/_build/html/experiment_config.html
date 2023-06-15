@@ -50,10 +50,48 @@
 </section>
 <section id="setting-up-experiment-parameters">
 <h3>Setting Up Experiment Parameters<a class="headerlink" href="#setting-up-experiment-parameters" title="Permalink to this heading">¶</a></h3>
-<p>After setting up the physical components, it’s time to configure the experiment parameters.</p>
-<p>Refer to the guide below for detailed instructions on setting up the parameters for each culture.</p>
+<p>After setting up the physical components, it’s time to configure the experiment.</p>
+<p>Refer to the <a class="reference internal" href="culture_parameters.html"><span class="doc">Culture Parameters</span></a> for detailed instructions on setting up the parameters for each culture.</p>
+<p>Examples:</p>
 <blockquote>
-<div><p><a class="reference internal" href="culture_parameters.html"><span class="doc">Culture Parameters</span></a></p>
+<div><ul>
+<li><dl class="simple">
+<dt>no dilutions at all:</dt><dd><p>Relevant parameters:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">od_threshold</span></code>: 100 (very high, so it will never trigger a dilution)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">od_threshold_first_dilution</span></code>: 100 (very high, so it will never trigger a dilution)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">stress_decrease_delay_hrs</span></code>: 2400 (100 days, more than the expected experiment duration))</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>dilute every 24 hours with clean medium</dt><dd><p>Relevant parameters:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">od_threshold</span></code>: 100 (very high, so it will never trigger a dilution for increasing the stress)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">od_threshold_first_dilution</span></code>: 100 (very high, so it will never trigger a dilution)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">stress_decrease_delay_hrs</span></code>: 24 (this parameter will trigger a dilution to decrease the stress (or keep it at 0) every 24 hours)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">stress_decrease_tdoubling_min_hrs</span></code>: 0.1 (almost always consider culture as ‘not healthy’. If the growth rate noise is ~0.1, this value should be below ln(2)/0.1 = 6.9 hours)</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl>
+<dt>when OD reaches 0.4, set the drug concentration at 30. Then, dilute when OD&gt;0.3, increase stress every 3 generations as long as the doubling time is &lt;4h. If OD&lt;0.3 for more than 16 hours and the current doubling time is &gt;24h - decrease the drug concentration.</dt><dd><p>Relevant parameters:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">od_threshold</span></code>: 0.3 (this parameter will trigger a dilution to increase the stress when the OD reaches 0.3)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">od_threshold_first_dilution</span></code>: 0.3 (this parameter will trigger the first dilution to set the stress when the OD reaches 0.3)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">stress_increase_delay_generations</span></code>: 3</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">stress_dose_first_dilution</span></code>: 30</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">stress_decrease_delay_hrs</span></code>: 16</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">stress_decrease_tdoubling_min_hrs</span></code>: 24</p></li>
+</ul>
+</div></blockquote>
+</dd>
+</dl>
+</li>
+</ul>
 </div></blockquote>
 </section>
 </section>

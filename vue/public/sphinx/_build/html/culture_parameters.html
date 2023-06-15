@@ -34,22 +34,41 @@
   <section id="culture-parameters">
 <h1>Culture Parameters<a class="headerlink" href="#culture-parameters" title="Permalink to this heading">¶</a></h1>
 <p>Below is an explanation of each culture parameter:</p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">name</span></code></dt><dd><p>The name of the culture. This might refer to the species of the organism, like <em>Escherichia coli</em> or <em>Saccharomyces cerevisiae</em>.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">description</span></code></dt><dd><p>A description of the culture, for example, a strain designation like <em>MG1655</em> or <em>BY4741</em>.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">volume_fixed</span></code></dt><dd><p>The fixed volume of the culture in milliliters (ml), typically 15 ml. This refers to the volume of the culture that remains in the vial, below the waste needle.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">volume_added</span></code></dt><dd><p>The total media volume added to the culture at a dilution step, in milliliters (ml), typically 10 ml. This is the sum of the clean medium volume and drug medium volume.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">od_threshold</span></code></dt><dd><p>The optical density (OD) threshold at which the culture gets diluted. This is a measure of how dense the culture is and is used to monitor the growth of the culture.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">od_threshold_first_dilution</span></code></dt><dd><p>The optical density (OD) threshold for the culture to be diluted for the first time. This value is usually set higher than the standard OD threshold, allowing the culture to reach a higher density before the first dilution occurs.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">stress_dose_first_dilution</span></code></dt><dd><p>The resulting stress dose after the first dilution. This is the concentration of the stress-inducing agent in the culture after the ‘volume_added’ of the stock solutions is mixed with the ‘volume_fixed’ of the culture. The initial amount of drug required to reach this dose from the stock concentration (for example, 200 units) can be calculated using the formula:</p>
-</dd>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<dl class="field-list simple">
+<dt class="field-odd">negative controls<span class="colon">:</span></dt>
+<dd class="field-odd"><p></p></dd>
 </dl>
+<p>All cultures which are not inoculated act as negative controls with periodic dilutions of fresh medium. The period is determined by the <cite>stress_decrease_delay_hrs</cite> parameter and the amount of medium added is determined by the <cite>volume_added</cite> parameter.</p>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">name</span></code></p>
+<blockquote>
+<div><p>The name of the culture. This might refer to the species of the organism, like <em>Escherichia coli</em> or <em>Saccharomyces cerevisiae</em>.</p>
+</div></blockquote>
+<p><code class="docutils literal notranslate"><span class="pre">description</span></code></p>
+<blockquote>
+<div><p>A description of the culture, for example, a strain designation like <em>MG1655</em> or <em>BY4741</em>.</p>
+</div></blockquote>
+<p><code class="docutils literal notranslate"><span class="pre">volume_fixed</span></code></p>
+<blockquote>
+<div><p>The fixed volume of the culture in milliliters (ml), typically 15 ml. This refers to the volume of the culture that remains in the vial, below the waste needle.</p>
+</div></blockquote>
+<p><code class="docutils literal notranslate"><span class="pre">volume_added</span></code></p>
+<blockquote>
+<div><p>The total media volume added to the culture at a dilution step, in milliliters (ml), typically 10 ml. This is the sum of the clean medium volume and drug medium volume.</p>
+</div></blockquote>
+<p><code class="docutils literal notranslate"><span class="pre">od_threshold</span></code></p>
+<blockquote>
+<div><p>The optical density (OD) threshold at which the culture gets diluted. This is a measure of how dense the culture is and is used to monitor the growth of the culture.</p>
+</div></blockquote>
+<p><code class="docutils literal notranslate"><span class="pre">od_threshold_first_dilution</span></code></p>
+<blockquote>
+<div><p>The optical density (OD) threshold for the culture to be diluted for the first time. This value is usually set higher than the standard OD threshold, allowing the culture to reach a higher density before the first dilution occurs.</p>
+</div></blockquote>
+<p><code class="docutils literal notranslate"><span class="pre">stress_dose_first_dilution</span></code></p>
+<blockquote>
+<div><p>The resulting stress dose after the first dilution. This is the concentration of the stress-inducing agent in the culture after the ‘volume_added’ of the stock solutions is mixed with the ‘volume_fixed’ of the culture. The initial amount of drug required to reach this dose from the stock concentration (for example, 200 units) can be calculated using the formula:</p>
 <div class="math notranslate nohighlight">
 \[V1 = (C2 * V2) / C1\]</div>
 <p>where:</p>
@@ -59,17 +78,24 @@
 <li><p>C2 is the final concentration of the solution (‘stress_dose_first_dilution’), and</p></li>
 <li><p>V2 is the total volume of the solution after dilution (‘volume_fixed’ + ‘volume_added’).</p></li>
 </ul>
-<p>For example, the fraction of the 10 ml ‘volume_added’ that should be the drug can be calculated as (50 units * 25 ml) / 200 units = 6.25 ml. Therefore, 6.25 ml of the drug should be added to 3.75 ml of the non-drug medium to reach the desired ‘stress_dose_first_dilution’ of 50 units.</p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">stress_increase_delay_generations</span></code></dt><dd><p>This parameter sets the number of generations the culture must proliferate between increases in stress dose. These generations are computed from the dilution coefficient. For instance, when 10ml is diluted into 15ml, the dilution coefficient is 25/15 or ~1.67. The number of generations is determined by taking the base-2 logarithm of this dilution coefficient, <span class="math notranslate nohighlight">\(\log_2(1.67)\)</span> which is approximately 0.74. This indicates that about 0.74 generations (or doublings) are needed to offset this dilution, increasing the generation number by roughly 0.74 at each dilution. The stress dose is increased only at dilutions that occur ‘stress_increase_delay_generations’ generations after the previous stress dose increase. If the dilution coefficient is 1.67, the stress increase factor will be (1.67+1)/2 or ~1.335. While this stress increase factor remains consistent at each dilution, its frequency can be controlled by adjusting this parameter.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">stress_increase_tdoubling_max_hrs</span></code></dt><dd><p>This is the maximum doubling time (in hours) for the culture, beyond which an increase in stress dose is allowed. If the culture exhibits slow growth (high doubling time), the stress dose does not change. For example, if this parameter is set to 4 hrs, the growth rate of the culture must exceed <span class="math notranslate nohighlight">\(\ln(2)/4\)</span> (approximately 0.173) for the stress dose to increase.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">stress_decrease_delay_hrs</span></code></dt><dd><p>This is the waiting period (in hours) before the stress dose is decreased if the culture does not reach the OD threshold. It serves as a recovery period if the culture’s growth is suboptimal. If the culture never reaches the OD threshold (for instance, if not inoculated), a dilution with clean medium occurs at this interval, thus enabling the vial to function as a negative control for contamination.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">stress_decrease_tdoubling_min_hrs</span></code></dt><dd><p>This parameter sets the minimum culture doubling time (in hours) that must be exceeded to allow a decrease in stress dose. If the doubling time is less than this value, the culture is deemed to be in good health, and there is no need to decrease the stress dose.</p>
-</dd>
-</dl>
+<p>For example, the fraction of the 10 ml ‘volume_added’ that should be the drug can be calculated as (50 units * 25 ml) / 200 units = 6.25 ml. Therefore, 6.25 ml of the drug should be added to 3.75 ml of the non-drug medium to reach the desired ‘stress_dose_first_dilution’ of 50 units. Make sure that this volume is high enough for pumping accurately. For example, if the stock concentration is 100 a vial dose below 1 will be difficult to achieve with high accuracy. The pumped volume should generally be above 0.1 ml.</p>
+</div></blockquote>
+<p><code class="docutils literal notranslate"><span class="pre">stress_increase_delay_generations</span></code></p>
+<blockquote>
+<div><p>This parameter sets the number of generations the culture must grow between increases in stress dose. These generations are computed from the dilution coefficient. For instance, when 10ml is diluted into 15ml, the dilution coefficient is 25/15 or ~1.67. The number of generations is determined by taking the base-2 logarithm of this dilution coefficient, <span class="math notranslate nohighlight">\(\log_2(1.67)\)</span> which is approximately 0.74. This indicates that about 0.74 generations (or doublings) are needed to offset this dilution, increasing the generation number by roughly 0.74 at each dilution. The stress dose is increased only at dilutions that occur X generations after the previous stress dose increase, where X is this parameter. If the dilution coefficient is 1.67, the stress increase factor will be (1.67+1)/2 or ~1.335. While this stress increase factor remains consistent at each stress increase dilution, its frequency can be controlled by adjusting this parameter.</p>
+</div></blockquote>
+<p><code class="docutils literal notranslate"><span class="pre">stress_increase_tdoubling_max_hrs</span></code></p>
+<blockquote>
+<div><p>This is the maximum doubling time (in hours) for the culture, beyond which an increase in stress dose is allowed. If the culture exhibits slow growth (high doubling time), the stress dose does not change. For example, if this parameter is set to 4 hrs, the growth rate of the culture must exceed <span class="math notranslate nohighlight">\(\ln(2)/4\)</span> (approximately 0.173) for the stress dose to increase.</p>
+</div></blockquote>
+<p><code class="docutils literal notranslate"><span class="pre">stress_decrease_delay_hrs</span></code></p>
+<blockquote>
+<div><p>The time interval between dilutions if the OD does not reach the threshold. Acts as dilution period for negative control vials (which are not inoculated). This is the waiting period (in hours) before the stress dose is decreased if the culture does not reach the OD threshold.</p>
+</div></blockquote>
+<p><code class="docutils literal notranslate"><span class="pre">stress_decrease_tdoubling_min_hrs</span></code></p>
+<blockquote>
+<div><p>This parameter sets the minimum culture doubling time (in hours) that must be exceeded to allow a decrease in stress dose. If the doubling time is less than this value, the culture is deemed to be in good health, and there is no need to decrease the stress dose. For example, if this parameter is set to 24 hrs, the growth rate of the culture must be less than <span class="math notranslate nohighlight">\(\ln(2)/24\)</span> (approximately 0.029) for the stress dose to decrease or for a negative control vial dilution to occur. Make sure that the noise in the growth rate measurement of negative control vials is less than this value.</p>
+</div></blockquote>
 <section id="growth-rate-and-doubling-time">
 <h2>Growth Rate and Doubling Time<a class="headerlink" href="#growth-rate-and-doubling-time" title="Permalink to this heading">¶</a></h2>
 <p>In the context of cell cultures, the growth rate is a measure of how quickly the cells in the culture replicate. The doubling time, on the other hand, is the amount of time it takes for the culture to double in size.</p>

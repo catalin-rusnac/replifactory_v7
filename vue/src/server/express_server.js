@@ -103,7 +103,7 @@ if (fs.existsSync(ngrokConfigPath)) {
 
   if (authtokenMatch && authtokenMatch[1]) {
     authtoken = authtokenMatch[1];
-    console.log(`ngrok authtoken found: ${authtoken}`);
+    console.log(`ngrok authtoken found.`);
     startNgrok().catch(error => { // Catch the error here
       console.error('Failed to start ngrok:', error);
     });
