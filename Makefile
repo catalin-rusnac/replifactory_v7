@@ -139,3 +139,8 @@ update-replifactory:
 	git pull
 	make install
 	make kill
+
+push:
+	git add .
+	git commit -m "update"
+	git push

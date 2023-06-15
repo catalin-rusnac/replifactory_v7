@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Culture Parameters &#8212; replifactory  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/sphinx_highlight.js"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Experiment" href="experiment_config.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="culture-parameters">
+<h1>Culture Parameters<a class="headerlink" href="#culture-parameters" title="Permalink to this heading">¶</a></h1>
+<p>Below is an explanation of each culture parameter:</p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">name</span></code></dt><dd><p>The name of the culture. This might refer to the species of the organism, like <em>Escherichia coli</em> or <em>Saccharomyces cerevisiae</em>.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">description</span></code></dt><dd><p>A description of the culture, for example, a strain designation like <em>MG1655</em> or <em>BY4741</em>.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">volume_fixed</span></code></dt><dd><p>The fixed volume of the culture in milliliters (ml), typically 15 ml. This refers to the volume of the culture that remains in the vial, below the waste needle.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">volume_added</span></code></dt><dd><p>The total media volume added to the culture at a dilution step, in milliliters (ml), typically 10 ml. This is the sum of the clean medium volume and drug medium volume.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">od_threshold</span></code></dt><dd><p>The optical density (OD) threshold at which the culture gets diluted. This is a measure of how dense the culture is and is used to monitor the growth of the culture.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">od_threshold_first_dilution</span></code></dt><dd><p>The optical density (OD) threshold for the culture to be diluted for the first time. This value is usually set higher than the standard OD threshold, allowing the culture to reach a higher density before the first dilution occurs.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">stress_dose_first_dilution</span></code></dt><dd><p>The resulting stress dose after the first dilution. This is the concentration of the stress-inducing agent in the culture after the ‘volume_added’ of the stock solutions is mixed with the ‘volume_fixed’ of the culture. The initial amount of drug required to reach this dose from the stock concentration (for example, 200 units) can be calculated using the formula:</p>
+</dd>
+</dl>
+<div class="math notranslate nohighlight">
+\[V1 = (C2 * V2) / C1\]</div>
+<p>where:</p>
+<ul class="simple">
+<li><p>C1 is the drug concentration in the stock bottle (‘stock_concentration_drug’),</p></li>
+<li><p>V1 is the volume of the solution to be added (‘volume_added’),</p></li>
+<li><p>C2 is the final concentration of the solution (‘stress_dose_first_dilution’), and</p></li>
+<li><p>V2 is the total volume of the solution after dilution (‘volume_fixed’ + ‘volume_added’).</p></li>
+</ul>
+<p>For example, the fraction of the 10 ml ‘volume_added’ that should be the drug can be calculated as (50 units * 25 ml) / 200 units = 6.25 ml. Therefore, 6.25 ml of the drug should be added to 3.75 ml of the non-drug medium to reach the desired ‘stress_dose_first_dilution’ of 50 units.</p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">stress_increase_delay_generations</span></code></dt><dd><p>This parameter sets the number of generations the culture must proliferate between increases in stress dose. These generations are computed from the dilution coefficient. For instance, when 10ml is diluted into 15ml, the dilution coefficient is 25/15 or ~1.67. The number of generations is determined by taking the base-2 logarithm of this dilution coefficient, <span class="math notranslate nohighlight">\(\log_2(1.67)\)</span> which is approximately 0.74. This indicates that about 0.74 generations (or doublings) are needed to offset this dilution, increasing the generation number by roughly 0.74 at each dilution. The stress dose is increased only at dilutions that occur ‘stress_increase_delay_generations’ generations after the previous stress dose increase. If the dilution coefficient is 1.67, the stress increase factor will be (1.67+1)/2 or ~1.335. While this stress increase factor remains consistent at each dilution, its frequency can be controlled by adjusting this parameter.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">stress_increase_tdoubling_max_hrs</span></code></dt><dd><p>This is the maximum doubling time (in hours) for the culture, beyond which an increase in stress dose is allowed. If the culture exhibits slow growth (high doubling time), the stress dose does not change. For example, if this parameter is set to 4 hrs, the growth rate of the culture must exceed <span class="math notranslate nohighlight">\(\ln(2)/4\)</span> (approximately 0.173) for the stress dose to increase.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">stress_decrease_delay_hrs</span></code></dt><dd><p>This is the waiting period (in hours) before the stress dose is decreased if the culture does not reach the OD threshold. It serves as a recovery period if the culture’s growth is suboptimal. If the culture never reaches the OD threshold (for instance, if not inoculated), a dilution with clean medium occurs at this interval, thus enabling the vial to function as a negative control for contamination.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">stress_decrease_tdoubling_min_hrs</span></code></dt><dd><p>This parameter sets the minimum culture doubling time (in hours) that must be exceeded to allow a decrease in stress dose. If the doubling time is less than this value, the culture is deemed to be in good health, and there is no need to decrease the stress dose.</p>
+</dd>
+</dl>
+<section id="growth-rate-and-doubling-time">
+<h2>Growth Rate and Doubling Time<a class="headerlink" href="#growth-rate-and-doubling-time" title="Permalink to this heading">¶</a></h2>
+<p>In the context of cell cultures, the growth rate is a measure of how quickly the cells in the culture replicate. The doubling time, on the other hand, is the amount of time it takes for the culture to double in size.</p>
+<p>The relationship between growth rate (r) and doubling time (t) is given by the formula:</p>
+<div class="math notranslate nohighlight">
+\[r = \log(2) / t\]</div>
+<p>Where:
+- (log(2)) is the natural logarithm of 2,
+- t is the doubling time.</p>
+<p>In other words, the growth rate is the reciprocal of the doubling time (scaled by the natural logarithm of 2), and vice versa. If you have a high growth rate, you’ll have a shorter doubling time, and if you have a long doubling time, your growth rate will be lower.</p>
+<p>Let’s consider some examples with different growth rates:</p>
+<ol class="arabic">
+<li><p>For a growth rate of 0, the doubling time is infinitely long. This means the culture is not growing.</p></li>
+<li><p>For a growth rate of 0.1, the doubling time is:</p>
+<div class="math notranslate nohighlight">
+\[t = \log(2) / 0.1\]</div>
+<p>Which is approximately 6.93 hours.</p>
+</li>
+<li><p>For a growth rate of 0.5, the doubling time is:</p>
+<div class="math notranslate nohighlight">
+\[t = \log(2) / 0.5\]</div>
+<p>Which is approximately 1.39 hours.</p>
+</li>
+<li><p>For a growth rate of 1, the doubling time is:</p>
+<div class="math notranslate nohighlight">
+\[t = \log(2) / 1\]</div>
+<p>Which is approximately 0.69 hours, or about 41.4 minutes.</p>
+</li>
+</ol>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">replifactory</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="calibration.html">Calibration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="experiment_config.html">Experiment</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Culture Parameters</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#growth-rate-and-doubling-time">Growth Rate and Doubling Time</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="experiment_config.html" title="previous chapter">Experiment</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, Catalin Rusnac.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+      
+      |
+      <a href="_sources/culture_parameters.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
