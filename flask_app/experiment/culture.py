@@ -62,8 +62,11 @@ class Culture:
     def get_first_od_measurement_time(self):
         if self.first_od_measurement_time is None:
             try:
+                print(self.first_od_measurement_time,"first_od_measurement_time")
                 self.first_od_measurement_time = self.db.session.query(CultureData).filter(
-                CultureData.vial == self.vial).order_by(CultureData.timestamp).first().timestamp
+                    CultureData.experiment_id == self.experiment.model.id,
+                    CultureData.vial_number == self.vial).order_by(CultureData.timestamp).first().timestamp
+                print(self.first_od_measurement_time,"first_od_measurement_time loaded")
             except:
                 pass
         return self.first_od_measurement_time
@@ -438,9 +441,9 @@ class Culture:
             if verbose:
                 print("Last dilution too recent. Not time to rescue.")
             return False
-        stress_decrease_tdoubling_max_hrs = self.parameters["stress_decrease_tdoubling_max_hrs"]
+        stress_decrease_tdoubling_min_hrs = self.parameters["stress_decrease_tdoubling_min_hrs"]
         latest_t_doubling = np.log(2) / self.growth_rate
-        if 0 < latest_t_doubling < stress_decrease_tdoubling_max_hrs:
+        if 0 < latest_t_doubling < stress_decrease_tdoubling_min_hrs:
             if verbose:
                 print("Doubling time is positive and below threshold. Not time to rescue.")
             return False

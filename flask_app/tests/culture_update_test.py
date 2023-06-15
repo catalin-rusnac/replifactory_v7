@@ -38,14 +38,14 @@ def test_is_time_to_rescue():
     c.last_dilution_time = datetime.now() - timedelta(hours=100)
     c.growth_rate = 0.1
     c.parameters["stress_decrease_delay_hrs"] = 99
-    c.parameters["stress_decrease_tdoubling_max_hrs"] = 10
+    c.parameters["stress_decrease_tdoubling_min_hrs"] = 10
     assert not c.is_time_to_rescue(verbose=True), "Expected False when latest_t_doubling is positive and below threshold"
 
     # Test case 5: latest_t_doubling is negative or above threshold
     c.last_dilution_time = datetime.now() - timedelta(hours=100)
     c.growth_rate = 0.1
     c.parameters["stress_decrease_delay_hrs"] = 99
-    c.parameters["stress_decrease_tdoubling_max_hrs"] = 5
+    c.parameters["stress_decrease_tdoubling_min_hrs"] = 5
     assert c.is_time_to_rescue(verbose=True), "Expected True when latest_t_doubling is negative or above threshold"
 
     print("All tests passed!")
@@ -99,7 +99,7 @@ def test_is_time_to_increase_stress():
 #%%
 # c.generation
 for v in range(1,8):
-c = exp.cultures[v]
+    c = exp.cultures[v]
 #%%
 def object_to_dict(obj):
     if not hasattr(obj, "__dict__"):

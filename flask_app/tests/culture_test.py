@@ -34,7 +34,7 @@ def create_test_app():
         db.create_all()
     return app
 
-experiment_model = db.session.get(ExperimentModel, 1)
+experiment_model = db.session.get(ExperimentModel, 2)
 if experiment_model is None:
     experiment_model = ExperimentModel(name="test_experiment")
     db.session.add(experiment_model)
@@ -75,19 +75,22 @@ for c in experiment.cultures.values():
 #%%
 experiment.stop()
 #%%
-
+from pprint import pprint
+pprint(c.parameters.__dict__)
+pprint(str(c.experiment.get_info()).replace("'", '').replace('"', ''))
+#%%
 import random
 
-for i in range(1000):
+for i in range(3):
     c.od = random.choice([None,0.1, 1])
     c.growth_rate = random.choice([None,0.1, 25])
     c.drug_concentration = random.choice([0, 12])
     c.generation = random.choice([0, 1, 12])
     c.last_stress_increase_generation = random.choice([None, 0.1, 12])
     c.last_dilution_time = random.choice([None, datetime.now(), datetime.now() - timedelta(hours=1), datetime.now() - timedelta(hours=2), datetime.now() - timedelta(hours=30)])
-    c.is_time_to_dilute()
-    c.is_time_to_increase_stress()
-    c.is_time_to_rescue()
+    c.is_time_to_dilute(verbose=True)
+    c.is_time_to_increase_stress(verbose=True)
+    c.is_time_to_rescue(verbose=True)
     c.calculate_generation_concentration_after_dil(1,9)
     c.calculate_pump_volumes(19)
     c.calculate_pump_volumes(0)
