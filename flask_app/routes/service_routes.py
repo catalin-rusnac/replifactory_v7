@@ -97,7 +97,7 @@ def get_log_tail(lines=100):
     import subprocess
     d={}
     for file in [log_flask_error, log_flask, log_express, log_express_error]:
-        command = ["tail", "-n", "100", file]
+        command = ["tail", "-n", str(lines), file]
         result = subprocess.run(command, stdout=subprocess.PIPE)
         if result.returncode == 0:
             d[file] = result.stdout.decode('utf-8')
