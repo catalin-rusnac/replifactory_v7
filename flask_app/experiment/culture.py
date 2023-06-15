@@ -46,7 +46,7 @@ class Culture:
         self.generation = 0
         self.last_stress_increase_generation = 0
         self.last_dilution_time = None
-
+        self.first_od_measurement_time = None
         self.new_culture_data = None
 
         self.parameters = AutoCommitDict(
@@ -59,12 +59,22 @@ class Culture:
     def plot(self, *args, **kwargs):
         return plot_culture(self, *args, **kwargs)
 
+    def get_first_od_measurement_time(self):
+        if self.first_od_measurement_time is None:
+            try:
+                self.first_od_measurement_time = self.db.session.query(CultureData).filter(
+                CultureData.vial == self.vial).order_by(CultureData.time).first().time
+            except:
+                pass
+        return self.first_od_measurement_time
+
     def get_latest_data_from_db(self):
         # self.db.session.commit()
         # experiment_model = self.db.session.query(ExperimentModel).filter(
         #     ExperimentModel.id == self.experiment.model.id).first()
         # for k in experiment_model.parameters["cultures"][str(self.vial)].keys():
         #     self.parameters[k] = experiment_model.parameters["cultures"][str(self.vial)][k]
+        self.get_first_od_measurement_time()
 
         self.parameters = AutoCommitDict(
             self.experiment.model.parameters["cultures"][str(self.vial)],
@@ -104,7 +114,6 @@ class Culture:
                         self.growth_rate = d.growth_rate
                         break
 
-            # load latest drug increase
         gen_data = self.db.session.query(CultureGenerationData).filter(
             CultureGenerationData.experiment_id == self.experiment.model.id,
             CultureGenerationData.vial_number == self.vial
@@ -402,17 +411,28 @@ class Culture:
         return True
 
     def is_time_to_rescue(self, verbose=False):
+        stress_decrease_delay_hrs = self.parameters["stress_decrease_delay_hrs"]
         if verbose:
             print("Running is_time_to_rescue method...")
         if self.last_dilution_time is None:
-            if verbose:
-                print("No last dilution time. Not time to rescue.")
-            return False
+            if self.get_first_od_measurement_time() is None:
+                if verbose:
+                    print("No first OD measurement time. Not time to rescue.")
+                return False
+            else:
+                if self.first_od_measurement_time > datetime.now() - timedelta(hours=stress_decrease_delay_hrs):
+                    if verbose:
+                        print("First OD measurement too recent. Not time to rescue.")
+                    return False
+                else:
+                    if verbose:
+                        print("First OD measurement not too recent. Time to rescue.")
+                    return True
+
         if self.growth_rate is None:
             if verbose:
                 print("No growth rate. Not time to rescue.")
             return False
-        stress_decrease_delay_hrs = self.parameters["stress_decrease_delay_hrs"]
         if self.last_dilution_time > datetime.now() - timedelta(hours=stress_decrease_delay_hrs):
             if verbose:
                 print("Last dilution too recent. Not time to rescue.")

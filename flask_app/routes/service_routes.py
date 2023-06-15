@@ -85,3 +85,20 @@ def download_file():
     rel_path = "../../db/replifactory.db"
     abs_file_path = os.path.join(script_dir, rel_path)
     return send_file(abs_file_path, as_attachment=True)
+
+
+@service_routes.route('/log/<int:lines>/', methods=['GET'])
+def get_log_tail(lines=100):
+    script_path = os.path.dirname(__file__)
+    log_flask_error = os.path.join(script_path, "../../logs/flask-error.log")
+    log_flask = os.path.join(script_path, "../../logs/flask.log")
+    log_express = os.path.join(script_path, "../../logs/express_server.log")
+    log_express_error = os.path.join(script_path, "../../logs/express_server-error.log")
+    import subprocess
+    d={}
+    for file in [log_flask_error, log_flask, log_express, log_express_error]:
+        command = ["tail", "-n", "100", file]
+        result = subprocess.run(command, stdout=subprocess.PIPE)
+        if result.returncode == 0:
+            d[file] = result.stdout.decode('utf-8')
+    return jsonify(d)

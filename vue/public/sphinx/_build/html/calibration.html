@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Calibration &#8212; replifactory  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/sphinx_highlight.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Experiment" href="experiment_config.html" />
+    <link rel="prev" title="Welcome to the replifactory documentation!" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="calibration">
+<h1>Calibration<a class="headerlink" href="#calibration" title="Permalink to this heading">¶</a></h1>
+<p>Enter calibration mode by toggling the switch in the corner of the page.</p>
+<section id="pump-calibration">
+<h2>Pump Calibration<a class="headerlink" href="#pump-calibration" title="Permalink to this heading">¶</a></h2>
+<p>Turning the peristaltic pump by 1 rotation 50 times with pauses in between is not the same as running 50 rotations at once - at higher speeds the pumped volume per rotation is different.</p>
+<p>To calibrate each pump, measure the volume pumped by the following sequences:</p>
+<ul class="simple">
+<li><p>50x 1 rotations</p></li>
+<li><p>10x 5 rotations</p></li>
+<li><p>5x 10 rotations</p></li>
+<li><p>1x 50 rotations</p></li>
+</ul>
+<p>You can measure the volume by placing the first or last vial (closer to the edge) on a small scale near the device, opening the corresponding valve and pumping the calibration sequence. The app will calculate the mL/rotation coefficient for each point and use these values to accurately pump both small (~0.1mL) and large volumes (&gt;10mL).</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>When calibrating the pumps make sure that there is liquid in the entire section of the tubing - the scale cannot measure pumped air.</p>
+</div>
+</section>
+<section id="stirrer-calibration">
+<h2>Stirrer Calibration<a class="headerlink" href="#stirrer-calibration" title="Permalink to this heading">¶</a></h2>
+<p>Stirring at high speed is important to achieve good mixing - the vortex should be as deep as possible, but the stirrer bar should not detach and rattle. Spinning at low speeds is important during OD measurement - ideally the culture should be stirred gently, but there should be no vortex. If the “low” speed is too high it can form a vortex that reaches into the laser path. If the “low” speed is too low the stirrer will stop completely. If the “high” speed is too high, the stirrer bar may detach and rattle. If the “high” speed is too low the stirring of the culture is suboptimal.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>Double click a buttons to toggle all stirrers at once.</p>
+</div>
+</section>
+<section id="od-calibration">
+<h2>OD Calibration<a class="headerlink" href="#od-calibration" title="Permalink to this heading">¶</a></h2>
+<p>The OD sensors work by shining a laser through the culture onto a photodiode. The photodiode generates a small voltage that is measured by the device. Higher voltage means that more light passes through the culture, or the culture is less optically dense. To determine the exact relationship between photodiode signal and OD you must measure the voltage of a probe with known optical properties.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Create OD probes using semi-transparent paper if they are not provided.</p>
+</div>
+<p>Follow these steps:</p>
+<ol class="arabic simple">
+<li><p>Insert a sheet of paper just in front of the photodiodes and measure the signal.</p></li>
+<li><p>Measure the signal in one of the OD sensors.</p></li>
+<li><p>Remove the sheet of paper and insert a vial of medium in the holder.</p></li>
+<li><p>Slowly increase the turbidity (e.g. with milk) of the medium while measuring the signal in the sensor.</p></li>
+<li><p>When the signal reaches the same value - measure the OD of the turbid medium with a spectrophotometer.</p></li>
+<li><p>Label the sheet of paper with this OD value - now we know that inserting a paper in the sensor produces a signal equivalent to a culture with this OD.</p></li>
+<li><p>Repeat the process with 2,3,4 papers - label all of the probes with increasing OD values, as measured by the spectrophotometer. You can use these probes to calibrate all OD sensors in all devices.</p></li>
+</ol>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Cut the paper probes so they fit inside the device without bending at the edges near vial 1 and vial 7 - the paper has to be very close to the photodiode.</p>
+</div>
+<p>For every probe:</p>
+<ol class="arabic simple">
+<li><p>Insert the probe in front of the photodiode</p></li>
+<li><p>Insert the probe OD value in the text field near the green “Measure new probe” button</p></li>
+<li><p>Press the “Measure new probe” button. Watch how this affects the calibration curve.</p></li>
+</ol>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>You can edit and remove individual data points as well as entire rows.</p>
+</div>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">replifactory</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Calibration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#pump-calibration">Pump Calibration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#stirrer-calibration">Stirrer Calibration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#od-calibration">OD Calibration</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="experiment_config.html">Experiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="culture_parameters.html">Culture Parameters</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Welcome to the replifactory documentation!</a></li>
+      <li>Next: <a href="experiment_config.html" title="next chapter">Experiment</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, Catalin Rusnac.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+      
+      |
+      <a href="_sources/calibration.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
