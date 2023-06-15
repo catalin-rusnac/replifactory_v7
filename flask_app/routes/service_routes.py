@@ -46,20 +46,25 @@ def capture_image_pi():
     return send_file(stream, mimetype='image/jpeg', as_attachment=False)
 
 
-@service_routes.route('/update_replifactory', methods=['GET'])
-def update_replifactory():
+from flask import abort
+
+allowed_updates = {"frontend", "backend", "full"}
+
+@service_routes.route('/update/<string:update_type>', methods=['GET'])
+def update(update_type):
+    if update_type not in allowed_updates:
+        abort(400, 'Invalid update type. Must be one of: {}'.format(", ".join(allowed_updates)))
+
     script_path = os.path.dirname(__file__)
     makefile_dir = os.path.join(script_path, "../../")
     import subprocess
-    update_log = os.path.join(script_path, "../../logs/update.log")
-    # open the log file in write mode, this will overwrite the old log each time
+    update_log = os.path.join(script_path, "../../logs/update-{}.log".format(update_type))
+
     with open(update_log, "w+") as f:
-        command = ["make", "-C", makefile_dir, "update-replifactory"]
-        # run the command and redirect stdout and stderr to the log file
+        command = ["make", "-C", makefile_dir, "update-{}".format(update_type)]
         subprocess.Popen(command, stdout=f, stderr=subprocess.STDOUT, close_fds=True)
 
     return jsonify({'message': 'Software updated successfully'})
-
 
 @service_routes.route('/update_log', methods=['GET'])
 def update_log():

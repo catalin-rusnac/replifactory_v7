@@ -135,10 +135,19 @@ services-ctl: directories
 	sudo systemctl start vue.service
 
 
-update-replifactory:
+update-full:
 	git pull
 	make install
 	make kill
+
+update-backend:
+	git pull
+	make install
+	make kill-flask
+
+update-frontend:
+	git pull
+	make install
 
 push:
 	git add .
