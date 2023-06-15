@@ -5,7 +5,7 @@ import sys
 import time
 import unittest
 import json
-
+from pprint import pprint
 sys.path.insert(0, "..")
 sys.path.insert(0, "../experiment")
 
@@ -34,16 +34,16 @@ class RoutesTestCase(unittest.TestCase):
         self.assertEqual(response["id"], 1)
 
     def test_culture(self):
-        response1 = self.client.get(f'/experiments/8')
-        c=self.app.experiment.cultures[1]
+        response1 = self.client.get(f'/experiments/1')
+        c=self.app.experiment.cultures[3]
         with self.app.app_context():
             c.get_latest_data_from_db()
             # "2023-06-11 06:36:38.958148"
             # parse
-            timepoint = datetime.datetime.strptime("2023-06-12 0:38:38.958148", "%Y-%m-%d %H:%M:%S.%f")
-            c.get_data_at_timepoint(timepoint)
-        print(c.__dict__)
-        print(c.get_info())
+            # timepoint = datetime.datetime.strptime("2023-06-12 0:38:38.958148", "%Y-%m-%d %H:%M:%S.%f")
+            # c.get_data_at_timepoint(timepoint)
+        pprint(c.__dict__)
+        pprint(c.get_info())
 
 
 if __name__ == '__main__':

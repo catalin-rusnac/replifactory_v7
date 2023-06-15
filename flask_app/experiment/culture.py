@@ -125,8 +125,11 @@ class Culture:
         if len(gen_data) > 0:
             last_stress_increase_generation = gen_data[0].generation
             for i in range(len(gen_data) - 1):
-                if gen_data[i + 1].drug_concentration > gen_data[i].drug_concentration:
-                    last_stress_increase_generation = gen_data[i + 1].generation
+                c1 = gen_data[i].drug_concentration
+                c2 = gen_data[i + 1].drug_concentration
+                if c2>c1:
+                    if (c2-c1)/c1 > 0.01:
+                        last_stress_increase_generation = gen_data[i + 1].generation
             self.last_stress_increase_generation = last_stress_increase_generation
 
     def get_data_at_timepoint(self, timepoint):
@@ -166,8 +169,11 @@ class Culture:
         if gen_data is not None:
             last_stress_increase_generation = 0
             for i in range(len(gen_data)-1):
-                if gen_data[i+1].drug_concentration > gen_data[i].drug_concentration:
-                    last_stress_increase_generation = gen_data[i+1].generation
+                c1 = gen_data[i].drug_concentration
+                c2 = gen_data[i + 1].drug_concentration
+                if c2 > c1:
+                    if (c2-c1)/c1 > 0.01:
+                        last_stress_increase_generation = gen_data[i+1].generation
             self.last_stress_increase_generation = last_stress_increase_generation
 
     def get_info(self):
