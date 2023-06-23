@@ -28,7 +28,7 @@
       </div>
 
       <!-- Format Dropdown -->
-      <CFormSelect v-model=selectedFormat class="mr-3">
+      <CFormSelect :model-value="selectedFormat" @update:model-value="v => selectedFormat = v" class="mr-3">
         <option disabled value="">Please select a format</option>
         <option>csv</option>
         <option>html</option>

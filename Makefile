@@ -149,9 +149,6 @@ update-frontend:
 	git pull
 	make install
 
-ssh:
-	make kill; sleep 1; ngrok tcp 22
-
 push:
 	git add .
 	git commit -m "update"

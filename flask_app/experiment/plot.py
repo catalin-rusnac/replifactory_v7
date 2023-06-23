@@ -88,9 +88,16 @@ def plot_culture(culture, limit=100000):
     pretty_parameters = pp.pformat(culture.parameters.inner_dict)
     pretty_parameters = pretty_parameters.replace('\n', '<br>')
 
+    try:
+        xp = list(ods.keys())[0]
+        yp = list(ods.values())[0]+0.01
+    except IndexError:
+        xp = datetime.now()
+        yp = 0.01
+
     params_trace = go.Scattergl(
-        x=[list(ods.keys())[0]],  # Place it at the earliest time point
-        y=[list(ods.values())[0]+0.01],  # Place it at the minimum OD
+        x=[xp],  # Place it at the earliest time point
+        y=[yp],  # Place it at the minimum OD
         mode='markers',
         marker=dict(
             size=0,  # Set marker size to zero to make it invisible

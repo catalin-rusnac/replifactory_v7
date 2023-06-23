@@ -135,7 +135,7 @@ class Culture:
                 c1 = gen_data[i].drug_concentration
                 c2 = gen_data[i + 1].drug_concentration
                 if c2>c1:
-                    if (c2-c1)/c1 > 0.01:
+                    if c1==0 or (c2-c1)/c1 > 0.01:
                         last_stress_increase_generation = gen_data[i + 1].generation
             self.last_stress_increase_generation = last_stress_increase_generation
 
@@ -179,7 +179,7 @@ class Culture:
                 c1 = gen_data[i].drug_concentration
                 c2 = gen_data[i + 1].drug_concentration
                 if c2 > c1:
-                    if (c2-c1)/c1 > 0.01:
+                    if c1 == 0 or (c2-c1)/c1 > 0.01:
                         last_stress_increase_generation = gen_data[i+1].generation
             self.last_stress_increase_generation = last_stress_increase_generation
 
