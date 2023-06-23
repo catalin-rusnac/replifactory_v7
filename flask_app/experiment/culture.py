@@ -6,6 +6,7 @@ from experiment.models import CultureData, PumpData, CultureGenerationData, Expe
 from experiment.growth_rate import calculate_last_growth_rate
 import time
 from .plot import plot_culture
+from .export import export_culture_csv, export_culture_plot_html
 from copy import deepcopy
 
 
@@ -58,6 +59,12 @@ class Culture:
 
     def plot(self, *args, **kwargs):
         return plot_culture(self, *args, **kwargs)
+
+    def export_csv(self, output_directory=""):
+        return export_culture_csv(self, output_directory=output_directory)
+
+    def export_plot_html(self, output_directory=""):
+        return export_culture_plot_html(self, output_directory=output_directory)
 
     def get_first_od_measurement_time(self):
         if self.first_od_measurement_time is None:

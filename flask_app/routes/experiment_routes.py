@@ -1,5 +1,7 @@
 # experiment_routes.py
 import sys
+
+import pandas as pd
 import sqlalchemy
 
 sys.path.insert(0, "../")
@@ -9,6 +11,19 @@ from experiment.experiment import Experiment
 from routes.device_routes import connect_device
 
 experiment_routes = Blueprint('experiment_routes', __name__)
+
+
+@experiment_routes.route('/experiments', methods=['GET'])
+def experiments():
+    try:
+        experiment_models = db.session.query(ExperimentModel).all()
+    except sqlalchemy.exc.OperationalError:
+        print("Database not initialized")
+        return jsonify({'error': 'Database not initialized'}), 500
+    experiments_clean = [{"id": 0, "name": "---- default template ----", "status": "stopped"}]
+    for experiment_model in experiment_models:
+        experiments_clean.append({'id': experiment_model.id, 'name': experiment_model.name, 'status': experiment_model.status})
+    return jsonify(experiments_clean)
 
 
 @experiment_routes.route('/experiments', methods=['POST'])
@@ -92,20 +107,6 @@ def delete_experiment(id):
     else:
         return jsonify({'error': 'Experiment not found'}), 404
 
-
-@experiment_routes.route('/experiments', methods=['GET'])
-def experiments():
-    try:
-        experiment_models = db.session.query(ExperimentModel).all()
-    except sqlalchemy.exc.OperationalError:
-        print("Database not initialized")
-        return jsonify({'error': 'Database not initialized'}), 500
-    experiments_clean = [{"id": 0, "name": "---- default template ----", "status": "stopped"}]
-    for experiment_model in experiment_models:
-        experiments_clean.append({'id': experiment_model.id, 'name': experiment_model.name, 'status': experiment_model.status})
-    return jsonify(experiments_clean)
-
-
 @experiment_routes.route('/experiments/current/parameters', methods=['PUT'])
 def update_experiment_parameters():
     new_parameters = request.json['parameters']
@@ -184,3 +185,26 @@ def get_culture_plot(vial):
     fig=current_app.experiment.cultures[vial].plot()
     fig_json = fig.to_json()
     return jsonify(fig_json)
+
+# @experiment_routes.route('/export/<int:vial>/excel', methods=['GET'])
+# def export(vial):
+#     culture = current_app.experiment.cultures[vial]
+#     csv_path = culture.export_csv()
+#     return send_file(csv_path, as_attachment=True)
+#
+#
+# from flask import render_template_string
+
+@experiment_routes.route('/export/<int:vial>/<string:filetype>', methods=['GET'])
+def export(vial, filetype):
+    culture = current_app.experiment.cultures[vial]
+    if filetype == 'csv':
+        csv_path = culture.export_csv()
+        print(csv_path, "exported")
+
+        return send_file(csv_path, as_attachment=True)
+    elif filetype == 'html':
+        html_path = culture.export_plot_html()  # Assuming that the plot() method returns a Plotly figure
+        return send_file(html_path, as_attachment=True)
+    else:
+        return "Invalid filetype.", 400

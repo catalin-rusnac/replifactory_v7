@@ -1,3 +1,4 @@
+import json
 from datetime import timedelta, datetime
 import plotly.graph_objs as go
 
@@ -12,7 +13,6 @@ def plot_culture(culture, limit=100000):
     stress_increase_delay_generations = culture.parameters["stress_increase_delay_generations"]
     # semitransparent thin red horizontal lines every stress_increase_delay_generations
     stress_decrease_delay_hrs = culture.parameters["stress_decrease_delay_hrs"]
-
 
     if len(ods) == 0:
         trace1 = go.Scattergl(
@@ -83,6 +83,22 @@ def plot_culture(culture, limit=100000):
             name='Growth Rate',
             yaxis='y4'  # Set to the fourth y-axis
         )
+    import pprint
+    pp = pprint.PrettyPrinter(indent=4)
+    pretty_parameters = pp.pformat(culture.parameters.inner_dict)
+    pretty_parameters = pretty_parameters.replace('\n', '<br>')
+
+    params_trace = go.Scattergl(
+        x=[list(ods.keys())[0]],  # Place it at the earliest time point
+        y=[list(ods.values())[0]+0.01],  # Place it at the minimum OD
+        mode='markers',
+        marker=dict(
+            size=0,  # Set marker size to zero to make it invisible
+        ),
+        hovertext=[pretty_parameters],  # Show parameters on hover
+        name='Parameters',
+        yaxis='y1',  # Align it with the first y-axis
+    )
 
     # Add lines
     lines = []
@@ -126,8 +142,20 @@ def plot_culture(culture, limit=100000):
         dash="solid",
     )
     ))
+
     layout = go.Layout(
-        title="Culture " + str(culture.vial),
+        title="Culture: " + str(culture.vial) + "<br>Experiment: "+culture.experiment.model.name,
+        # annotations=[
+        #     dict(
+        #         x=0,
+        #         y=0,
+        #         showarrow=False,
+        #         text=pretty_parameters,
+        #         xref="paper",
+        #         yref="paper",
+        #         align='center'
+        #     )
+        # ],
         xaxis=dict(
             title='Time',
         ),
@@ -145,17 +173,18 @@ def plot_culture(culture, limit=100000):
             title='Concentration',
             overlaying='y',
             side='left',
-            # position=0.05,
+            position=0.97,
             automargin=True,
         ),
         yaxis4=dict(
             title='Growth Rate',
             overlaying='y',
             side='right',
+            position=0.03,
             automargin=True,
         ),
         # shapes=lines,  # Add the lines to the layout
     )
 
-    fig = go.Figure(data=[trace1, trace2, trace3, trace4], layout=layout)
+    fig = go.Figure(data=[trace1, trace2, trace3, trace4, params_trace], layout=layout)
     return fig

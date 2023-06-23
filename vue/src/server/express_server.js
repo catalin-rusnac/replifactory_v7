@@ -65,6 +65,7 @@ function getNgrokConfigPath() {
 
 let authtoken = null;
 let ngrokUrl = null;
+let sshUrl = null;
 
 const { spawn } = require('child_process');
 
@@ -140,6 +141,41 @@ app.post('/tunnels/set-ngrok-authtoken', async (req, res) => {
     res.status(500).json({ error: 'Failed to set ngrok authtoken' });
   }
 });
+
+
+app.get('/tunnels/start-ssh', async (req, res) => {
+  try {
+    if (!sshUrl) {
+      sshUrl = await ngrok.connect({
+        proto: 'tcp',
+        addr: 22,
+      });
+      res.json({ message: 'SSH ngrok tunnel started successfully.', sshUrl: sshUrl });
+    } else {
+      res.json({ message: 'SSH ngrok tunnel is already running.', sshUrl: sshUrl });
+    }
+  } catch (error) {
+    console.error('Error starting SSH ngrok tunnel:', error);
+    res.status(500).json({ error: 'Failed to start SSH ngrok tunnel' });
+  }
+});
+
+app.get('/tunnels/stop-ssh', async (req, res) => {
+  try {
+    if (sshUrl) {
+      await ngrok.disconnect(sshUrl);
+      sshUrl = null;
+      res.json({ message: 'SSH ngrok tunnel stopped successfully.' });
+    } else {
+      res.json({ message: 'No active SSH ngrok tunnel.' });
+    }
+  } catch (error) {
+    console.error('Error stopping SSH ngrok tunnel:', error);
+    res.status(500).json({ error: 'Failed to stop SSH ngrok tunnel' });
+  }
+});
+
+
 
 app.get('/tunnels/get-ngrok-url', (req, res) => {
   console.log('Getting ngrok url:',req.path);

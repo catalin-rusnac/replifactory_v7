@@ -4,17 +4,44 @@
     <div class="d-flex justify-content-start mt-3">
       <!-- Camera button -->
       <CButton color="info" class="mr-3" @click="capture_image">
-        <CIcon name="cil-camera"></CIcon> Camera
+          <CIcon :icon="cilCamera" size="xl"/> photo
       </CButton>
-      <!-- Download button -->
+
+<!--       Download button -->
       <CButton color="success" class="mr-3" @click="download_db">
-        <CIcon name="cil-download"></CIcon> Download DB
+<CIcon :icon="cilCloudDownload" size="xl"/>
+      download database
       </CButton>
+
       <!-- Status button -->
       <CButton color="primary" @click="get_info">
-        <CIcon name="cil-info"></CIcon> Info
+        <CIcon :icon="cilInfo" size="xl"/>
       </CButton>
     </div>
+
+        <!-- Export buttons -->
+    <div class="d-flex flex-wrap mt-3">
+      <!-- Export Label -->
+      <div class="d-flex align-items-center mr-3">
+<!--        <CIcon name="cil-file"></CIcon> -->
+        Export Data
+      </div>
+
+      <!-- Format Dropdown -->
+      <CFormSelect v-model=selectedFormat class="mr-3">
+        <option disabled value="">Please select a format</option>
+        <option>csv</option>
+        <option>html</option>
+      </CFormSelect>
+
+      <!-- Vial Buttons -->
+      <div>
+        <CButton color="info" v-for="i in 7" :key="'vial'+i" class="mr-1" @click="export_data(i, selectedFormat)">
+          Vial {{ i }}
+        </CButton>
+      </div>
+    </div>
+
 
     <!-- Image display -->
     <div class="mt-3">
@@ -28,23 +55,32 @@
 
 
 
+
 <script>
 import api from "@/api";
-import { CButton, CIcon } from "@coreui/vue";
+import { CButton, CFormSelect } from "@coreui/vue";
+import { CIcon } from "@coreui/icons-vue";
+import { cilCamera, cilCloudDownload, cilGraph, cilInfo } from '@coreui/icons';
+
 
 
 export default {
   components: {
     CButton,
     CIcon,
+    CFormSelect,
   },
-
   name: 'StatusTab',
   data () {
     return {
       status_text: '',
       msg: 'StatusTab',
       camera_image: null,
+      selectedFormat: 'html',
+      cilCamera,
+      cilCloudDownload,
+      cilGraph,
+      cilInfo,
     }
   },
 
@@ -83,6 +119,30 @@ export default {
             // handle the error
           });
     },
+
+    export_data: function(vial, filetype) {
+  api.get(`/export/${vial}/${filetype}`, { responseType: 'blob' })
+    .then((response) => {
+      // Create a blob from the response
+      const file = new Blob([response.data], { type: 'application/octet-stream' });
+      // Create a link element
+      const a = document.createElement('a');
+      // URL.createObjectURL creates a URL representing the file
+      a.href = URL.createObjectURL(file);
+      a.download = `vial_${vial}_data.${filetype}`;
+      // Add the link to the document
+      document.body.appendChild(a);
+      // Simulate click on the link
+      a.click();
+      // Clean up: remove the link from the document
+      document.body.removeChild(a);
+    })
+    .catch(error => {
+      console.error(error);
+      // handle the error
+    });
+},
+
 
     capture_image: function() {
       api.get('/capture', { responseType: 'arraybuffer' })

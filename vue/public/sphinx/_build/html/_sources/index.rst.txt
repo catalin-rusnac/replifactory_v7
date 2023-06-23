@@ -8,3 +8,4 @@ Welcome to the replifactory documentation!
    calibration
    experiment_config
    culture_parameters
+   problems_solutions
