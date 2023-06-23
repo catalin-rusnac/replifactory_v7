@@ -110,3 +110,30 @@ def get_log_tail(lines=100):
         except:
             d[file] = "Error reading file"
     return jsonify(d)
+
+# route to export csv of current experiment database
+@service_routes.route('/export_csv', methods=['GET'])
+def export_csv():
+    import pandas as pd
+    from flask import Response
+    from io import StringIO
+    from database import db_session
+    from database.models import Experiment
+    import os
+    import csv
+    return jsonify(current_app.experiment.model.to_dict()), 200
+
+    # get all experiments from database
+    experiments = db_session.query(Experiment).all()
+
+    # create dataframe from experiments
+    df = pd.DataFrame([exp.to_dict() for exp in experiments])
+
+    # convert dataframe to csv
+    csv = df.to_csv(index=False)
+
+    # create response object
+    response = Response(csv, mimetype='text/csv')
+    response.headers['Content-Disposition'] = 'attachment; filename=export.csv'
+
+    return response

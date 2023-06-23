@@ -1,0 +1,10 @@
+Problems and Solutions
+======================
+
+Sometimes the OD spontaneously jumps up and down. This can be a problem with the stirring speed. Lower the high stirring speed setting a bit to fix this.
+
+.. image:: od_noise.png
+   :width: 400px
+   :align: center
+
+
