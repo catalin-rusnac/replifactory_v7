@@ -64,7 +64,7 @@ def update(update_type):
         command = ["make", "-C", makefile_dir, "update-{}".format(update_type)]
         subprocess.Popen(command, stdout=f, stderr=subprocess.STDOUT, close_fds=True)
 
-    return jsonify({'message': 'Software updated successfully'})
+    return jsonify({'message': 'Software update initialized'})
 
 @service_routes.route('/update_log', methods=['GET'])
 def update_log():

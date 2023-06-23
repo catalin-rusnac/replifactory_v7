@@ -157,7 +157,7 @@ def update_experiment_status():
             current_app.experiment.start()
         elif status == 'paused':
             current_app.experiment.pause_dilution_worker()
-        return jsonify({'message': 'Experiment status updated successfully'})
+        return jsonify({'message': 'Experiment status update initialized'})
     else:
         return jsonify({'error': 'Experiment not found'}), 404
 
