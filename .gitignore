@@ -1,4 +1,5 @@
 /vue/node_modules/
+/vue/src/server/daemon/
 /env/
 /data/
 /.idea/
