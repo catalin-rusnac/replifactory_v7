@@ -1,18 +1,41 @@
 #git clone http://github.com/catalin-rusnac/replifactory_v7; cd replifactory_v7; make install
 
+ifeq ($(OS),Windows_NT)
+	DEFAULT_TASKS = windows-install
+	VENV_NAME ?= .venv
+	PYTHON = "flask_app/$(VENV_NAME)/Scripts/python"
+else
+	DEFAULT_TASKS = install
+	PYTHON = python
+endif
+
+default: $(DEFAULT_TASKS)
+
 install: swap install_apt_dependencies node-pi pip ngrok updatepath
 	cd vue && npm install -y;
 	cd flask_app && pip install -r requirements.txt;
 	make services-ctl
 
-windows-install:
+windows-install: install_win_dependencies venv
 	cd vue && npm install -y
-	cd flask_app && pip install -r requirements.txt
+	flask_app/$(VENV_NAME)/Scripts/python -m pip install -r flask_app/requirements.txt
+
+windows-service-compile: windows-service-stop
+	cd flask_app && "$(VENV_NAME)/Scripts/pyinstaller" --noconfirm win32_service.spec
+
+windows-service-install:
+	powershell.exe Start-Process -FilePath "flask_app/dist/win32_service/win32_service.exe" -Verb RunAs install
+
+windows-service-start:
+	powershell.exe Start-Process -FilePath "flask_app/dist/win32_service/win32_service.exe" -Verb RunAs start
+
+windows-service-stop:
+	-powershell.exe Start-Process -FilePath "flask_app/dist/win32_service/win32_service.exe" -Verb RunAs stop
 
 run: run-flask run-express
 
 run-flask:
-	python flask_app/server.py &
+	$(PYTHON) flask_app/server.py &
 
 run-express:
 	node vue/src/server/express_server.js &
@@ -85,6 +108,14 @@ install_apt_dependencies: swap
 			sudo apt-get install -y $$dep; \
 		fi \
 	done
+
+install_win_dependencies:
+	cmd /c "(help npm > nul || exit 0) && where npm > nul 2> nul" || winget install -e --id OpenJS.NodeJS.LTS
+	cmd /c "(help python > nul || exit 0) && where python > nul 2> nul" || winget install -e --name Python 3.10
+
+venv: flask_app/$(VENV_NAME)
+flask_app/$(VENV_NAME):
+	cd flask_app && python -m venv $(VENV_NAME)
 
 updatepath:
 	@if echo $$PATH | grep -q "/home/pi/.local/bin"; then \

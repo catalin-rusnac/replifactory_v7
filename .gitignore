@@ -3,9 +3,12 @@
 /data/
 /.idea/
 
+__pycache__/
 /flask_app/minimal_device/__pycache__/
 /flask_app/data/
-/flask_app/__pycache__/
+/flask_app/.venv/
+/flask_app/build/
+/flask_app/dist/
 /secrets/
 /secrets2/
 /logs/
