@@ -27,7 +27,7 @@ windows-service-compile: kill-flask
 
 run-flask:
 ifeq ($(OS),Windows_NT)
-	powershell.exe Start-Process -FilePath "flask_app/dist/win32_service/win32_service.exe" -Verb RunAs install
+	powershell.exe Start-Process -FilePath "flask_app/dist/win32_service/win32_service.exe" -Verb RunAs -ArgumentList "--startup=auto", "install"
 	powershell.exe Start-Process -FilePath "flask_app/dist/win32_service/win32_service.exe" -Verb RunAs start
 else
 	$(PYTHON) flask_app/server.py &
@@ -137,7 +137,8 @@ endif
 
 kill-flask:
 ifeq ($(OS),Windows_NT)
-	-powershell.exe Start-Process -FilePath "flask_app/dist/win32_service/win32_service.exe" -Verb RunAs stop
+	powershell.exe Start-Process -FilePath "flask_app/dist/win32_service/win32_service.exe" -Verb RunAs stop
+	-powershell.exe Start-Process -FilePath "flask_app/dist/win32_service/win32_service.exe" -Verb RunAs uninstall
 else
 	sudo nohup fuser -k 5000/tcp &
 endif
