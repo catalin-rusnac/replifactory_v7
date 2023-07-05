@@ -1,21 +1,44 @@
 #git clone http://github.com/catalin-rusnac/replifactory_v7; cd replifactory_v7; make install
 
+default: install run
+
+UI_SERVICE_NAME = ReplifactoryUI
+
+ifeq ($(OS),Windows_NT)
+	DEFAULT_TASKS = windows-install
+	VENV_NAME ?= .venv
+	PYTHON = "flask_app/$(VENV_NAME)/Scripts/python"
+install: install_win_dependencies venv
+	cd vue && npm install -y
+	flask_app/$(VENV_NAME)/Scripts/python -m pip install -r flask_app/requirements.txt
+run: windows-service-compile run-flask run-express
+else
+	DEFAULT_TASKS = install
+	PYTHON = python
 install: swap install_apt_dependencies node-pi pip ngrok updatepath
 	cd vue && npm install -y;
 	cd flask_app && pip install -r requirements.txt;
 	make services-ctl
-
-windows-install:
-	cd vue && npm install -y
-	cd flask_app && pip install -r requirements.txt
-
 run: run-flask run-express
+endif
+
+windows-service-compile: kill-flask
+	cd flask_app && "$(VENV_NAME)/Scripts/pyinstaller" --noconfirm win32_service.spec
 
 run-flask:
-	python flask_app/server.py &
+ifeq ($(OS),Windows_NT)
+	powershell.exe Start-Process -FilePath "flask_app/dist/win32_service/win32_service.exe" -Verb RunAs -ArgumentList "--startup=auto", "install"
+	powershell.exe Start-Process -FilePath "flask_app/dist/win32_service/win32_service.exe" -Verb RunAs start
+else
+	$(PYTHON) flask_app/server.py &
+endif
 
 run-express:
+ifeq ($(OS),Windows_NT)
+	qckwinsvc --name $(UI_SERVICE_NAME) --description "Replifactory UI" --script vue/src/server/express_server.js --startImmediately
+else
 	node vue/src/server/express_server.js &
+endif
 
 run-vue:
 	cd vue && npm run serve
@@ -86,6 +109,15 @@ install_apt_dependencies: swap
 		fi \
 	done
 
+install_win_dependencies:
+	cmd /c "(help npm > nul || exit 0) && where npm > nul 2> nul" || winget install -e --id OpenJS.NodeJS.LTS
+	cmd /c "(help python > nul || exit 0) && where python > nul 2> nul" || winget install -e --name Python 3.10
+	cmd /c "(help qckwinsvc > nul || exit 0) && where qckwinsvc > nul 2> nul" || npm install -g qckwinsvc
+
+venv: flask_app/$(VENV_NAME)
+flask_app/$(VENV_NAME):
+	cd flask_app && python -m venv $(VENV_NAME)
+
 updatepath:
 	@if echo $$PATH | grep -q "/home/pi/.local/bin"; then \
 		echo "PATH already contains /home/pi/.local/bin. No changes made."; \
@@ -97,10 +129,19 @@ updatepath:
 kill: kill-flask kill-express
 
 kill-express:
+ifeq ($(OS),Windows_NT)
+	qckwinsvc --name $(UI_SERVICE_NAME) --script vue/src/server/express_server.js --uninstall
+else
 	sudo nohup fuser -k 3000/tcp &
+endif
 
 kill-flask:
+ifeq ($(OS),Windows_NT)
+	powershell.exe Start-Process -FilePath "flask_app/dist/win32_service/win32_service.exe" -Verb RunAs stop
+	-powershell.exe Start-Process -FilePath "flask_app/dist/win32_service/win32_service.exe" -Verb RunAs uninstall
+else
 	sudo nohup fuser -k 5000/tcp &
+endif
 
 directories:
 	@chmod 777 ./

@@ -12,6 +12,7 @@
     "@coreui/icons": "^3.0.1",
     "@coreui/icons-vue": "^2.0.0",
     "@coreui/vue": "^4.8.1",
+    "@google-cloud/local-auth": "^2.1.0",
     "@ngrok/ngrok": "^0.4.1",
     "@ngrok/ngrok-api": "^0.9.0",
     "@vue/compat": "^3.2.47",

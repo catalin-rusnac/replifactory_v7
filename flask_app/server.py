@@ -30,7 +30,8 @@ def create_app():
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     db_path = os.path.join(script_dir, '../db/replifactory.db')
-    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+    database_uri = os.environ.get("DATABASE_URI", f'sqlite:///{db_path}')
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_uri
 
     db.init_app(app)
     with app.app_context():

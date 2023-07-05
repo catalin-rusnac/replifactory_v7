@@ -3,8 +3,9 @@ const cors = require('cors');
 const ngrok = require('ngrok');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const path = require('path');
+const sheetUtil = require('./url_into_sheet.js');
 
-
+const currentDirrectory = `${path.dirname(require.main.filename)}`
 const app = express();
 const expressPort = 3000;
 
@@ -67,8 +68,6 @@ let authtoken = null;
 let ngrokUrl = null;
 let sshUrl = null;
 
-const { spawn } = require('child_process');
-
 
 async function startNgrok() {
   console.log('Starting ngrok tunnel setup...');
@@ -77,13 +76,12 @@ async function startNgrok() {
       ngrokUrl = await ngrok.connect({
         addr: expressPort,
       });
-        const pythonScriptPath = path.join(__dirname, 'url_into_sheet.py');
-        const pythonScript = spawn('python', [pythonScriptPath]);
-      pythonScript.stdout.on('data', (data) => {
-      console.log(`Python script output: ${data}`);
-        });
-
       console.log(`ngrok tunnel started: ${ngrokUrl}`);
+      const jsonString = fs.readFileSync(`${currentDirrectory}/../../../secrets/googlesheet.json`, 'utf8');
+      const spreadsheetId = JSON.parse(jsonString).id;
+      const sheet_name = os.hostname();
+      await sheetUtil.writeUrlToGoogleSheet(spreadsheetId, sheet_name, ngrokUrl)
+      console.log(`ngrok tunnel URL published to: https://docs.google.com/spreadsheets/d/${spreadsheetId}`);
     }
     else {
       console.log('ngrok tunnel already running at:', ngrokUrl);
@@ -91,7 +89,7 @@ async function startNgrok() {
 }
 
 async function checkNgrokStatus() {
-
+  console.log("Checking ngrok status...");
 
 // Check if ngrok.yml file exists
 if (fs.existsSync(ngrokConfigPath)) {
@@ -109,6 +107,8 @@ if (fs.existsSync(ngrokConfigPath)) {
       console.error('Failed to start ngrok:', error);
     });
   }
+} else {
+  console.error("Ngrok config doesn't exists:", ngrokConfigPath);
 }
 }
 
