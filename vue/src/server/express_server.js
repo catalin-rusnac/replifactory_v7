@@ -6,20 +6,22 @@ const path = require('path');
 
 
 const app = express();
-const expressPort = 3000;
+const expressPort = process.env.PORT || 3000;
+const proxyTarget = process.env.PROXY_TARGET || 'http://127.0.0.1:5000';
+const staticDir = process.env.STATIC_DIR || path.join(__dirname, '../../dist');
 
 // Added console log before creating the middleware
 console.log('Initializing middleware');
 
 // Wrap the middleware creation inside a variable for easier logging
 const proxyMiddleware = createProxyMiddleware({
-  target: 'http://127.0.0.1:5000',
+  target: proxyTarget,
   changeOrigin: true,
   pathRewrite: {
     '^/api': '', // remove the '/api' prefix when forwarding to the Flask server
   },
 });
-console.log('Proxying requests to Flask server at http://127.0.0.1:5000');
+console.log(`Proxying requests to Flask server at ${proxyTarget}`);
 
 app.use('/api', (req, res, next) => {
   next();
@@ -30,8 +32,8 @@ console.log('Middleware added to app');
 
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../../dist')));
-console.log(path.join(__dirname, '../../dist'));
+app.use(express.static(staticDir));
+console.log(`Static location: ${staticDir}`);
 
 // Allow requests from specific origins
 app.use(cors());

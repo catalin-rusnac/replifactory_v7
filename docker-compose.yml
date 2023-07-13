@@ -1,0 +1,48 @@
+services:
+  backend:
+    image: replifactory
+    build: ./flask_app
+      #    devices:
+      #      - "/dev/ttyUSB0:/dev/ttyUSB0"
+    depends_on:
+      - init
+    environment:
+      DATABASE_URI: "sqlite:////usr/src/app/db/replifactory.db"
+      LOG_DIR: /usr/src/app/logs
+    expose:
+      - "5000"
+    volumes:
+      - db-data:/usr/src/app/db:rw
+      - logs:/usr/src/app/logs:rw
+  frontend:
+    image: replifactory-ui
+    build: ./vue
+    depends_on:
+      - init
+      - backend
+    links:
+      - backend
+    ports:
+      - "3000:3000"
+    environment:
+      PROXY_TARGET: http://backend:5000
+    volumes:
+      - logs:/usr/src/app/logs:rw
+  init:
+    image: replifactory-init
+    build:
+      dockerfile_inline: |
+        FROM debian:bullseye-slim
+        CMD ["chmod", "a+w", "/logs", "/db-data"]
+    volumes:
+      - logs:/logs:rw
+      - db-data:/db-data:rw
+    restart: "no"
+
+volumes:
+  db-data: {}
+  logs: {}
+
+networks:
+  front-tier: {}
+  back-tier: {}

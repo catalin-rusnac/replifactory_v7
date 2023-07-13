@@ -70,6 +70,9 @@ pip:
 		rm get-pip.py; \
 	fi
 
+pip-freeze:
+	pip freeze -r ./flask_app/requirements.txt > ./flask_app/requirements-lock.txt
+
 copy_to_www:
 	@echo "Copying contents of vue/dist/ to /var/www/html..."
 	@sudo cp -r vue/dist/* /var/www/html
@@ -153,3 +156,17 @@ push:
 	git add .
 	git commit -m "update"
 	git push
+
+COMPOSE_OPT = --build
+
+docker-run:
+	docker compose up $(COMPOSE_OPT)
+
+docker-run-daemon:
+	docker compose up -d $(COMPOSE_OPT)
+
+docker-logs:
+	docker compose logs
+
+docker-stop:
+	docker compose stop
