@@ -25,10 +25,34 @@ services:
       - backend
     ports:
       - "3000:3000"
-    environment:
-      PROXY_TARGET: http://backend:5000
     volumes:
       - logs:/usr/src/app/logs:rw
+    secrets:
+      - gcp_service_account.json
+      - gcp_sheets_id.json
+    environment:
+      NGROK_URL: "ngrok:4040"
+      PROXY_TARGET: "http://backend:5000"
+      GCP_SHEETS_CONFIG: /run/secrets/gcp_sheets_id.json
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/gcp_service_account.json
+  ngrok:
+    image: ngrok/ngrok:3
+    # restart: unless-stopped
+    expose:
+      - 4040
+    ports:
+      - 4040:4040
+    entrypoint: ngrok
+    command: 
+      - http 
+      - frontend:3000 
+      - --config=/ngrok.yml,/run/secrets/ngrok_auth_token.yml
+    depends_on:
+      - frontend
+    secrets:
+      - ngrok_auth_token.yml
+    configs:
+      - ngrok.yml
   init:
     image: replifactory-init
     build:
@@ -40,10 +64,18 @@ services:
       - db-data:/db-data:rw
     restart: "no"
 
+secrets:
+  ngrok_auth_token.yml:
+    file: ./secrets/ngrok_auth_token.yml
+  gcp_service_account.json:
+    file: ./secrets/googlekey.json
+  gcp_sheets_id.json:
+    file: ./secrets/googlesheet.json
+
+configs:
+  ngrok.yml:
+    file: ./ngrok.yml
+
 volumes:
   db-data: {}
   logs: {}
-
-networks:
-  front-tier: {}
-  back-tier: {}
