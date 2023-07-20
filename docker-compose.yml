@@ -2,8 +2,9 @@ services:
   backend:
     image: replifactory
     build: ./flask_app
-      #    devices:
-      #      - "/dev/ttyUSB0:/dev/ttyUSB0"
+    # work if /etc/udev/rules.d/11-ftdi.rules created on host machine: https://eblot.github.io/pyftdi/installation.html
+    devices:  # DO NOT WORK IN DOCKER DESKTOP!
+      - "/dev/bus/usb:/dev/bus/usb"
     depends_on:
       - init
     environment:

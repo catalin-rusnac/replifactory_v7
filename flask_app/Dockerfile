@@ -1,12 +1,18 @@
 FROM python:3.10.12-bullseye
 
+RUN apt-get update && apt-get install -y \
+    libusb-1.0 \
+    && rm -rf /var/lib/apt/lists/*
+
 ARG USER=flask
 
 ENV USER_NAME=$USER
 
 WORKDIR /usr/src/app
 
-RUN useradd -mU $USER_NAME && chown $USER_NAME:$USER_NAME ./
+RUN useradd -mU $USER_NAME && \
+    chown $USER_NAME:$USER_NAME ./ && \
+    usermod -aG plugdev $USER
 
 USER $USER
 
@@ -18,6 +24,6 @@ COPY --chown=$USER:$USER . .
 
 RUN chmod +x entrypoint.sh
 
-RUN mkdir -p data 
+ENV PATH=$PATH:/home/flask/.local/bin/
 
 ENTRYPOINT ["./entrypoint.sh"]
