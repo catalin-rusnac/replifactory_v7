@@ -3,9 +3,12 @@ services:
     image: replifactory
     restart: unless-stopped
     build: ./flask_app
+    privileged: true
     # work if /etc/udev/rules.d/11-ftdi.rules created on host machine: https://eblot.github.io/pyftdi/installation.html
     devices:  # DO NOT WORK IN DOCKER DESKTOP!
-      - "/dev/bus/usb:/dev/bus/usb"
+      - "/dev/bus:/dev/bus:rwm"
+    device_cgroup_rules:
+      - "c 188:* rwm"
     depends_on:
       - init
     environment:
@@ -14,6 +17,7 @@ services:
     expose:
       - "5000"
     volumes:
+      - /dev:/dev:rw
       - db-data:/usr/src/app/db:rw
       - logs:/usr/src/app/logs:rw
   frontend:
