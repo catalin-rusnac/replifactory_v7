@@ -1,7 +1,7 @@
 version: 2
 log: stdout
-# web_addr: 127.0.0.1:4040
-# web_allow_hosts:
-#   - 0.0.0.0
-#   - localhost
-#   - 127.0.0.1
+web_addr: 0.0.0.0:4040
+web_allow_hosts:
+  - ngrok
+  - localhost
+  - 127.0.0.1

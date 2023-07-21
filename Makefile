@@ -157,7 +157,7 @@ push:
 	git commit -m "update"
 	git push
 
-COMPOSE_OPT = --build
+COMPOSE_OPT = --build --force-recreate
 
 docker-run:
 	docker compose up $(COMPOSE_OPT)
@@ -166,7 +166,7 @@ docker-run-daemon:
 	docker compose up -d $(COMPOSE_OPT)
 
 docker-logs:
-	docker compose logs
+	docker compose logs -f
 
 docker-stop:
 	docker compose stop

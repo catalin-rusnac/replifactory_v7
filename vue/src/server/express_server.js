@@ -4,12 +4,20 @@ const ngrok = require('ngrok');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const path = require('path');
 const sheetUtil = require('./url_into_sheet.js');
+const axios = require('axios');
+const fs = require('fs');
+const os = require('os');
 
 const currentDirrectory = `${path.dirname(require.main.filename)}`
 const app = express();
 const expressPort = process.env.PORT || 3000;
 const proxyTarget = process.env.PROXY_TARGET || 'http://127.0.0.1:5000';
 const staticDir = process.env.STATIC_DIR || path.join(__dirname, '../../dist');
+const ngrokApiUrl = process.env.NGROK_API_URL || 'http://127.0.0.1:4040';
+const gcpSheetsConfig = process.env.GCP_SHEETS_CONFIG || `${currentDirrectory}/../../../secrets/googlesheet.json`;
+const checkNgrokStatusDelay = parseInt(process.env.CHECK_NGROK_STATUS_DELAY || 1000);
+const checkNgrokStatusInterval = parseInt(process.env.CHECK_NGROK_STATUS_INTERVAL || 60 * 1000);
+const gcpSheetName = process.env.GCP_SHEET_NAME || os.hostname();
 
 // Added console log before creating the middleware
 console.log('Initializing middleware');
@@ -46,9 +54,6 @@ app.use((req, res, next) => {
   next();
 });
 
-const fs = require('fs');
-
-const os = require('os');
 const ngrokConfigPath = getNgrokConfigPath();
 const util = require('util');
 const execAsync = util.promisify(require('child_process').exec);
@@ -70,6 +75,16 @@ let authtoken = null;
 let ngrokUrl = null;
 let sshUrl = null;
 
+async function uploadNgrokUrlToSpreadsheets(ngrokUrl) {
+  const jsonString = fs.readFileSync(gcpSheetsConfig, 'utf8');
+  console.debug(`read ${gcpSheetsConfig}: ${jsonString}`)
+  const spreadsheetId = JSON.parse(jsonString).id;
+  console.debug(`spreadsheetId: ${spreadsheetId}`)
+  await sheetUtil.writeUrlToGoogleSheet(spreadsheetId, gcpSheetName, ngrokUrl)
+  console.log(`ngrok tunnel URL published to: https://docs.google.com/spreadsheets/d/${spreadsheetId}`);
+
+} 
+
 
 async function startNgrok() {
   console.log('Starting ngrok tunnel setup...');
@@ -79,11 +94,7 @@ async function startNgrok() {
         addr: expressPort,
       });
       console.log(`ngrok tunnel started: ${ngrokUrl}`);
-      const jsonString = fs.readFileSync(`${currentDirrectory}/../../../secrets/googlesheet.json`, 'utf8');
-      const spreadsheetId = JSON.parse(jsonString).id;
-      const sheet_name = os.hostname();
-      await sheetUtil.writeUrlToGoogleSheet(spreadsheetId, sheet_name, ngrokUrl)
-      console.log(`ngrok tunnel URL published to: https://docs.google.com/spreadsheets/d/${spreadsheetId}`);
+      await uploadNgrokUrlToSpreadsheets(ngrokUrl)
     }
     else {
       console.log('ngrok tunnel already running at:', ngrokUrl);
@@ -110,15 +121,27 @@ if (fs.existsSync(ngrokConfigPath)) {
     });
   }
 } else {
-  console.error("Ngrok config doesn't exists:", ngrokConfigPath);
+  console.warn("Ngrok config doesn't exists:", ngrokConfigPath);
+  console.debug(`Check ngrok API: ${ngrokApiUrl}/api/tunnels`)
+  axios.get(`${ngrokApiUrl}/api/tunnels`)
+  .then(response => {
+    // console.debug(response);
+    ngrokUrl = response.data.tunnels[0].public_url;
+    console.info(`Ngrok tunnel address: ${ngrokUrl}`)
+    uploadNgrokUrlToSpreadsheets(ngrokUrl)
+  })
+  .catch(error => {
+    console.error(error);
+  });
 }
 }
 
 async function initializeNgrok() {
   try {
-    await checkNgrokStatus();
+    // await new Promise(checkNgrokStatus => setTimeout(checkNgrokStatus, checkNgrokStatusDelay));
+    await checkNgrokStatus()
     // Check ngrok status every 5 minutes
-    setInterval(checkNgrokStatus, 60 * 1000);
+    setInterval(checkNgrokStatus, checkNgrokStatusInterval);
     console.log('Ngrok initialization complete.');
   } catch (error) {
     console.error('Error initializing ngrok:', error);

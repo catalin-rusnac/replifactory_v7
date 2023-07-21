@@ -1,10 +1,12 @@
 const { google } = require("googleapis");
 const path = require('path');
 
-const currentDirrectory = `${path.dirname(require.main.filename)}`
+const currentDirrectory = `${path.dirname(require.main.filename)}`;
+const gcpAppCreds = process.env.GOOGLE_APPLICATION_CREDENTIALS || `${currentDirrectory}/../../../secrets/googlekey.json`;
+
 
 const auth = new google.auth.GoogleAuth({
-  keyFile: `${currentDirrectory}/../../../secrets/googlekey.json`,
+  keyFile: gcpAppCreds,
   scopes: [
     "https://spreadsheets.google.com/feeds",
     "https://www.googleapis.com/auth/drive",
