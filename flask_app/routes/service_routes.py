@@ -6,6 +6,8 @@ import io
 
 sys.path.insert(0, "../")
 
+script_dir = os.path.dirname(__file__)
+log_dir = os.environ.get("LOG_DIR", os.path.join(script_dir, "../../logs/"))
 
 service_routes = Blueprint('service_routes', __name__)
 
@@ -58,7 +60,7 @@ def update(update_type):
     script_path = os.path.dirname(__file__)
     makefile_dir = os.path.join(script_path, "../../")
     import subprocess
-    update_log = os.path.join(script_path, "../../logs/update-{}.log".format(update_type))
+    update_log = os.path.join(log_dir, "update-{}.log".format(update_type))
 
     with open(update_log, "w+") as f:
         command = ["make", "-C", makefile_dir, "update-{}".format(update_type)]
@@ -70,7 +72,7 @@ def update(update_type):
 def update_log():
     try:
         script_path = os.path.dirname(__file__)
-        update_log = os.path.join(script_path, "../../logs/update.log")
+        update_log = os.path.join(log_dir, "update.log")
         with open(update_log, "r") as f:
             log_content = f.read()
         return jsonify({'update_log': log_content})
@@ -95,10 +97,10 @@ def download_file():
 @service_routes.route('/log/<int:lines>/', methods=['GET'])
 def get_log_tail(lines=100):
     script_path = os.path.dirname(__file__)
-    log_flask_error = os.path.join(script_path, "../../logs/flask-error.log")
-    log_flask = os.path.join(script_path, "../../logs/flask.log")
-    log_express = os.path.join(script_path, "../../logs/express_server.log")
-    log_express_error = os.path.join(script_path, "../../logs/express_server-error.log")
+    log_flask_error = os.path.join(log_dir, "flask-error.log")
+    log_flask = os.path.join(log_dir, "flask.log")
+    log_express = os.path.join(log_dir, "express_server.log")
+    log_express_error = os.path.join(log_dir, "express_server-error.log")
     import subprocess
     d={}
     for file in [log_flask_error, log_flask, log_express, log_express_error]:

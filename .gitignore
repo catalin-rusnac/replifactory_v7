@@ -12,3 +12,6 @@
 /venv/
 /flask_app/develop/
 /db/
+
+venv/
+.env

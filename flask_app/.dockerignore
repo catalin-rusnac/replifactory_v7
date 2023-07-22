@@ -1,0 +1,10 @@
+__pycache__/
+flask_app/data/
+secrets*
+logs/
+venv/
+flask_app/develop/
+db/
+data/
+.dockerignore
+Dockerfile

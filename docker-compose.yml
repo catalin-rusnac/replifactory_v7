@@ -1,0 +1,88 @@
+services:
+  backend:
+    image: replifactory
+    restart: unless-stopped
+    build: ./flask_app
+    privileged: true
+    # work if /etc/udev/rules.d/11-ftdi.rules created on host machine: https://eblot.github.io/pyftdi/installation.html
+    devices:  # DO NOT WORK IN DOCKER DESKTOP!
+      - "/dev/bus:/dev/bus:rwm"
+    device_cgroup_rules:
+      - "c 188:* rwm"
+    depends_on:
+      - init
+    environment:
+      DATABASE_URI: "sqlite:////usr/src/app/db/replifactory.db"
+      LOG_DIR: /usr/src/app/logs
+    expose:
+      - "5000"
+    volumes:
+      - /dev:/dev:rw
+      - db-data:/usr/src/app/db:rw
+      - logs:/usr/src/app/logs:rw
+  frontend:
+    image: replifactory-ui
+    restart: unless-stopped
+    build: ./vue
+    depends_on:
+      - init
+      - backend
+    links:
+      - backend
+    ports:
+      - "3000:3000"
+    volumes:
+      - logs:/usr/src/app/logs:rw
+    secrets:
+      - gcp_service_account.json
+      - gcp_sheets_id.json
+    environment:
+      PROXY_TARGET: "http://backend:5000"
+      GCP_SHEETS_CONFIG: /run/secrets/gcp_sheets_id.json
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/gcp_service_account.json
+      NGROK_API_URL: http://ngrok:4040
+      GCP_SHEET_NAME: ${GCP_SHEET_NAME}
+  ngrok:
+    image: ngrok/ngrok:3
+    restart: unless-stopped
+    expose:
+      - 4040
+    ports:
+      - 4040:4040
+    entrypoint: ngrok
+    command: 
+      - http 
+      - frontend:3000 
+      - --config=/ngrok.yml,/run/secrets/ngrok_auth_token.yml
+    depends_on:
+      - frontend
+    secrets:
+      - ngrok_auth_token.yml
+    configs:
+      - ngrok.yml
+  init:
+    image: replifactory-init
+    build:
+      dockerfile_inline: |
+        FROM debian:bullseye-slim
+        CMD ["chmod", "a+w", "/logs", "/db-data"]
+    volumes:
+      - logs:/logs:rw
+      - db-data:/db-data:rw
+    restart: "no"
+
+secrets:
+  ngrok_auth_token.yml:
+    file: ./secrets/ngrok_auth_token.yml
+  gcp_service_account.json:
+    file: ./secrets/googlekey.json
+  gcp_sheets_id.json:
+    file: ./secrets/googlesheet.json
+
+configs:
+  ngrok.yml:
+    file: ./ngrok.yml
+
+volumes:
+  db-data: {}
+  logs: {}
