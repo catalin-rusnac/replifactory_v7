@@ -147,6 +147,6 @@ def execute_command(command):
         if result.returncode == 0:
             return jsonify({'output': result.stdout.decode('utf-8')}), 200
         else:
-            return jsonify({'error': result.stdout.decode('utf-8')}), 500
+            return jsonify({'error running '+command: result.stdout.decode('utf-8')}), 500
     except:
-        return jsonify({'error': 'Failed to execute command'}), 500
+        return jsonify({'error': 'Failed to execute command: '+command}), 500
