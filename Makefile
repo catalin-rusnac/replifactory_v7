@@ -1,6 +1,6 @@
 #git clone http://github.com/catalin-rusnac/replifactory_v7; cd replifactory_v7; make install
 
-install: swap install_apt_dependencies node-pi pip ngrok updatepath
+install: swap install_apt_dependencies node-pi updatepath pip ngrok
 	cd vue && npm install -y;
 	cd flask_app && pip install -r requirements.txt;
 	make services-ctl
@@ -97,7 +97,7 @@ updatepath:
 kill: kill-flask kill-express
 
 kill-express:
-	sudo nohup fuser -k 3000/tcp &
+	sudo nohup fuser -k 80/tcp &
 
 kill-flask:
 	sudo nohup fuser -k 5000/tcp &
