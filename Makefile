@@ -75,7 +75,7 @@ copy_to_www:
 	@sudo cp -r vue/dist/* /var/www/html
 	@echo "Copied contents of vue/dist/ to /var/www/html."
 
-APT_DEPENDENCIES = python3-distutils python3-scipy python3-numpy libatlas-base-dev python3-dev gfortran libopenblas-dev
+APT_DEPENDENCIES = python3-distutils python3-scipy python3-numpy python3-pandas libatlas-base-dev python3-dev gfortran libopenblas-dev
 
 install_apt_dependencies: swap
 	@echo "Checking for apt dependencies..."
