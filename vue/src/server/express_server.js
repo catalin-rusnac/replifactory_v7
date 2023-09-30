@@ -6,7 +6,7 @@ const path = require('path');
 
 
 const app = express();
-const expressPort = 80;
+const expressPort = 3000;
 
 // Added console log before creating the middleware
 console.log('Initializing middleware');

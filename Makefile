@@ -97,7 +97,7 @@ updatepath:
 kill: kill-flask kill-express
 
 kill-express:
-	sudo nohup fuser -k 80/tcp &
+	sudo nohup fuser -k 3000/tcp &
 
 kill-flask:
 	sudo nohup fuser -k 5000/tcp &
