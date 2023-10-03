@@ -160,7 +160,7 @@ dwservice:
 	sudo ./dwagent.sh -silent key=$$DWSERVICE_KEY
 
 wifi_config:
-	sudo mv services/wpa_supplicant.conf /etc/wpa_supplicant/wpa_supplicant.conf
+	sudo cp services/wpa_supplicant.conf /etc/wpa_supplicant/wpa_supplicant.conf
 	sudo chmod 600 /etc/wpa_supplicant/wpa_supplicant.conf
 	sudo systemctl restart dhcpcd
 
