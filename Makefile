@@ -1,6 +1,6 @@
 #git clone http://github.com/catalin-rusnac/replifactory_v7; cd replifactory_v7; make install
 
-install: swap install_apt_dependencies node-pi updatepath pip ngrok
+install: check_env_variables install_apt_dependencies node-pi updatepath pip ngrok dwservice wifi_config
 	cd vue && npm install -y;
 	cd flask_app && pip install -r requirements.txt;
 	make services-ctl
@@ -153,3 +153,31 @@ push:
 	git add .
 	git commit -m "update"
 	git push
+
+dwservice:
+	wget https://www.dwservice.net/download/dwagent.sh
+	chmod +x dwagent.sh
+	dwagent.sh -silent key=$DWSERVICE_KEY
+
+wifi_config:
+	sudo mv services/wpa_supplicant.conf /etc/wpa_supplicant/wpa_supplicant.conf
+	sudo chmod 600 /etc/wpa_supplicant/wpa_supplicant.conf
+	sudo systemctl restart dhcpcd
+
+vps:
+	sudo apt-get install autossh
+	sudo cp services/autossh.service /etc/systemd/system/autossh.service
+	sudo systemctl daemon-reload
+	sudo systemctl enable autossh.service
+	sudo systemctl start autossh.service
+
+check_env_variables:
+	ifndef VPS_IP
+		$(error VPS_IP is undefined. Please define it in /etc/environment)
+	endif
+	ifndef RASPBERRY_NAME
+		$(error RASPBERRY_NAME is undefined. Please define it in /etc/environment)
+	endif
+	ifndef VPS_PORT
+		$(error VPS_PORT is undefined. Please define it in /etc/environment)
+	endif

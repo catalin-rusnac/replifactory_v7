@@ -34,7 +34,6 @@ def capture_image_cv2():
 
 @service_routes.route("/picapture")
 def capture_image_pi():
-    from picamera import PiCamera
     stream = io.BytesIO()
     camera = PiCamera()
     camera.start_preview()
