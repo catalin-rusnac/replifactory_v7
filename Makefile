@@ -157,7 +157,7 @@ push:
 dwservice:
 	wget https://www.dwservice.net/download/dwagent.sh
 	chmod +x dwagent.sh
-	dwagent.sh -silent key=$DWSERVICE_KEY
+	dwagent.sh -silent key=$$DWSERVICE_KEY
 
 wifi_config:
 	sudo mv services/wpa_supplicant.conf /etc/wpa_supplicant/wpa_supplicant.conf
@@ -172,12 +172,4 @@ vps:
 	sudo systemctl start autossh.service
 
 check_env_variables:
-	ifndef VPS_IP
-		$(error VPS_IP is undefined. Please define it in /etc/environment)
-	endif
-	ifndef RASPBERRY_NAME
-		$(error RASPBERRY_NAME is undefined. Please define it in /etc/environment)
-	endif
-	ifndef VPS_PORT
-		$(error VPS_PORT is undefined. Please define it in /etc/environment)
-	endif
+	echo "Setting up " $$RASPBERRY_NAME": "$$VPS_IP":"$$VPS_PORT"..."
