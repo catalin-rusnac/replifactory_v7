@@ -155,9 +155,9 @@ push:
 	git push
 
 dwservice:
-	wget https://www.dwservice.net/download/dwagent.sh
-	chmod +x ./dwagent.sh
-	sudo ./dwagent.sh -silent key=$$DWSERVICE_KEY
+	cd services && wget https://www.dwservice.net/download/dwagent.sh
+	chmod +x ./services/dwagent.sh
+	sudo ./services/dwagent.sh -silent key=$$DWSERVICE_KEY
 
 wifi_config:
 	sudo cp services/wpa_supplicant.conf /etc/wpa_supplicant/wpa_supplicant.conf
