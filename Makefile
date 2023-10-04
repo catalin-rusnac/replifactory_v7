@@ -168,6 +168,9 @@ wifi_config:
 	sudo systemctl restart dhcpcd
 
 vps:
+	if ! cmp services/autossh.service /etc/systemd/system/autossh.service >/dev/null 2>&1; then \
+		sudo systemctl stop autossh.service; \
+	fi
 	sudo cp services/autossh.service /etc/systemd/system/autossh.service
 	sudo systemctl daemon-reload
 	sudo systemctl enable autossh.service
@@ -186,5 +189,5 @@ secrets:
 	make dwservice_run
 	make update-hostname
 	ssh-keygen -t rsa -b 4096 -C "pi@$$RASPBERRY_NAME" -f ~/.ssh/id_rsa -N ""
-	ssh-copy-id -i ~/.ssh/id_rsa.pub -p $$VPS_PORT pi@$$VPS_IP
+	ssh-copy-id -i ~/.ssh/id_rsa.pub replifactory-device@$$VPS_IP
 	make vps
