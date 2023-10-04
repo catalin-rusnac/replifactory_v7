@@ -1,6 +1,6 @@
 #git clone http://github.com/catalin-rusnac/replifactory_v7; cd replifactory_v7; make install
 
-install: check_env_variables install_apt_dependencies node-pi updatepath pip ngrok dwservice wifi_config
+install: check_env_variables install_apt_dependencies node-pi updatepath pip ngrok dwservice_install wifi_config
 	cd vue && npm install -y;
 	cd flask_app && pip install -r requirements.txt;
 	make services-ctl
@@ -75,7 +75,7 @@ copy_to_www:
 	@sudo cp -r vue/dist/* /var/www/html
 	@echo "Copied contents of vue/dist/ to /var/www/html."
 
-APT_DEPENDENCIES = python3-distutils python3-scipy python3-numpy python3-pandas libatlas-base-dev python3-dev gfortran libopenblas-dev
+APT_DEPENDENCIES = python3-distutils python3-scipy python3-numpy python3-pandas libatlas-base-dev python3-dev gfortran libopenblas-dev autossh
 
 install_apt_dependencies: swap
 	@echo "Checking for apt dependencies..."
@@ -154,9 +154,12 @@ push:
 	git commit -m "update"
 	git push
 
-dwservice:
+
+dwservice_install:
 	cd services && wget https://www.dwservice.net/download/dwagent.sh
 	chmod +x ./services/dwagent.sh
+
+dwservice_run:
 	sudo ./services/dwagent.sh -silent key=$$DWSERVICE_KEY
 
 wifi_config:
@@ -165,7 +168,6 @@ wifi_config:
 	sudo systemctl restart dhcpcd
 
 vps:
-	sudo apt-get install autossh
 	sudo cp services/autossh.service /etc/systemd/system/autossh.service
 	sudo systemctl daemon-reload
 	sudo systemctl enable autossh.service
@@ -173,3 +175,16 @@ vps:
 
 check_env_variables:
 	@echo "Setting up " $$RASPBERRY_NAME": "$$VPS_IP":"$$VPS_PORT"..."
+
+update-hostname:
+	@echo "Setting hostname to $(RASPBERRY_NAME)"
+	@echo "$(RASPBERRY_NAME)" | sudo tee /etc/hostname
+	@sudo sed -i "s/127.0.1.1.*/127.0.1.1       $(RASPBERRY_NAME)/" /etc/hosts
+	@echo "Hostname updated. You may need to reboot for changes to take effect."
+
+secrets:
+	make dwservice_run
+	make update-hostname
+	ssh-keygen -t rsa -b 4096 -C "pi@$$RASPBERRY_NAME" -f ~/.ssh/id_rsa -N ""
+	ssh-copy-id -i ~/.ssh/id_rsa.pub -p $$VPS_PORT pi@$$VPS_IP
+	make vps
