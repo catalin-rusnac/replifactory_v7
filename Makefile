@@ -174,7 +174,7 @@ vps:
 	sudo cp services/autossh.service /etc/systemd/system/autossh.service
 	sudo systemctl daemon-reload
 	sudo systemctl enable autossh.service
-	sudo systemctl start autossh.service
+	sudo systemctl restart autossh.service
 
 check_env_variables:
 	@echo "Setting up " $$RASPBERRY_NAME": "$$VPS_IP":"$$VPS_PORT"..."
@@ -188,6 +188,7 @@ update-hostname:
 secrets:
 	make dwservice_run
 	make update-hostname
+	sudo systemctl daemon-reload
 	ssh-keygen -t rsa -b 4096 -C "pi@$$RASPBERRY_NAME" -f ~/.ssh/id_rsa -N ""
 	ssh-copy-id -i ~/.ssh/id_rsa.pub replifactory-device@$$VPS_IP
 	make vps
