@@ -1,5 +1,5 @@
 #git clone http://github.com/catalin-rusnac/replifactory_v7; cd replifactory_v7; make install
-
+include /etc/environment
 install: check_env_variables install_apt_dependencies node-pi updatepath pip ngrok dwservice_install wifi_config
 	cd vue && npm install -y;
 	cd flask_app && pip install -r requirements.txt;
@@ -160,7 +160,7 @@ dwservice_install:
 	chmod +x ./services/dwagent.sh
 
 dwservice_run:
-	sudo ./services/dwagent.sh -silent key=$$DWSERVICE_KEY
+	sudo ./services/dwagent.sh -silent key=$(DWSERVICE_KEY)
 
 wifi_config:
 	sudo cp services/wpa_supplicant.conf /etc/wpa_supplicant/wpa_supplicant.conf
@@ -177,7 +177,7 @@ vps:
 	sudo systemctl restart autossh.service
 
 check_env_variables:
-	@echo "Setting up " $$RASPBERRY_NAME": "$$VPS_IP":"$$VPS_PORT"..."
+	@echo "Setting up " $(RASPBERRY_NAME)": "$(VPS_IP)":"$(VPS_PORT)"..."
 
 update-hostname:
 	@echo "Setting hostname to $(RASPBERRY_NAME)"
@@ -189,6 +189,6 @@ secrets:
 	make dwservice_run
 	make update-hostname
 	sudo systemctl daemon-reload
-	ssh-keygen -t rsa -b 4096 -C "pi@$$RASPBERRY_NAME" -f ~/.ssh/id_rsa -N ""
-	ssh-copy-id -i ~/.ssh/id_rsa.pub replifactory-device@$$VPS_IP
+	ssh-keygen -t rsa -b 4096 -C "pi@$(RASPBERRY_NAME)" -f ~/.ssh/id_rsa -N ""
+	ssh-copy-id -i ~/.ssh/id_rsa.pub replifactory-device@$(VPS_IP)
 	make vps
