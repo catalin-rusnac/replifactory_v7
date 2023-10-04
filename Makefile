@@ -168,7 +168,7 @@ wifi_config:
 	sudo systemctl restart dhcpcd
 
 vps:
-	if ! cmp services/autossh.service /etc/systemd/system/autossh.service >/dev/null 2>&1; then \
+	if systemctl is-active --quiet autossh.service; then \
 		sudo systemctl stop autossh.service; \
 	fi
 	sudo cp services/autossh.service /etc/systemd/system/autossh.service
