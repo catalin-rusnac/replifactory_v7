@@ -1,6 +1,6 @@
 #git clone http://github.com/catalin-rusnac/replifactory_v7; cd replifactory_v7; make install
 include /etc/environment
-install: check_env_variables install_apt_dependencies node-pi updatepath pip ngrok dwservice_install wifi_config
+install: check_env_variables install_apt_dependencies node-pi updatepath pip ngrok dwservice_install
 	cd vue && npm install -y;
 	cd flask_app && pip install -r requirements.txt;
 	make services-ctl
@@ -162,7 +162,7 @@ dwservice_install:
 dwservice_run:
 	sudo ./services/dwagent.sh -silent key=$(DWSERVICE_KEY)
 
-wifi_config:
+wifi_new_config:
 	sudo cp services/wpa_supplicant.conf /etc/wpa_supplicant/wpa_supplicant.conf
 	sudo chmod 600 /etc/wpa_supplicant/wpa_supplicant.conf
 	sudo systemctl restart dhcpcd
@@ -190,5 +190,5 @@ secrets:
 	make update-hostname
 	sudo systemctl daemon-reload
 	ssh-keygen -t rsa -b 4096 -C "pi@$(RASPBERRY_NAME)" -f ~/.ssh/id_rsa -N ""
-	ssh-copy-id -i ~/.ssh/id_rsa.pub replifactory-device@$(VPS_IP)
+	#ssh-copy-id -i ~/.ssh/id_rsa.pub replifactory-device@$(VPS_IP)   << do this manually, then ssh into the vps and add the public key to the authorized_keys file
 	make vps
