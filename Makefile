@@ -189,6 +189,6 @@ secrets:
 	make dwservice_run
 	make update-hostname
 	sudo systemctl daemon-reload
-	ssh-keygen -t rsa -b 4096 -C "pi@$(RASPBERRY_NAME)" -f ~/.ssh/id_rsa -N ""
+	#ssh-keygen -t rsa -b 4096 -C "pi@$(RASPBERRY_NAME)" -f ~/.ssh/id_rsa -N ""
 	#ssh-copy-id -i ~/.ssh/id_rsa.pub replifactory-device@$(VPS_IP)   << do this manually, then ssh into the vps and add the public key to the authorized_keys file
-	make vps
+	#make vps
