@@ -108,8 +108,15 @@ def get_log_tail(lines=100):
             if result.returncode == 0:
                 d[file] = result.stdout.decode('utf-8')
         except:
-            d[file] = "Error reading file"
+            # windows
+            command = ["powershell", "Get-Content", file, "-Tail", str(lines)]
+            result = subprocess.run(command, stdout=subprocess.PIPE)
+            if result.returncode == 0:
+                d[file] = result.stdout.decode('utf-8')
+            else:
+                d[file] = "Error reading file"
     return jsonify(d)
+
 
 # route to export csv of current experiment database
 @service_routes.route('/export_csv', methods=['GET'])
