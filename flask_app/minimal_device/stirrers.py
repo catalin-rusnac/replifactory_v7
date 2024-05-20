@@ -1,10 +1,12 @@
+import re
 import time
-
+import numpy as np
 
 class Stirrers:
     led_numbers = {stirrer: 7 - stirrer for stirrer in [1, 2, 3, 4, 5, 6, 7]}
 
     def __init__(self, device):
+        self.freq=1e5
         self.device = device
         self.pwm_controller = None
         self.multiplexer_port = None
@@ -23,6 +25,10 @@ class Stirrers:
             self.multiplexer_port.write_to(6, [0x00])
             # all GPIO pins output
             self.multiplexer_port.write_to(7, [0x00])
+
+            # Initialize SPI port for fan monitoring
+            self.fans_spi_port = self.device.spi.get_port(cs=4, freq=self.freq, mode=3)
+            self.fans_spi_port.set_frequency(self.freq)
 
     def add_calibration_point(self, vial_number, speed, duty_cycle):
         assert speed in [0, 1, 2, 3]
@@ -96,49 +102,51 @@ class Stirrers:
             duty_cycle_fast = self.device.device_data["stirrers"]["calibration"][vial]["high"]
             assert 0 <= duty_cycle_slow <= duty_cycle_fast <= 1
 
+    def get_speed(self, vial_number=7, estimated_rpm=3000):
+        self.freq = 1e5  # Hz
+        ms_per_rotation = 60 / estimated_rpm * 1000
+        bits_per_minute = self.freq * 60
+        ms_per_bit = 1 / self.freq * 1000
+        bits_per_rotation = ms_per_rotation / ms_per_bit
+        nbytes_per_rotation = bits_per_rotation / 8
+        nbytes = int(nbytes_per_rotation*0.8)+16  # Safety factor to avoid overflow
 
-# def get_speed(vial_number=7,nbytes=4096,freq=1e5):
-#     vial_number = 7 - vial_number
-#     assert 0 <= vial_number <= 6
-#     pm.slave_gpio_multiplexer.write_to(7, [0x00]) # 7 - port 1, 0x00 - output pin
-#     pm.slave_gpio_multiplexer.write_to(2, [6 - vial_number])
-#
-#
-#     fans.set_frequency(freq)
-#     time.sleep(0.01)
-#     res=fans.read(nbytes)
-#
-#     binstr="".join([bin(r)[2:].rjust(8,"0") for r in res])
-#     binstr=binstr.replace("1110111", "1111111")
-#     binstr=binstr.replace("11100111","11111111")
-#
-#     print(binstr,"\n")
-#
-#     sum(1 for i in binstr if i =="1")/(8*nbytes)
-#
-#     repeats = r'(.)\1+'
-#
-#     periods=[]
-#     for match in re.finditer(repeats, binstr):
-#         periods+=[len(match.group())]
-#
-#
-#     periods=np.array(periods)
-# #     print(periods)
-#     if len(periods)>5:
-#         periods=np.delete(periods,periods.argmin())
-#         periods=np.delete(periods,periods.argmin())
-#         periods=np.delete(periods,periods.argmin())
-#     print("periods:",periods)
-#
-#     rpm=60*freq/periods.mean()/2
-#     err=periods.std()/periods.mean()
-#
-# #     if err>0.06 or len(periods)<3:
-# #         print('high error')
-# #         time.sleep(3)
-# #         if nbytes<=65280/5:
-# #             nbytes*=2
-# #         return get_speed(vial_number,nbytes,freq=freq)
-#     print("Speed:",int(rpm),"RPM","±",int(err*rpm))
-#     return rpm
+        print("ms measured total:", ms_per_bit * nbytes * 8)
+
+        # Set up the multiplexer for the given vial
+        self.multiplexer_port.write_to(7, [0x00])  # Output pin
+        self.multiplexer_port.write_to(2, [vial_number-1])
+
+        # Read data from SPI port
+        res = self.fans_spi_port.read(nbytes)
+        binstr = "".join([bin(r)[2:].rjust(8, "0") for r in res])
+
+        # Clean up the binary string
+        binstr = binstr.replace("1110111", "1111111").replace("11100111", "11111111")
+
+        # Calculate the ratio of '1's in the binary data
+        ones_ratio = sum(1 for i in binstr if i == "1") / (8 * nbytes)
+        print("Data length:", len(binstr), "Ones ratio: %.2f" % ones_ratio)
+
+        # Find repeated sequences in the binary string
+        periods = [len(match.group()) for match in re.finditer(r'(0+|1+)', binstr)]
+        periods = periods[1:-1] # cut first and last incomplete sequences
+
+        # Check if any periods were found
+        if len(periods) < 1:
+            print("No periods found")
+            print(binstr)
+            print("New estimation:", estimated_rpm / 2)
+            time.sleep(3)
+            return self.get_speed(vial_number, estimated_rpm / 2)
+
+        periods = np.array(periods)
+        rpm = 60 * self.freq / periods.mean() / 2
+        err = periods.std() / periods.mean()
+
+        # Print the results
+        print("Number of periods:", len(periods))
+        print("Periods:", periods)
+        print("Speed:", int(rpm), "RPM ±", int(err * rpm), "Error: %.1f%%" % (err * 100))
+        print("ms per rotation actual: %.3f" % (1000 / (rpm / 60)))
+        return rpm

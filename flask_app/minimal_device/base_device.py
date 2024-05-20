@@ -119,7 +119,7 @@ class BaseDevice:
         try:
             # t0=time.time()
             assert ftdi_address[-1] != "/", "ftdi_address should not end with a '/'"
-            self.spi = SpiController(cs_count=4)
+            self.spi = SpiController(cs_count=5)
             self.spi.configure(ftdi_address + "/1")
             self.i2c = pyftdi.i2c.I2cController()
             self.i2c.configure(ftdi_address + "/2", frequency=5e4)
