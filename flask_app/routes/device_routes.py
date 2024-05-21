@@ -80,6 +80,27 @@ def measure_device_part(devicePart):
         dev.device_data[devicePart]['states'] = {1: t_vials, 2: t_board}
     return jsonify({'success': True, 'device_states': dev.device_data})
 
+@device_routes.route('/get-stirrer-speeds', methods=['GET'])
+def get_stirrer_speed():
+    speeds = dev.stirrers.get_all_speeds()
+    from flask import send_file, make_response
+    import matplotlib.pyplot as plt
+    from io import BytesIO
+
+    # Create the plot
+    plt.bar(speeds.keys(), speeds.values())
+    plt.ylim(0, 5000)
+    plt.ylabel('RPM')
+    plt.xlabel('Vial')
+
+    # Save the plot to a BytesIO object
+    img = BytesIO()
+    plt.savefig(img, format='png')
+    img.seek(0)  # Rewind the buffer to the beginning
+    plt.close()
+    # Send the image as a response
+    return send_file(img, mimetype='image/png',as_attachment=False)
+
 
 @device_routes.route('/get-all-device-data', methods=['GET'])
 def get_all_device_states():

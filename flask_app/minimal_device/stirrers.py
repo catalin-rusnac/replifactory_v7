@@ -103,7 +103,9 @@ class Stirrers:
             assert 0 <= duty_cycle_slow <= duty_cycle_fast <= 1
 
     def get_speed(self, vial_number=7, estimated_rpm=3000):
-        self.freq = 1e5  # Hz
+        ## develop this function while running device_test.py
+        # print("estimated_rps: ", estimated_rpm / 60)
+        # print("ms per rotation estimated: %.2f" % (1000 / estimated_rpm * 60))
         ms_per_rotation = 60 / estimated_rpm * 1000
         bits_per_minute = self.freq * 60
         ms_per_bit = 1 / self.freq * 1000
@@ -111,14 +113,15 @@ class Stirrers:
         nbytes_per_rotation = bits_per_rotation / 8
         nbytes = int(nbytes_per_rotation*0.8)+16  # Safety factor to avoid overflow
 
-        print("ms measured total:", ms_per_bit * nbytes * 8)
+        # print("ms measured total:", ms_per_bit * nbytes * 8)
 
         # Set up the multiplexer for the given vial
         self.multiplexer_port.write_to(7, [0x00])  # Output pin
         self.multiplexer_port.write_to(2, [vial_number-1])
-
+        t0 = time.time()
         # Read data from SPI port
         res = self.fans_spi_port.read(nbytes)
+        # print("Time taken:", time.time() - t0)
         binstr = "".join([bin(r)[2:].rjust(8, "0") for r in res])
 
         # Clean up the binary string
@@ -126,7 +129,6 @@ class Stirrers:
 
         # Calculate the ratio of '1's in the binary data
         ones_ratio = sum(1 for i in binstr if i == "1") / (8 * nbytes)
-        print("Data length:", len(binstr), "Ones ratio: %.2f" % ones_ratio)
 
         # Find repeated sequences in the binary string
         periods = [len(match.group()) for match in re.finditer(r'(0+|1+)', binstr)]
@@ -138,15 +140,55 @@ class Stirrers:
             print(binstr)
             print("New estimation:", estimated_rpm / 2)
             time.sleep(3)
-            return self.get_speed(vial_number, estimated_rpm / 2)
+            if estimated_rpm > 300:
+                return self.get_speed(vial_number, estimated_rpm / 2)
+            else:
+                return 0
 
         periods = np.array(periods)
-        rpm = 60 * self.freq / periods.mean() / 2
+        if periods[0] < 100:
+            rpm = 60 * self.freq / periods.mean() / 4
+        else:
+            rpm = 60 * self.freq / periods[0] / 4
         err = periods.std() / periods.mean()
 
         # Print the results
-        print("Number of periods:", len(periods))
-        print("Periods:", periods)
-        print("Speed:", int(rpm), "RPM ±", int(err * rpm), "Error: %.1f%%" % (err * 100))
-        print("ms per rotation actual: %.3f" % (1000 / (rpm / 60)))
+        # print("Bits:", len(binstr), "%.2f %%"% ones_ratio, "periods:", len(periods), periods)
+        # print("Speed:", int(rpm), "RPM ±", int(err * rpm), "Error: %.1f%%" % (err * 100))
+        # print("ms per rotation actual: %.3f" % (1000 / (rpm / 60)))
         return rpm
+
+    def get_all_speeds(self):
+        duty_cycles = {vial_number: self._get_duty_cycle(vial_number) for vial_number in range(1, 8)}
+        results = {vial_number: 0 for vial_number in range(1, 8)}
+        for vial_number, duty_cycle in duty_cycles.items():
+            if duty_cycle > 0:
+                results[vial_number] = self.get_speed(vial_number, estimated_rpm=2000*duty_cycle)
+        estimated_rpms = {vial_number: 4000 * duty_cycle for vial_number, duty_cycle in duty_cycles.items()}
+        return results
+
+    def get_calibration_curve(self, vial, n_points=10, time_sleep=2):
+        min_duty_cycle = self.device.device_data["stirrers"]["calibration"][vial]["low"]
+        max_duty_cycle = self.device.device_data["stirrers"]["calibration"][vial]["high"]
+        rpm_dc = {}
+        import matplotlib.pyplot as plt
+        #accelerate to max duty cycle
+        self._set_duty_cycle(vial, max_duty_cycle)
+        time.sleep(3)
+        # start measuring from max duty cycle to min duty cycle
+        estimated_rpm = 3000
+        for duty_cycle in np.linspace(min_duty_cycle, max_duty_cycle, n_points)[::-1]:
+            self._set_duty_cycle(vial, duty_cycle)
+            time.sleep(time_sleep)
+            rpm = self.get_speed(vial, estimated_rpm=estimated_rpm)
+            rpm_dc[duty_cycle] = rpm
+            estimated_rpm = rpm
+        plt.plot(list(rpm_dc.keys()), list(rpm_dc.values()), "ro-")
+        plt.title("Vial %d RPM vs Duty Cycle" % vial)
+        plt.xlabel("Duty Cycle")
+        plt.ylabel("RPM")
+        plt.ylim(0, 5000)
+        plt.xlim(0, 1.05)
+        plt.show()
+
+        return rpm_dc

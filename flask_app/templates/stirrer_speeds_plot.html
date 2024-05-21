@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Stirrer Speeds</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <div id="plot"></div>
+    <script type="text/javascript">
+        var plot_data = JSON.parse('{{ plot_data|tojson|safe }}');
+        Plotly.newPlot('plot', plot_data.data, plot_data.layout);
+    </script>
+</body>
+</html>
