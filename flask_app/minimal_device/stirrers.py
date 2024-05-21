@@ -186,9 +186,10 @@ class Stirrers:
         duty_cycles_measured = np.linspace(min_duty_cycle, max_duty_cycle, n_points)[::-1]
         for i in range(len(duty_cycles_measured)):
             duty_cycle = duty_cycles_measured[i]
-            self._set_duty_cycle(vial, duty_cycle)
-            time.sleep(time_sleep)
-            rpm = self.get_speed(vial, estimated_rpm=estimated_rpm)
-            rpm_dc[duty_cycle] = rpm
-            estimated_rpm = rpm*duty_cycles_measured[i+1]/duty_cycles_measured[i] if i < len(duty_cycles_measured)-1 else rpm
+            if duty_cycle > 0:
+                self._set_duty_cycle(vial, duty_cycle)
+                time.sleep(time_sleep)
+                rpm = self.get_speed(vial, estimated_rpm=estimated_rpm)
+                rpm_dc[duty_cycle] = rpm
+                estimated_rpm = rpm*duty_cycles_measured[i+1]/duty_cycles_measured[i] if i < len(duty_cycles_measured)-1 else rpm
         return rpm_dc
