@@ -104,8 +104,6 @@ class Stirrers:
 
     def get_speed(self, vial_number=7, estimated_rpm=3000):
         ## develop this function while running device_test.py
-        # print("estimated_rps: ", estimated_rpm / 60)
-        # print("ms per rotation estimated: %.2f" % (1000 / estimated_rpm * 60))
         ms_per_rotation = 60 / estimated_rpm * 1000
         bits_per_minute = self.freq * 60
         ms_per_bit = 1 / self.freq * 1000
@@ -113,15 +111,13 @@ class Stirrers:
         nbytes_per_rotation = bits_per_rotation / 8
         nbytes = int(nbytes_per_rotation*0.8)+16  # Safety factor to avoid overflow
 
-        # print("ms measured total:", ms_per_bit * nbytes * 8)
-
         # Set up the multiplexer for the given vial
         self.multiplexer_port.write_to(7, [0x00])  # Output pin
         self.multiplexer_port.write_to(2, [vial_number-1])
         t0 = time.time()
         # Read data from SPI port
         res = self.fans_spi_port.read(nbytes)
-        # print("Time taken:", time.time() - t0)
+        dt = time.time() - t0
         binstr = "".join([bin(r)[2:].rjust(8, "0") for r in res])
 
         # Clean up the binary string
@@ -139,21 +135,32 @@ class Stirrers:
             print("No periods found")
             print(binstr)
             print("New estimation:", estimated_rpm / 2)
-            time.sleep(3)
-            if estimated_rpm > 300:
+            if estimated_rpm > 400:
+                time.sleep(4)
                 return self.get_speed(vial_number, estimated_rpm / 2)
             else:
                 return 0
 
         periods = np.array(periods)
-        if periods[0] < 100:
-            rpm = 60 * self.freq / periods.mean() / 4
-        else:
-            rpm = 60 * self.freq / periods[0] / 4
-        err = periods.std() / periods.mean()
 
-        # Print the results
+        if len(periods) > 5:
+            # remove outliers
+            periods = periods[abs(periods - np.median(periods)) < 2 * np.std(periods)]
+
+        if periods[0] > 1000:
+            rpm = 60 * self.freq / periods[0] / 4
+        else:
+            rpm = 60 * self.freq / np.median(periods) / 4
+
+        # err = periods.std() / periods.mean()
+        # print("estimated_rps: ", estimated_rpm / 60)
+        # print("ms per rotation estimated: %.2f" % (1000 / estimated_rpm * 60))
+        # print("ms measured total:", ms_per_bit * nbytes * 8)
+        # print("Time taken:", dt)
         # print("Bits:", len(binstr), "%.2f %%"% ones_ratio, "periods:", len(periods), periods)
+        if max(periods)-min(periods) > max(periods) * 0.2:
+            print("Warning: Periods vary too much")
+            # print(binstr)
         # print("Speed:", int(rpm), "RPM ±", int(err * rpm), "Error: %.1f%%" % (err * 100))
         # print("ms per rotation actual: %.3f" % (1000 / (rpm / 60)))
         return rpm
@@ -164,7 +171,6 @@ class Stirrers:
         for vial_number, duty_cycle in duty_cycles.items():
             if duty_cycle > 0:
                 results[vial_number] = self.get_speed(vial_number, estimated_rpm=2000*duty_cycle)
-        estimated_rpms = {vial_number: 4000 * duty_cycle for vial_number, duty_cycle in duty_cycles.items()}
         return results
 
     def get_calibration_curve(self, vial, n_points=10, time_sleep=2):
@@ -177,18 +183,12 @@ class Stirrers:
         time.sleep(3)
         # start measuring from max duty cycle to min duty cycle
         estimated_rpm = 3000
-        for duty_cycle in np.linspace(min_duty_cycle, max_duty_cycle, n_points)[::-1]:
+        duty_cycles_measured = np.linspace(min_duty_cycle, max_duty_cycle, n_points)[::-1]
+        for i in range(len(duty_cycles_measured)):
+            duty_cycle = duty_cycles_measured[i]
             self._set_duty_cycle(vial, duty_cycle)
             time.sleep(time_sleep)
             rpm = self.get_speed(vial, estimated_rpm=estimated_rpm)
             rpm_dc[duty_cycle] = rpm
-            estimated_rpm = rpm
-        plt.plot(list(rpm_dc.keys()), list(rpm_dc.values()), "ro-")
-        plt.title("Vial %d RPM vs Duty Cycle" % vial)
-        plt.xlabel("Duty Cycle")
-        plt.ylabel("RPM")
-        plt.ylim(0, 5000)
-        plt.xlim(0, 1.05)
-        plt.show()
-
+            estimated_rpm = rpm*duty_cycles_measured[i+1]/duty_cycles_measured[i] if i < len(duty_cycles_measured)-1 else rpm
         return rpm_dc

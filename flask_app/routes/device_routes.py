@@ -83,13 +83,13 @@ def measure_device_part(devicePart):
 @device_routes.route('/get-stirrer-speeds', methods=['GET'])
 def get_stirrer_speed():
     speeds = dev.stirrers.get_all_speeds()
-    from flask import send_file, make_response
+    from flask import send_file
     import matplotlib.pyplot as plt
     from io import BytesIO
 
-    # Create the plot
+    plt.close()
     plt.bar(speeds.keys(), speeds.values())
-    plt.ylim(0, 5000)
+    plt.ylim(0, max(max(speeds.values())*1.1, 5000))
     plt.ylabel('RPM')
     plt.xlabel('Vial')
 
@@ -100,6 +100,29 @@ def get_stirrer_speed():
     plt.close()
     # Send the image as a response
     return send_file(img, mimetype='image/png',as_attachment=False)
+
+
+@device_routes.route('/get-stirrer-calibration-curve/<int:vial_number>', defaults={'n_points': 10, 'time_sleep': 2}, methods=['GET'])
+@device_routes.route('/get-stirrer-calibration-curve/<int:vial_number>/<int:n_points>/<int:time_sleep>', methods=['GET'])
+def get_stirrer_calibration_curve(vial_number, n_points, time_sleep):
+    from flask import send_file
+    import matplotlib.pyplot as plt
+    from io import BytesIO
+
+    rpm_dc = dev.stirrers.get_calibration_curve(vial_number, n_points, time_sleep)
+    plt.clf()
+    plt.plot(list(rpm_dc.keys()), list(rpm_dc.values()), "ro-")
+    plt.title("Vial %d RPM vs Duty Cycle" % vial_number)
+    plt.xlabel("Duty Cycle")
+    plt.ylabel("RPM")
+    # plt.ylim(0, 5000)
+    plt.xlim(0, 1.05)
+    img = BytesIO()
+    plt.savefig(img, format='png')
+    img.seek(0)  # Rewind the buffer to the beginning
+    plt.close()
+    # Send the image as a response
+    return send_file(img, mimetype='image/png', as_attachment=False)
 
 
 @device_routes.route('/get-all-device-data', methods=['GET'])
