@@ -110,6 +110,7 @@ class CultureData(db.Model):
 
     od = db.Column(db.Float, nullable=True)
     growth_rate = db.Column(db.Float, nullable=True)
+    rpm = db.Column(db.Float, nullable=True)
 
     # To represent the relationship between an experiment and its cultures
     experiment = db.relationship('ExperimentModel', backref='culture_data')
@@ -121,7 +122,8 @@ class CultureData(db.Model):
             'vial_number': self.vial_number,
             'timestamp': self.timestamp.isoformat(),
             'od': self.od_reading,
-            'growth_rate': self.growth_rate}
+            'growth_rate': self.growth_rate,
+            'rpm': self.rpm}
 
 
 # class Culture(db.Model):
