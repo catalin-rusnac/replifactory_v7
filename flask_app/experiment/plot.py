@@ -4,7 +4,7 @@ import plotly.graph_objs as go
 
 
 def plot_culture(culture, limit=100000):
-    ods, mus = culture.get_last_ods(limit=limit)
+    ods, mus, rpms = culture.get_last_ods_and_rpms(limit=limit)
     gens, concs = culture.get_last_generations(limit=limit)
     od_threshold = culture.parameters["od_threshold"]
     vf = culture.parameters["volume_fixed"]
@@ -83,6 +83,23 @@ def plot_culture(culture, limit=100000):
             name='Growth Rate',
             yaxis='y4'  # Set to the fourth y-axis
         )
+    if len(rpms) == 0:
+        x_rpm = []
+        y_rpm = []
+    else:
+        x_rpm = list(rpms.keys())
+        y_rpm = list(rpms.values())
+    trace5 = go.Scattergl(
+        x=x_rpm,
+        y=y_rpm,
+        mode='markers',
+        line=dict(
+            color='orange',
+            shape='linear',
+        ),
+        name='RPM',
+        yaxis='y5'  # Set to the fifth y-axis
+    )
     import pprint
     pp = pprint.PrettyPrinter(indent=4)
     pretty_parameters = pp.pformat(culture.parameters.inner_dict)
@@ -190,8 +207,14 @@ def plot_culture(culture, limit=100000):
             position=0.03,
             automargin=True,
         ),
-        # shapes=lines,  # Add the lines to the layout
+        yaxis5=dict(
+            title='RPM',
+            overlaying='y',
+            side='left',
+            position=0.06,
+            automargin=True,
+        ),
     )
 
-    fig = go.Figure(data=[trace1, trace2, trace3, trace4, params_trace], layout=layout)
+    fig = go.Figure(data=[trace1, trace2, trace3, trace4, trace5, params_trace], layout=layout)
     return fig

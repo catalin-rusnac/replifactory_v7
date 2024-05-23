@@ -10,6 +10,7 @@ class Stirrers:
         self.device = device
         self.pwm_controller = None
         self.multiplexer_port = None
+        self.rpms = {vial: None for vial in range(1, 8)}
 
         if self.device.is_connected():
             self.connect()
@@ -102,8 +103,15 @@ class Stirrers:
             duty_cycle_fast = self.device.device_data["stirrers"]["calibration"][vial]["high"]
             assert 0 <= duty_cycle_slow <= duty_cycle_fast <= 1
 
-    def get_speed(self, vial_number=7, estimated_rpm=3000):
-        ## develop this function while running device_test.py
+    def measure_rpm(self, vial_number=7, estimated_rpm=None):
+        duty_cycle = self._get_duty_cycle(vial_number)
+        if duty_cycle == 0:
+            return 0
+        if estimated_rpm is None:
+            estimated_rpm = self.rpms[vial_number]
+        if estimated_rpm is None:
+            estimated_rpm = 2000*duty_cycle
+
         ms_per_rotation = 60 / estimated_rpm * 1000
         bits_per_minute = self.freq * 60
         ms_per_bit = 1 / self.freq * 1000
@@ -137,7 +145,7 @@ class Stirrers:
             print("New estimation:", estimated_rpm / 2)
             if estimated_rpm > 400:
                 time.sleep(4)
-                return self.get_speed(vial_number, estimated_rpm / 2)
+                return self.measure_rpm(vial_number, estimated_rpm / 2)
             else:
                 return 0
 
@@ -165,19 +173,19 @@ class Stirrers:
         # print("ms per rotation actual: %.3f" % (1000 / (rpm / 60)))
         return rpm
 
-    def get_all_speeds(self):
-        duty_cycles = {vial_number: self._get_duty_cycle(vial_number) for vial_number in range(1, 8)}
-        results = {vial_number: 0 for vial_number in range(1, 8)}
-        for vial_number, duty_cycle in duty_cycles.items():
-            if duty_cycle > 0:
-                results[vial_number] = self.get_speed(vial_number, estimated_rpm=2000*duty_cycle)
+    def measure_all_rpms(self, vials_to_measure=(1, 2, 3, 4, 5, 6, 7)):
+        results = {vial_number: None for vial_number in range(1, 8)}
+        for vial_number in vials_to_measure:
+            results[vial_number] = self.measure_rpm(vial_number)
+        for k,v in results.items():
+            if v is not None:
+                self.rpms[k] = v
         return results
 
     def get_calibration_curve(self, vial, n_points=10, time_sleep=2):
         min_duty_cycle = self.device.device_data["stirrers"]["calibration"][vial]["low"]
         max_duty_cycle = self.device.device_data["stirrers"]["calibration"][vial]["high"]
         rpm_dc = {}
-        import matplotlib.pyplot as plt
         #accelerate to max duty cycle
         self._set_duty_cycle(vial, max_duty_cycle)
         time.sleep(3)
@@ -189,7 +197,7 @@ class Stirrers:
             if duty_cycle > 0:
                 self._set_duty_cycle(vial, duty_cycle)
                 time.sleep(time_sleep)
-                rpm = self.get_speed(vial, estimated_rpm=estimated_rpm)
+                rpm = self.measure_rpm(vial, estimated_rpm=estimated_rpm)
                 rpm_dc[duty_cycle] = rpm
                 estimated_rpm = rpm*duty_cycles_measured[i+1]/duty_cycles_measured[i] if i < len(duty_cycles_measured)-1 else rpm
         return rpm_dc

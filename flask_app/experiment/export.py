@@ -18,7 +18,7 @@ def export_culture_plot_html(culture, output_directory):
 def export_culture_csv(culture, output_directory):
     experiment_name = culture.experiment.model.name
     vial = culture.vial
-    ods, mus = culture.get_last_ods(limit=1000000)
+    ods, mus, rpms = culture.get_last_ods_and_rpms(limit=1000000)
     gens, concs = culture.get_last_generations(limit=1000000)
 
     # Combine all dictionaries into one

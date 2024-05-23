@@ -184,7 +184,7 @@ class Experiment:
                 time.sleep(0.5)
         return
 
-    def measure_od_in_background(self):
+    def measure_od_and_rpm_in_background(self):
         def task():
             available_vials = []
             try:
@@ -193,8 +193,9 @@ class Experiment:
                         self.locks[vial].acquire(blocking=False)
                         available_vials.append(vial)
                 new_ods = self.measure_od_all(vials_to_measure=available_vials)
-                for vial in new_ods.keys():
-                    self.cultures[vial].log_od(new_ods[vial])
+                new_rpms = self.device.stirrers.measure_all_rpms(vials_to_measure=available_vials)
+                for vial in available_vials:
+                    self.cultures[vial].log_od_and_rpm(new_ods[vial],new_rpms[vial])
             finally:
                 for vial in available_vials:
                     self.locks[vial].release()
@@ -262,7 +263,7 @@ class Experiment:
         print("Making schedule")
         self.schedule.clear()
         self.schedule.every().minute.at(":05").do(self.update_cultures_in_background)
-        self.schedule.every().minute.at(":00").do(self.measure_od_in_background)
+        self.schedule.every().minute.at(":00").do(self.measure_od_and_rpm_in_background)
         # self.schedule.every().minute.at(":20").do(self.measure_od_in_background)
         # self.schedule.every().minute.at(":40").do(self.measure_od_in_background)
 

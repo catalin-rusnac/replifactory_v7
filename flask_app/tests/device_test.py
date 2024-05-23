@@ -12,7 +12,7 @@ dev.connect()
 # dev.hello()
 #%%
 [dev.stirrers._set_duty_cycle(v, 0) for v in range(1,8)]
-speeds = dev.stirrers.get_all_speeds()
+speeds = dev.stirrers.measure_all_rpms()
 #%%
 import numpy as np
 import re
@@ -36,7 +36,7 @@ import matplotlib.pyplot as plt
 #%%
 rpm=3000
 for i in range(8):
-    rpm=dev.stirrers.get_speed(7, estimated_rpm=1000)
+    rpm=dev.stirrers.measure_rpm(7, estimated_rpm=1000)
     print(rpm)
     time.sleep(0.5)
 #%%
@@ -56,7 +56,7 @@ plt.show()
 results = []
 estimated_rpm = 1000
 for _ in range(9):
-    results += [dev.stirrers.get_speed(vial_number,estimated_rpm=estimated_rpm)]
+    results += [dev.stirrers.measure_rpm(vial_number, estimated_rpm=estimated_rpm)]
     estimated_rpm = results[-1]
     plt.plot(results)
     plt.axhline(np.mean(results) - 2*np.std(results), color='r', linestyle='--')

@@ -82,7 +82,7 @@ def measure_device_part(devicePart):
 
 @device_routes.route('/get-stirrer-speeds', methods=['GET'])
 def get_stirrer_speed():
-    speeds = dev.stirrers.get_all_speeds()
+    speeds = dev.stirrers.measure_all_rpms()
     from flask import send_file
     import matplotlib.pyplot as plt
     from io import BytesIO

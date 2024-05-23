@@ -191,13 +191,13 @@ class Culture:
         if self.growth_rate is not None:
             print("Doubling time:", np.log(2) / self.growth_rate, "h")
 
-    def log_od(self, od=None):
+    def log_od_and_rpm(self, od=None, rpm=None):
         self.od = od
         with self.experiment.app.app_context():
             self.new_culture_data = CultureData(
                 experiment_id=self.experiment.model.id,
                 vial_number=self.vial,
-                od=od, growth_rate=None)
+                od=od, growth_rate=None, rpm=rpm)
 
             self.db.session.add(self.new_culture_data)
             self.calculate_latest_growth_rate()
@@ -239,34 +239,34 @@ class Culture:
             self.db.session.commit()
             self.get_latest_data_from_db()
 
-    def _log_testing_generation(self, generation, concentration, timestamp=datetime.now()):
-        self.generation = generation
-        self.drug_concentration = concentration
-        with self.experiment.app.app_context():
-            new_generation_data = CultureGenerationData(
-                experiment_id=self.experiment.model.id,
-                vial_number=self.vial,
-                generation=generation,
-                drug_concentration=concentration,
-                timestamp=timestamp
-            )
-            self.db.session.add(new_generation_data)
-            self.db.session.commit()
-            self.get_latest_data_from_db()
-
-    def _log_testing_od(self, od=None, timestamp=datetime.now()):
-        self.od = od
-
-        with self.experiment.app.app_context():
-            self.new_culture_data = CultureData(
-                experiment_id=self.experiment.model.id,
-                vial_number=self.vial,
-                od=od, growth_rate=None, timestamp=timestamp)
-
-            self.db.session.add(self.new_culture_data)
-            self.calculate_latest_growth_rate()
-            self.db.session.commit()
-            self.get_latest_data_from_db()
+    # def _log_testing_generation(self, generation, concentration, timestamp=datetime.now()):
+    #     self.generation = generation
+    #     self.drug_concentration = concentration
+    #     with self.experiment.app.app_context():
+    #         new_generation_data = CultureGenerationData(
+    #             experiment_id=self.experiment.model.id,
+    #             vial_number=self.vial,
+    #             generation=generation,
+    #             drug_concentration=concentration,
+    #             timestamp=timestamp
+    #         )
+    #         self.db.session.add(new_generation_data)
+    #         self.db.session.commit()
+    #         self.get_latest_data_from_db()
+    #
+    # # def _log_testing_od(self, od=None, timestamp=datetime.now()):
+    # #     self.od = od
+    # #
+    # #     with self.experiment.app.app_context():
+    # #         self.new_culture_data = CultureData(
+    # #             experiment_id=self.experiment.model.id,
+    # #             vial_number=self.vial,
+    # #             od=od, growth_rate=None, timestamp=timestamp)
+    # #
+    # #         self.db.session.add(self.new_culture_data)
+    # #         self.calculate_latest_growth_rate()
+    # #         self.db.session.commit()
+    # #         self.get_latest_data_from_db()
 
     def _delete_all_records(self):
         self.db.session.query(CultureData).filter(CultureData.experiment_id == self.experiment.model.id,
@@ -283,7 +283,7 @@ class Culture:
         reads last od values and calculates growth rate
         :return:
         """
-        od_dict, _ = self.get_last_ods(limit=200, include_current=True, since_pump=True)
+        od_dict, _, _ = self.get_last_ods_and_rpms(limit=200, include_current=True, since_pump=True)
         t = np.array(list(int(dt.timestamp()) for dt in od_dict.keys()))
 
         # Ensure the OD values are floats before creating numpy array
@@ -298,7 +298,7 @@ class Culture:
             if np.isfinite(mu):
                 self.new_culture_data.growth_rate = mu
 
-    def get_last_ods(self, limit=100, include_current=False, since_pump=False):
+    def get_last_ods_and_rpms(self, limit=100, include_current=False, since_pump=False):
         culture_data = self.db.session.query(CultureData).filter(
             CultureData.experiment_id == self.experiment.model.id,
             CultureData.vial_number == self.vial
@@ -310,10 +310,11 @@ class Culture:
 
         od_dict = {data.timestamp: data.od for data in culture_data}
         mu_dict = {data.timestamp: data.growth_rate for data in culture_data}
+        rpm_dict = {data.timestamp: data.rpm for data in culture_data}
         if include_current and self.new_culture_data is not None:
             od_dict[self.new_culture_data.timestamp] = self.new_culture_data.od  # Include current uncommitted data
         od_dict = {k: v for k, v in sorted(od_dict.items(), key=lambda item: item[0])}
-        return od_dict, mu_dict
+        return od_dict, mu_dict, rpm_dict
 
     def get_last_generations(self, limit=100):
         generation_data = self.db.session.query(CultureGenerationData).filter(
