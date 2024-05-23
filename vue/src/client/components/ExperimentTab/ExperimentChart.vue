@@ -74,6 +74,13 @@ export default {
           position: 0.08,
           automargin: true,
         },
+        yaxis5: {
+          title: 'RPM',
+          overlaying: 'y',
+          side: 'right',
+          position: 0.1,
+          automargin: true,
+        },
       };
 
       const graphDiv = document.getElementById(`vial-${vial}`);
