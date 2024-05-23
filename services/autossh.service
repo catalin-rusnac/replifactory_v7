@@ -6,7 +6,8 @@ After=network.target
 User=pi
 EnvironmentFile=-/etc/environment
 Environment="AUTOSSH_GATETIME=0"
-ExecStart=/usr/bin/autossh -M 0 -N -C -c aes128-ctr -o "ServerAliveInterval 10" -o "ServerAliveCountMax 3" -o "ExitOnForwardFailure=yes" -R *:${VPS_PORT}:localhost:3000 replifactory-device@vps.replifactory.com
+ExecStart=/usr/bin/autossh -M 0 -N -C -c aes128-ctr -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" -o "ExitOnForwardFailure=yes" -o "PasswordAuthentication no" -o "PubkeyAuthentication yes" -i /home/replifactory-device/.ssh/id_rsa -R *:${VPS_PORT}:localhost:3000 replifactory-device@vps.replifactory.com
+
 
 [Install]
 WantedBy=multi-user.target
