@@ -28,7 +28,7 @@ class RoutesTestCase(unittest.TestCase):
             db.session.commit()
 
     def test_get_current_experiment(self):
-        response1 = self.client.get(f'/experiments/8')
+        response1 = self.client.get(f'/experiments/1')
         self.assertEqual(response1.status_code, 200)
         response = self.client.get(f'/experiments/current').get_json()
         self.assertEqual(response["id"], 1)
@@ -44,6 +44,34 @@ class RoutesTestCase(unittest.TestCase):
             # c.get_data_at_timepoint(timepoint)
         pprint(c.__dict__)
         pprint(c.get_info())
+
+    def test_new_update(self):
+        from develop.ModelBasedCulture.morbidostat_updater import MorbidostatUpdater
+        from develop.ModelBasedCulture.morbidostat_updater import RealCultureWrapper
+
+        updater = MorbidostatUpdater(
+            od_dilution_threshold=0.3,  # OD at which dilution occurs
+            dilution_factor=1.5,  # Factor by which the population is reduced during dilution
+            dilution_number_initial_dose=1,  # Number of dilutions before adding the drug
+            dose_initial_added=6.2,  # Initial dose added to the culture
+            dose_increase_factor=1.3,  # Factor by which the dose is increased at stress increases after the initial one
+            threshold_growth_rate_increase_stress=0.15,  # Min growth rate threshold for stress increase
+            threshold_growth_rate_decrease_stress=0.005,  # Max growth rate threshold for stress decrease
+            delay_dilution_max_hours=6,  # Maximum time between dilutions
+            delay_stress_increase_min_generations=3,  # Minimum generations between stress increases
+            volume_vial=12,  # Volume of the vial
+            pump1_stock_drug_concentration=0,  # Concentration of the drug in the pump 1 stock
+            pump2_stock_drug_concentration=300)
+
+        response1 = self.client.get(f'/experiments/2')
+        culture=self.app.experiment.cultures[3]
+        with self.app.app_context():
+            culture.get_latest_data_from_db()
+            adapted_culture = RealCultureWrapper(culture)
+            for i in range(3):
+                updater.update(adapted_culture)
+        pprint(culture.__dict__)
+        pprint(culture.get_info())
 
 
 if __name__ == '__main__':
