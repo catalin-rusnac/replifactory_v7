@@ -6,6 +6,7 @@ from routes.device_routes import device_routes, connect_device
 
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 import logging
 import os
 import signal
@@ -32,7 +33,10 @@ def create_app():
     db_path = os.path.join(script_dir, '../db/replifactory.db')
     app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 
+
     db.init_app(app)
+    migrate = Migrate(app, db)
+
     with app.app_context():
         db.create_all()
         # connect_device()  # connect to device on startup

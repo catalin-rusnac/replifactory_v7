@@ -123,7 +123,8 @@ class CultureData(db.Model):
             'timestamp': self.timestamp.isoformat(),
             'od': self.od_reading,
             'growth_rate': self.growth_rate,
-            'rpm': self.rpm}
+            'rpm': self.rpm
+        }
 
 
 # class Culture(db.Model):
