@@ -197,8 +197,7 @@ secrets:
 
 migrate:
 #	cd flask_app && python manage.py db init
-	cd flask_app
-	export FLASK_APP=./server.py
+	cd flask_app &&	export FLASK_APP=./server.py
 	if ! echo $PYTHONPATH | grep -q "$PWD"; then \
 		export PYTHONPATH=$PYTHONPATH:$PWD; \
 	fi
