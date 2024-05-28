@@ -10,7 +10,8 @@ from pprint import pformat, pprint
 
 import numpy as np
 import schedule
-from experiment.models import CultureData, ExperimentModel
+from experiment.database_models import CultureData, ExperimentModel
+from .ModelBasedCulture.morbidostat_updater import morbidostat_updater_default_parameters
 from .culture import Culture
 from flask import current_app
 
@@ -83,22 +84,22 @@ class QueueWorker:
                 self.is_performing_operation = False
 
 
-class AutoCommitParameters:
-    def __init__(self, model, db):
-        self.model = model
-        self.db = db
-
-    def __getattr__(self, name):
-        return self.model.parameters[name]
-
-    def __setattr__(self, name, value):
-        if name in ["model", "db"]:
-            self.__dict__[name] = value
-        else:
-            self.model.parameters[name] = value
-            self.model.parameters = self.model.parameters
-            self.db.session.add(self.model)
-            self.db.session.commit()
+# class AutoCommitParameters:
+#     def __init__(self, model, db):
+#         self.model = model
+#         self.db = db
+#
+#     def __getattr__(self, name):
+#         return self.model.parameters[name]
+#
+#     def __setattr__(self, name, value):
+#         if name in ["model", "db"]:
+#             self.__dict__[name] = value
+#         else:
+#             self.model.parameters[name] = value
+#             self.model.parameters = self.model.parameters
+#             self.db.session.add(self.model)
+#             self.db.session.commit()
 
 
 class Experiment:
@@ -136,7 +137,12 @@ class Experiment:
             # Make a deep copy of the parameters, modify it, and assign it back
             id = self.model.id
             experiment_model = self.db.session.get(ExperimentModel, id)
-            print("Updating experiment_model parameters", id, new_parameters)
+            for v, culture_parameters in new_parameters["cultures"].items():
+                for key, value in new_parameters["cultures"][v].items():
+                    if key in morbidostat_updater_default_parameters.keys():
+                        if type(value) not in [int, float]:
+                            value = float(value)
+                            new_parameters["cultures"][v][key] = value
             experiment_model.parameters = new_parameters
             self.model.parameters = new_parameters
             self.db.session.commit()
@@ -192,8 +198,8 @@ class Experiment:
                     if not self.locks[vial].locked():
                         self.locks[vial].acquire(blocking=False)
                         available_vials.append(vial)
-                new_ods = self.measure_od_all(vials_to_measure=available_vials)
                 new_rpms = self.device.stirrers.measure_all_rpms(vials_to_measure=available_vials)
+                new_ods = self.measure_od_all(vials_to_measure=available_vials)
                 for vial in available_vials:
                     self.cultures[vial].log_od_and_rpm(new_ods[vial],new_rpms[vial])
             finally:

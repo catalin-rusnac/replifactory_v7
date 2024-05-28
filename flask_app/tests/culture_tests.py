@@ -46,8 +46,8 @@ class RoutesTestCase(unittest.TestCase):
         pprint(c.get_info())
 
     def test_new_update(self):
-        from develop.ModelBasedCulture.morbidostat_updater import MorbidostatUpdater
-        from develop.ModelBasedCulture.morbidostat_updater import RealCultureWrapper
+        from experiment.ModelBasedCulture.morbidostat_updater import MorbidostatUpdater
+        from experiment.ModelBasedCulture.real_culture_wrapper import RealCultureWrapper
 
         updater = MorbidostatUpdater(
             od_dilution_threshold=0.3,  # OD at which dilution occurs
@@ -63,16 +63,26 @@ class RoutesTestCase(unittest.TestCase):
             pump1_stock_drug_concentration=0,  # Concentration of the drug in the pump 1 stock
             pump2_stock_drug_concentration=300)
 
-        response1 = self.client.get(f'/experiments/2')
+        response1 = self.client.get(f'/experiments/8')
+        print(response1.get_json())
         culture=self.app.experiment.cultures[3]
+        print(culture.__dict__)
         with self.app.app_context():
             culture.get_latest_data_from_db()
             adapted_culture = RealCultureWrapper(culture)
             for i in range(3):
                 updater.update(adapted_culture)
         pprint(culture.__dict__)
-        pprint(culture.get_info())
 
-
+    def test_plot_model(self):
+        response1 = self.client.get(f'/experiments/8')
+        print(response1.get_json())
+        culture=self.app.experiment.cultures[3]
+        print(culture.__dict__)
+        with self.app.app_context():
+            culture.get_latest_data_from_db()
+        fig=culture.plot_predicted()
+        import plotly.io as pio
+        pio.show(fig)
 if __name__ == '__main__':
     unittest.main()

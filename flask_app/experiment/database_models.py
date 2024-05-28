@@ -5,27 +5,53 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import JSON
 db = SQLAlchemy()
 
+morbidostat_updater_default_parameters = {
+    'od_dilution_threshold': 0.3,  # OD at which dilution occurs
+    'dilution_factor': 1.6,  # Factor by which the population is reduced during dilution
+    'dilution_number_initial_dose': 1,  # Number of dilutions before adding the drug
+    'dose_initial_added': 10,  # Initial dose added to the culture
+    'dose_increase_factor': 2,  # Factor by which the dose is increased at stress increases after the initial one
+    'threshold_growth_rate_increase_stress': 0.15,  # Min growth rate threshold for stress increase
+    'threshold_growth_rate_decrease_stress': -0.1,  # Max growth rate threshold for stress decrease
+    'delay_dilution_max_hours': 2,  # Maximum time between dilutions
+    'delay_stress_increase_min_generations': 3,  # Minimum generations between stress increases
+    'volume_vial': 12,  # Volume of the vial in mL
+    'pump1_stock_drug_concentration': 0,  # Concentration of the drug in the pump 1 stock
+    'pump2_stock_drug_concentration': 300  # Concentration of the drug in the pump 2 stock
+}
+
+additional_parameters = {"name": "Species 1",
+                        "description": "Strain 1"}
+
+# merge but make name and description first in the dictionary
+culture_parameters = {**additional_parameters, **morbidostat_updater_default_parameters}
+
 default_parameters = {"stock_concentration_drug": 100,
               "stock_volume_drug": 1000,
               "stock_volume_main": 2000,
               "stock_volume_waste": 5000,
               }
-culture_parameters = {"name": "Species 1",
-                      "description": "Strain 1",
 
-                      "volume_fixed": 15,
-                      "volume_added": 10,
+# culture_parameters = {"name": "Species 1",
+#                       "description": "Strain 1",
+#
+#                       "volume_fixed": 15,
+#                       "volume_added": 10,
+#
+#                       "od_threshold": 0.3,
+#                       "od_threshold_first_dilution": 0.4,
+#                       "stress_dose_first_dilution": 2.0,
+#
+#                       "stress_increase_delay_generations": 3.0,
+#                       "stress_increase_tdoubling_max_hrs": 4,
+#
+#                       "stress_decrease_delay_hrs": 16,
+#                       "stress_decrease_tdoubling_min_hrs": 24,
+#                       }
 
-                      "od_threshold": 0.3,
-                      "od_threshold_first_dilution": 0.4,
-                      "stress_dose_first_dilution": 2.0,
 
-                      "stress_increase_delay_generations": 3.0,
-                      "stress_increase_tdoubling_max_hrs": 4,
 
-                      "stress_decrease_delay_hrs": 16,
-                      "stress_decrease_tdoubling_min_hrs": 24,
-                      }
+
 default_parameters['cultures'] = {i: culture_parameters for i in range(1, 8)}
 
 
@@ -125,24 +151,3 @@ class CultureData(db.Model):
             'growth_rate': self.growth_rate,
             'rpm': self.rpm
         }
-
-
-# class Culture(db.Model):
-#     __tablename__ = 'cultures'
-#     id = db.Column(db.Integer, primary_key=True)
-#     name = db.Column(db.String(64), nullable=False)
-#     experiment_id = db.Column(db.Integer, db.ForeignKey('experiments.id'), nullable=False)
-#
-#     parameters = db.Column(JSON, nullable=False, default={
-#         'dead_volume': 15,
-#         'od_threshold': 0.3,
-#     })
-#     active_parameters = db.Column(JSON, nullable=False, default={})
-#
-#     def to_dict(self):
-#         return {
-#             'id': self.id,
-#             'name': self.name,
-#             'experiment_id': self.experiment_id,
-#             'parameters': self.parameters,
-#             'active_parameters': self.active_parameters}

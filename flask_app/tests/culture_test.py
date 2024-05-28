@@ -12,7 +12,7 @@ dev = None
 dev = BaseDevice()
 dev.connect()
 
-from experiment.models import ExperimentModel, db
+from experiment.database_models import ExperimentModel, db
 import os
 
 from flask_app.server import create_app

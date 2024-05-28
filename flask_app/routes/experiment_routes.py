@@ -6,7 +6,7 @@ import sqlalchemy
 
 sys.path.insert(0, "../")
 from flask import Blueprint, request, jsonify, current_app, send_file
-from experiment.models import ExperimentModel, CultureData, db, PumpData, CultureGenerationData
+from experiment.database_models import ExperimentModel, CultureData, db, PumpData, CultureGenerationData
 from experiment.experiment import Experiment
 from routes.device_routes import connect_device
 
@@ -107,6 +107,7 @@ def delete_experiment(id):
     else:
         return jsonify({'error': 'Experiment not found'}), 404
 
+
 @experiment_routes.route('/experiments/current/parameters', methods=['PUT'])
 def update_experiment_parameters():
     new_parameters = request.json['parameters']
@@ -116,9 +117,11 @@ def update_experiment_parameters():
             if k != 'cultures':
                 new_parameters[k] = current_app.experiment.parameters[k]
     current_app.experiment.parameters = new_parameters
+    # print("new_parameters", new_parameters)
     for c in current_app.experiment.cultures.values():
         c.get_latest_data_from_db()
     return jsonify(current_app.experiment.model.to_dict()), 200
+
 
 @experiment_routes.route('/experiments/stop_all', methods=['GET'])
 def stop_all_experiments():
@@ -183,6 +186,13 @@ def get_culture_data(experiment_id, id):
 @experiment_routes.route('/plot/<int:vial>', methods=['GET'])
 def get_culture_plot(vial):
     fig=current_app.experiment.cultures[vial].plot()
+    fig_json = fig.to_json()
+    return jsonify(fig_json)
+
+
+@experiment_routes.route('/plot_simulation/<int:vial>', methods=['GET'])
+def get_culture_predicted_plot(vial):
+    fig=current_app.experiment.cultures[vial].plot_predicted()
     fig_json = fig.to_json()
     return jsonify(fig_json)
 

@@ -64,7 +64,7 @@ class RoutesTestCase(unittest.TestCase):
     def test_update_experiment_parameters(self):
         with self.app.app_context():
             # First, create an experiment
-            response = self.client.get(f'/experiments/1')
+            response = self.client.get(f'/experiments/8')
             self.assertEqual(response.status_code, 200)
             id = response.get_json()["id"]
             parameters = response.get_json()["parameters"]

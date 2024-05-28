@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import numpy as np
 
 from experiment.experiment import Experiment
-from experiment.models import ExperimentModel, db
+from experiment.database_models import ExperimentModel, db
 from flask_app.server import create_app
 app = create_app()
 ctx = app.app_context()

@@ -194,3 +194,15 @@ secrets:
 	#make vps
 
 	echo $HOSTNAME > .env
+
+migrate:
+	cd flask_app && python manage.py db init
+	export FLASK_APP=./server.py
+	if ! echo $PYTHONPATH | grep -q "$PWD"; then \
+		export PYTHONPATH=$PYTHONPATH:$PWD; \
+	fi
+	#if flask-migrate is not installed, install it
+	if ! pip show Flask-Migrate > /dev/null; then \
+		pip install Flask-Migrate; \
+	fi
+	flask db migrate

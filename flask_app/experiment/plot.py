@@ -2,17 +2,28 @@ import json
 from datetime import timedelta, datetime
 import plotly.graph_objs as go
 
+from experiment.ModelBasedCulture.culture_growth_model import CultureGrowthModel
+
 
 def plot_culture(culture, limit=100000):
-    ods, mus, rpms = culture.get_last_ods_and_rpms(limit=limit)
-    gens, concs = culture.get_last_generations(limit=limit)
-    od_threshold = culture.parameters["od_threshold"]
-    vf = culture.parameters["volume_fixed"]
-    va = culture.parameters["volume_added"]
-    dilution_factor = (vf + va)/vf
-    stress_increase_delay_generations = culture.parameters["stress_increase_delay_generations"]
-    # semitransparent thin red horizontal lines every stress_increase_delay_generations
-    stress_decrease_delay_hrs = culture.parameters["stress_decrease_delay_hrs"]
+    plotting_model = False
+    if isinstance(culture, CultureGrowthModel):
+        plotting_model = True
+        ods = {p[1]: p[0] for p in culture.population}
+        mus = {p[1]: p[0] for p in culture.effective_growth_rates}
+        concs = {p[1]: p[0] for p in culture.doses}
+        gens = {p[1]: p[0] for p in culture.generations}
+        rpms = {}
+        vial_number = 1
+        experiment_name = "Model"
+        culture_parameters = culture.updater.__dict__
+    else:
+        # Extract data from real experiment
+        ods, mus, rpms = culture.get_last_ods_and_rpms(limit=limit)
+        gens, concs = culture.get_last_generations(limit=limit)
+        vial_number = culture.vial
+        experiment_name = culture.experiment.model.name
+        culture_parameters = culture.parameters.inner_dict
 
     if len(ods) == 0:
         trace1 = go.Scattergl(
@@ -102,7 +113,7 @@ def plot_culture(culture, limit=100000):
     )
     import pprint
     pp = pprint.PrettyPrinter(indent=4)
-    pretty_parameters = pp.pformat(culture.parameters.inner_dict)
+    pretty_parameters = pp.pformat(culture_parameters)
     pretty_parameters = pretty_parameters.replace('\n', '<br>')
 
     try:
@@ -124,51 +135,8 @@ def plot_culture(culture, limit=100000):
         yaxis='y1',  # Align it with the first y-axis
     )
 
-    # Add lines
-    lines = []
-    # rescue_dilution lines
-    if len(concs.values()) > 0:
-        next_rescue_dilution_time = max(ods.keys()) + timedelta(hours=stress_decrease_delay_hrs)
-        lines.append(go.layout.Shape(
-            type="line",
-            xref="x", yref="y3",  # Use 'y3' to align with concs trace
-            x0=list(concs.keys())[-1], y0=list(concs.values())[-1],
-            x1=next_rescue_dilution_time, y1=list(concs.values())[-1],
-            line=dict(
-                color="green",
-                width=1,
-                dash="dot",
-            )
-        ))
-        lines.append(go.layout.Shape(
-            type="line",
-            xref="x", yref="y3",  # Use 'y3' to align with concs trace
-            x0=next_rescue_dilution_time, y0=list(concs.values())[-1],
-            x1=next_rescue_dilution_time, y1=list(concs.values())[-1]/dilution_factor,
-            line=dict(
-                color="green",
-                width=1,
-                dash="dot",
-            )
-        ))
-    if len(ods.keys()) > 0:
-        latest_od_x = max(ods.keys())
-    else:
-        latest_od_x = datetime.now()
-    # od_threshold line
-    lines.append(go.layout.Shape(
-        type="line",
-    xref="x", yref="y1",  # Use 'y1' to align with ods trace
-    x0=latest_od_x, y0=od_threshold, x1=latest_od_x+timedelta(hours=12), y1=od_threshold,
-    line=dict(
-        color='rgba(0, 0, 0, 0.2)',
-        width=4,
-        dash="solid",
-    )
-    ))
-
     layout = go.Layout(
-        title="Culture: " + str(culture.vial) + "<br>Experiment: "+culture.experiment.model.name,
+        title="Culture: " + str(vial_number) + "<br>Experiment: "+experiment_name,
         # annotations=[
         #     dict(
         #         x=0,

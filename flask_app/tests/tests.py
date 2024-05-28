@@ -4,7 +4,7 @@ import sys
 sys.path.insert(0, "..")
 sys.path.insert(0, "../experiment")
 import unittest
-from flask_app.experiment.models import ExperimentModel, Culture
+from flask_app.experiment.database_models import ExperimentModel, Culture
 from flask_app.server import create_app, db
 
 

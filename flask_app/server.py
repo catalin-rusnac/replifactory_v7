@@ -11,7 +11,7 @@ import logging
 import os
 import signal
 
-from experiment.models import db
+from experiment.database_models import db
 from routes.experiment_routes import experiment_routes
 from routes.service_routes import service_routes
 

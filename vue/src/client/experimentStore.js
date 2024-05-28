@@ -15,6 +15,7 @@ export default {
       data: {},
     },
     plot_data: {1: null, 2: null, 3: null, 4: null, 5: null, 6: null, 7: null},
+    simulation_data: {1: null, 2: null, 3: null, 4: null, 5: null, 6: null, 7: null},
 
   },
   mutations: {
@@ -27,6 +28,10 @@ export default {
     setExperimentPlotData(state, { data, vial }) {
       console.log(data,vial,"data,vial replacing current:", state.plot_data[vial])
     state.plot_data[vial] = data;
+    },
+    setSimulationPlotData(state, { data, vial }) {
+        console.log(data,vial,"data,vial replacing current:", state.simulation_data[vial])
+        state.simulation_data[vial] = data;
     },
     setCurrentExperimentParameters(state, parameters) {
       state.currentExperiment.parameters = parameters;
@@ -47,6 +52,16 @@ export default {
       const response = await api.get(`/plot/${vial}`);
       const figure = response.data;
       commit('setExperimentPlotData', { data: JSON.parse(figure).data, vial }); // Parse the figure and extract data
+    },
+    async fetchSimulationPlot({ commit, state }, vial) {
+      console.log(`fetchSimulationPlot for vial ${vial}`);
+      if (!state.plot_data) {
+        console.log('Current experiment or its plot data is not defined');
+        return;
+      }
+      const response = await api.get(`/plot_simulation/${vial}`);
+      const figure = response.data;
+      commit('setSimulationPlotData', { data: JSON.parse(figure).data, vial }); // Parse the figure and extract data
     },
 
     async setCurrentExperimentAction({ commit, state }, experimentId) {
@@ -69,6 +84,7 @@ export default {
       commit('setCurrentExperimentParameters', parameters);
       await api.put(`/experiments/current/parameters`, {parameters: state.currentExperiment.parameters});
     },
+
     async fetchCurrentExperiment({ commit }) {
       console.log("fetchCurrentExperiment");
       const response = await api.get('/experiments/current');
@@ -164,6 +180,8 @@ export default {
         dispatch('reloadExperimentParameters');
         dispatch('playStopExperimentSound');
     },
+
+
     playStopExperimentSound({ state }) {
   const frequencies = [523.25, 392.00, 329.63, 261.63]; // Frequencies for C', G, E, and C
   const durations = [0.25, 0.25, 0.25, 0.55]; // Durations for each note (in seconds)

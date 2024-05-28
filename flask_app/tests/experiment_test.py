@@ -6,7 +6,7 @@ from minimal_device.base_device import BaseDevice
 dev = BaseDevice()
 dev.connect()
 # dev.hello()
-from experiment.models import ExperimentModel, Culture, ExperimentParameterHistory, CultureParameterHistory, db
+from experiment.database_models import ExperimentModel, Culture, ExperimentParameterHistory, CultureParameterHistory, db
 import os
 
 def create_test_app():

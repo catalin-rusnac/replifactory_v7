@@ -8,6 +8,7 @@
     <div class="tab-content">
 <!--      <HomeTab v-if="currentTab === 'Home'"/>-->
       <ExperimentTab v-if="currentTab === 'Experiment'"/>
+      <PredictionTab v-if="currentTab === 'Prediction'"/>
       <DeviceControl v-if="currentTab === 'Device'" />
       <NgrokTab v-if="currentTab === 'Remote'" />
       <HelpTab v-if="currentTab === 'Help'" />
@@ -27,6 +28,7 @@ import NgrokTab from "@/client/components/Remote/NgrokTab";
 import HelpTab from "@/client/components/HelpTab/HelpTab";
 import StatusTab from "@/client/components/StatusTab/StatusTab";
 import LogsTab from "@/client/components/LogsTab/LogsTab";
+import PredictionTab from "@/client/components/PredictionTab/PredictionTab";
 
 export default {
   name: 'App',
@@ -44,12 +46,13 @@ export default {
     NgrokTab,
     HelpTab,
     StatusTab,
-    LogsTab
+    LogsTab,
+    PredictionTab
   },
   data() {
     return {
       currentTab: 'Experiment',
-      tabs: ['Experiment', 'Device', 'Remote', 'Help', "Status", "Logs"]
+      tabs: ['Experiment', 'Prediction', 'Device', 'Remote', 'Help', "Status", "Logs"]
     };
   },
 };
