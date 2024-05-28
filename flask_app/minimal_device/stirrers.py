@@ -105,13 +105,12 @@ class Stirrers:
 
     def measure_rpm(self, vial_number=7, estimated_rpm=None):
         duty_cycle = self._get_duty_cycle(vial_number)
-        if duty_cycle == 0:
-            return 0
         if estimated_rpm is None:
             estimated_rpm = self.rpms[vial_number]
         if estimated_rpm is None:
             estimated_rpm = 2000*duty_cycle
-
+        if estimated_rpm < 10:
+            return 0
         ms_per_rotation = 60 / estimated_rpm * 1000
         bits_per_minute = self.freq * 60
         ms_per_bit = 1 / self.freq * 1000

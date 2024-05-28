@@ -62,6 +62,10 @@ class Culture:
         self.updater = MorbidostatUpdater(**self.parameters.inner_dict)
         self.adapted_culture = RealCultureWrapper(self)
 
+    @property
+    def time_current(self):
+        return datetime.now()
+
     def update(self):
         self.updater = MorbidostatUpdater(**self.parameters.inner_dict)
         self.adapted_culture = RealCultureWrapper(self)
