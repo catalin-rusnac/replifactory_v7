@@ -204,5 +204,6 @@ migrate:
 	if ! pip show Flask-Migrate > /dev/null; then \
 		pip install Flask-Migrate; \
 	fi && \
+	flask db init && \
 	flask db migrate && \
 	flask db upgrade)
