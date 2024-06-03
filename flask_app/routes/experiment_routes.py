@@ -122,6 +122,21 @@ def update_experiment_parameters():
         c.get_latest_data_from_db()
     return jsonify(current_app.experiment.model.to_dict()), 200
 
+# route put experiment growth_parameters
+@experiment_routes.route('/experiments/current/growth_parameters', methods=['PUT'])
+def update_experiment_growth_parameters():
+    new_parameters = request.json['parameters']
+    if current_app.experiment.model.status == 'running':
+        print("Not updating volume parameters of current experiment")
+        for k in new_parameters.keys():
+            if k != 'cultures':
+                new_parameters[k] = current_app.experiment.growth_parameters[k]
+    current_app.experiment.growth_parameters = new_parameters
+    # print("new_parameters", new_parameters)
+    for c in current_app.experiment.cultures.values():
+        c.get_latest_data_from_db()
+    return jsonify(current_app.experiment.model.to_dict()), 200
+
 
 @experiment_routes.route('/experiments/stop_all', methods=['GET'])
 def stop_all_experiments():

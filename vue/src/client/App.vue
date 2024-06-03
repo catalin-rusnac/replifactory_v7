@@ -65,6 +65,11 @@ export default {
   -moz-osx-font-smoothing: grayscale;
   color: #2c3e50;
   margin: 0 auto;
-  max-width: 1024px;
+}
+
+.nav {
+  display: flex;
+  justify-content: center; /* Center the tabs horizontally */
+  align-items: center; /* Center the tabs vertically */
 }
 </style>

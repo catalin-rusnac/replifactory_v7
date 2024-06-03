@@ -10,7 +10,8 @@ from pprint import pformat, pprint
 
 import numpy as np
 import schedule
-from experiment.database_models import CultureData, ExperimentModel
+from experiment.database_models import ExperimentModel
+from .ModelBasedCulture.culture_growth_model import culture_growth_model_default_parameters
 from .ModelBasedCulture.morbidostat_updater import morbidostat_updater_default_parameters
 from .culture import Culture
 from flask import current_app
@@ -137,12 +138,22 @@ class Experiment:
             # Make a deep copy of the parameters, modify it, and assign it back
             id = self.model.id
             experiment_model = self.db.session.get(ExperimentModel, id)
+
+            # modify to float
             for v, culture_parameters in new_parameters["cultures"].items():
                 for key, value in new_parameters["cultures"][v].items():
                     if key in morbidostat_updater_default_parameters.keys():
                         if type(value) not in [int, float]:
                             value = float(value)
                             new_parameters["cultures"][v][key] = value
+            if "growth_parameters" in new_parameters.keys():
+                for v, culture_parameters in new_parameters["growth_parameters"].items():
+                    for key, value in new_parameters["growth_parameters"][v].items():
+                        if key in culture_growth_model_default_parameters.keys():
+                            if type(value) not in [int, float]:
+                                value = float(value)
+                                new_parameters["growth_parameters"][v][key] = value
+            # print("New parameters", new_parameters)
             experiment_model.parameters = new_parameters
             self.model.parameters = new_parameters
             self.db.session.commit()

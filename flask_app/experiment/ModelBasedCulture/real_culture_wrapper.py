@@ -38,8 +38,8 @@ class RealCultureWrapper:
     def time_current(self):
         return self.culture.time_current
 
-    def dilute_culture(self, target_dose):
-        self.culture.make_dilution(target_dose)
+    def dilute_culture(self, target_dose, dilution_factor):
+        self.culture.make_dilution(target_dose, dilution_factor)
 
 
 # if isinstance(culture, CultureGrowthModel):

@@ -30,8 +30,7 @@ class RoutesTestCase(unittest.TestCase):
         name = 'Exp'+str(time.ctime())
         data = {
             'name': name,
-            'parameters': {'stock_volume_main': 2000, 'stock_volume_drug': 1000, 'stock_volume_waste': 5000,
-                           'stock_concentration_drug': 0.1}
+            'parameters': {'stock_volume_main': 2000, 'stock_volume_drug': 1000, 'stock_volume_waste': 5000,}
         }
         response = self.client.post('/experiments', data=json.dumps(data), content_type='application/json')
         self.assertEqual(response.status_code, 201)

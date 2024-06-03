@@ -123,15 +123,15 @@ class CultureGrowthModel:
         Dilute the culture and adjust the drug dose based on the dilution factor and the added dose.
         """
         added_volume = self.updater.volume_vial * (dilution_factor - 1)
-        stock_concentration = self.updater.pump2_stock_drug_concentration
+        # stock1_concentration = self.updater.pump1_stock_drug_concentration
+        stock1_concentration = 0
+        stock2_concentration = self.updater.pump2_stock_drug_concentration
         current_dose = self.drug_concentration
         current_volume = self.updater.volume_vial
-        max_dose = (current_dose * current_volume + stock_concentration * added_volume) / (
-                    current_volume + added_volume)
-        min_dose = (current_dose * current_volume + self.updater.pump1_stock_drug_concentration * added_volume) / (
-                current_volume + added_volume)
-        target_dose = min(target_dose, max_dose)
-        target_dose = max(target_dose, min_dose)
+        total_volume = current_volume + added_volume
+        min_dose = (current_dose * current_volume + stock1_concentration * added_volume) / total_volume
+        max_dose = (current_dose * current_volume + stock2_concentration * added_volume) / total_volume
+        target_dose = min(max_dose, max(min_dose, target_dose))
 
         added_dose = target_dose - self.drug_concentration
         self.drug_concentration += added_dose

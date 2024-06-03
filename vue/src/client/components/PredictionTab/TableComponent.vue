@@ -78,10 +78,4 @@ export default {
 
 <style>
 @import "~handsontable/dist/handsontable.full.css";
-
-.hot-table {
-  width: 900px;
-  height: 400px;
-  overflow: auto;
-}
 </style>

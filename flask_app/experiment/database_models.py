@@ -4,33 +4,20 @@ from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import JSON
 db = SQLAlchemy()
+from experiment.ModelBasedCulture.culture_growth_model import culture_growth_model_default_parameters
+from experiment.ModelBasedCulture.morbidostat_updater import morbidostat_updater_default_parameters
 
-morbidostat_updater_default_parameters = {
-    'od_dilution_threshold': 0.3,  # OD at which dilution occurs
-    'dilution_factor': 1.6,  # Factor by which the population is reduced during dilution
-    'dilution_number_initial_dose': 1,  # Number of dilutions before adding the drug
-    'dose_initial_added': 10,  # Initial dose added to the culture
-    'dose_increase_factor': 2,  # Factor by which the dose is increased at stress increases after the initial one
-    'threshold_growth_rate_increase_stress': 0.15,  # Min growth rate threshold for stress increase
-    'threshold_growth_rate_decrease_stress': -0.1,  # Max growth rate threshold for stress decrease
-    'delay_dilution_max_hours': 2,  # Maximum time between dilutions
-    'delay_stress_increase_min_generations': 3,  # Minimum generations between stress increases
-    'volume_vial': 12,  # Volume of the vial in mL
-    'pump1_stock_drug_concentration': 0,  # Concentration of the drug in the pump 1 stock
-    'pump2_stock_drug_concentration': 300  # Concentration of the drug in the pump 2 stock
-}
-
-additional_parameters = {"name": "Species 1",
-                        "description": "Strain 1"}
+name_parameters = {"name": "Species 1",
+                   "description": "Strain 1"}
 
 # merge but make name and description first in the dictionary
-culture_parameters = {**additional_parameters, **morbidostat_updater_default_parameters}
+culture_parameters = {**name_parameters, **morbidostat_updater_default_parameters}
 
-default_parameters = {"stock_concentration_drug": 100,
-              "stock_volume_drug": 1000,
-              "stock_volume_main": 2000,
-              "stock_volume_waste": 5000,
-              }
+default_parameters = {"stock_volume_drug": 1000, "stock_volume_main": 2000,
+                      "stock_volume_waste": 5000,
+                      'cultures': {i: culture_parameters for i in range(1, 8)},
+                      'growth_parameters': {i: culture_growth_model_default_parameters for i in range(1, 8)}}
+
 
 # culture_parameters = {"name": "Species 1",
 #                       "description": "Strain 1",
@@ -52,7 +39,6 @@ default_parameters = {"stock_concentration_drug": 100,
 
 
 
-default_parameters['cultures'] = {i: culture_parameters for i in range(1, 8)}
 
 
 class ExperimentModel(db.Model):

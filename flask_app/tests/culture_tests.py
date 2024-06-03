@@ -75,7 +75,7 @@ class RoutesTestCase(unittest.TestCase):
         pprint(culture.__dict__)
 
     def test_plot_model(self):
-        response1 = self.client.get(f'/experiments/8')
+        response1 = self.client.get(f'/experiments/11')
         print(response1.get_json())
         culture=self.app.experiment.cultures[3]
         print(culture.__dict__)

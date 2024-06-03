@@ -204,6 +204,14 @@ migrate:
 	if ! pip show Flask-Migrate > /dev/null; then \
 		pip install Flask-Migrate; \
 	fi && \
-	flask db init && \
 	flask db migrate && \
 	flask db upgrade)
+
+timelapse:
+	if ps -ef | grep -v grep | grep timelapse.py ; then
+		echo "timelapse.py is already running"
+		exit 0
+	fi
+	FOLDER=$(date +%Y%m%d)
+	mkdir -p /home/pi/timelapse/$FOLDER
+	nohup /home/pi/timelapse/timelapse.py --outputdir /home/pi/timelapse/$FOLDER &

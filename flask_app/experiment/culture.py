@@ -56,8 +56,7 @@ class Culture:
             vial=vial,
             db_session=db.session,
             experiment_model=experiment.model)
-        self.growth_parameters = culture_growth_model_default_parameters
-        self.culture_growth_model = CultureGrowthModel(**self.growth_parameters)
+        self.culture_growth_model = CultureGrowthModel()
         self.get_latest_data_from_db()
         self.updater = MorbidostatUpdater(**self.parameters.inner_dict)
         self.adapted_culture = RealCultureWrapper(self)
@@ -76,9 +75,12 @@ class Culture:
 
     def plot_predicted(self):
         self.updater = MorbidostatUpdater(**self.parameters.inner_dict)
-        # print(self.parameters.inner_dict, "parameters")
-        self.culture_growth_model = CultureGrowthModel(**self.growth_parameters)
+        growth_parameters = self.experiment.model.parameters["growth_parameters"][str(self.vial)]
+        self.culture_growth_model = CultureGrowthModel(**growth_parameters)
         self.culture_growth_model.updater = self.updater
+
+
+
         self.culture_growth_model.simulate_experiment()
         return plot_culture(self.culture_growth_model)
 
@@ -300,11 +302,12 @@ class Culture:
         concentration_dict = {k: v for k, v in sorted(concentration_dict.items(), key=lambda item: item[0])}
         return generation_dict, concentration_dict
 
-    def make_dilution(self, target_concentration=None):
+    def make_dilution(self, target_concentration=None, dilution_factor=None, current_volume=None):
         if target_concentration is None:
             target_concentration = self.drug_concentration
-        main_pump_volume, drug_pump_volume = self.calculate_pump_volumes(target_concentration)
-
+        main_pump_volume, drug_pump_volume = self.calculate_pump_volumes(target_concentration=target_concentration,
+                                                                         dilution_factor=dilution_factor,
+                                                                         current_volume=current_volume)
         device = self.experiment.device
         lock_acquired_here = False
         try:
@@ -323,30 +326,18 @@ class Culture:
             if lock_acquired_here:
                 self.experiment.locks[self.vial].release()
 
-    def calculate_pump_volumes(self, target_concentration):
-        # morbidostat_updater_default_parameters = {
-        #     'od_dilution_threshold': 0.3,  # OD at which dilution occurs
-        #     'dilution_factor': 1.6,  # Factor by which the population is reduced during dilution
-        #     'dilution_number_initial_dose': 1,  # Number of dilutions before adding the drug
-        #     'dose_initial_added': 10,  # Initial dose added to the culture
-        #     'dose_increase_factor': 2,  # Factor by which the dose is increased at stress increases after the initial one
-        #     'threshold_growth_rate_increase_stress': 0.15,  # Min growth rate threshold for stress increase
-        #     'threshold_growth_rate_decrease_stress': -0.1,  # Max growth rate threshold for stress decrease
-        #     'delay_dilution_max_hours': 2,  # Maximum time between dilutions
-        #     'delay_stress_increase_min_generations': 3,  # Minimum generations between stress increases
-        #     'volume_vial': 12,  # Volume of the vial in mL
-        #     'pump1_stock_drug_concentration': 0,  # Concentration of the drug in the pump 1 stock
-        #     'pump2_stock_drug_concentration': 300  # Concentration of the drug in the pump 2 stock
-        # }
-
-        dilution_factor = self.parameters["dilution_factor"]
-        current_volume = self.parameters["volume_vial"]
+    def calculate_pump_volumes(self, target_concentration, dilution_factor=None, current_volume=None):
+        if dilution_factor is None:
+            dilution_factor = self.parameters["dilution_factor"]
+        if current_volume is None:
+            current_volume = self.parameters["volume_vial"]
         volume_added = current_volume * (dilution_factor - 1)
 
         current_concentration = self.drug_concentration
         if current_concentration is None:
             current_concentration = 0
-        stock_concentration = float(self.experiment.model.parameters["stock_concentration_drug"])
+        # stock_concentration = float(self.experiment.model.parameters["stock_concentration_drug"])
+        stock_concentration = self.parameters["pump2_stock_drug_concentration"]
         total_volume = volume_added + current_volume
         drug_total_amount = total_volume * target_concentration
         drug_current_amount = current_volume * current_concentration
@@ -361,17 +352,18 @@ class Culture:
 
     def calculate_generation_concentration_after_dil(self, main_pump_volume, drug_pump_volume):
         v0 = self.parameters["volume_vial"]
-        v1 = v0 + main_pump_volume + drug_pump_volume
-        dilution_factor = v1 / v0
+        total_volume = v0 + main_pump_volume + drug_pump_volume
+        dilution_factor = total_volume / v0
         if self.generation is None:
             generation = np.log2(dilution_factor)
         else:
             generation = self.generation + np.log2(dilution_factor)
-
-        stock_concentration_drug = float(self.experiment.model.parameters["stock_concentration_drug"])
+        stock1_concentration = self.parameters["pump1_stock_drug_concentration"] if "pump1_stock_drug_concentration" in self.parameters else 0
+        stock2_concentration = self.parameters["pump2_stock_drug_concentration"]
 
         # Calculate the new drug concentration after dilution and adding drug
-        drug_concentration = ((v0 * self.drug_concentration) + (drug_pump_volume * stock_concentration_drug)) / v1
+        drug_concentration = (v0 * self.drug_concentration + main_pump_volume * stock1_concentration +
+                              drug_pump_volume * stock2_concentration) / total_volume
         self.log_generation(generation, drug_concentration)  # also stores to self
         self.get_latest_data_from_db()  # TODO: speed up by not querying db again
 
