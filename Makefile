@@ -138,6 +138,7 @@ services-ctl: directories
 update-full:
 	git pull
 	make install
+	make migrate
 	make kill
 
 update-backend:
