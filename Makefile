@@ -157,7 +157,11 @@ push:
 
 
 dwservice_install:
-	cd services && wget https://www.dwservice.net/download/dwagent.sh
+
+	cd services
+	if [ ! -f dwagent.sh ]; then \
+		wget https://www.dwservice.net/download/dwagent.sh; \
+	fi
 	chmod +x ./services/dwagent.sh
 
 dwservice_run:
