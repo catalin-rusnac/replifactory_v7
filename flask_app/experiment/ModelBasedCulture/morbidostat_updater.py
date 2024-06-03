@@ -6,7 +6,7 @@ morbidostat_updater_default_parameters = {
     'dilution_factor': 1.6,  # Factor by which the population is reduced during dilution
     'dilution_number_first_drug_addition': 1,  # Number of dilutions before adding the drug
     'dose_first_drug_addition': 10,  # Initial dose added to the culture at the first dilution triggered by OD or time
-    'dose_increase_factor': 2,  # Factor by which the dose is increased at stress increases after the initial one
+    'dose_increase_value': 1,  # Value by which the dose is increased at stress increases after the initial one
     'threshold_growth_rate_increase_stress': 0.15,  # Min growth rate threshold for stress increase
     'threshold_growth_rate_decrease_stress': -0.1,  # Max growth rate threshold for stress decrease
     'delay_dilution_max_hours': 4,  # Maximum time between dilutions
@@ -99,7 +99,7 @@ class MorbidostatUpdater:
                 target_dose = model.doses[-1][0]
                 time_to_increase_dose = True
                 if -1 in [self.threshold_growth_rate_increase_stress, self.delay_stress_increase_min_generations,
-                          self.dose_increase_factor]:
+                          self.dose_increase_value]:
                     time_to_increase_dose = False  # Stress increase disabled
                 if model.growth_rate < self.threshold_growth_rate_increase_stress:
                     time_to_increase_dose = False  # Growth rate too low
@@ -115,7 +115,7 @@ class MorbidostatUpdater:
                     time_to_increase_dose = False  # No stress increase before initial drug addition
 
                 if time_to_increase_dose:
-                    target_dose = model.doses[-1][0] * self.dose_increase_factor
+                    target_dose = model.doses[-1][0] + self.dose_increase_value
                     target_dose = round(target_dose, 3)
             else:
                 target_dose = model.doses[-1][0] if model.doses else 0
