@@ -358,7 +358,10 @@ class Culture:
             generation = np.log2(dilution_factor)
         else:
             generation = self.generation + np.log2(dilution_factor)
-        stock1_concentration = self.parameters["pump1_stock_drug_concentration"] if "pump1_stock_drug_concentration" in self.parameters else 0
+        try:
+            stock1_concentration = self.parameters["pump1_stock_drug_concentration"]
+        except KeyError:
+            stock1_concentration = 0
         stock2_concentration = self.parameters["pump2_stock_drug_concentration"]
 
         # Calculate the new drug concentration after dilution and adding drug
