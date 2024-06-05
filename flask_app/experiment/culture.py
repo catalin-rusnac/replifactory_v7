@@ -35,6 +35,7 @@ class AutoCommitDict:
     def __repr__(self):
         return repr(self.inner_dict)
 
+
 class Culture:
     def __init__(self, experiment, vial, db):
 
@@ -45,7 +46,7 @@ class Culture:
         self.od = None
         self.growth_rate = None
 
-        self.drug_concentration = 0
+        self.drug_concentration = None
         self.generation = 0
         self.last_stress_increase_generation = 0
         self.last_dilution_time = None
@@ -303,6 +304,8 @@ class Culture:
         return generation_dict, concentration_dict
 
     def make_dilution(self, target_concentration=None, dilution_factor=None, current_volume=None):
+        if self.drug_concentration is None:
+            self.drug_concentration = self.parameters["pump1_stock_drug_concentration"]
         if target_concentration is None:
             target_concentration = self.drug_concentration
         main_pump_volume, drug_pump_volume = self.calculate_pump_volumes(target_concentration=target_concentration,
@@ -331,28 +334,36 @@ class Culture:
             dilution_factor = self.parameters["dilution_factor"]
         if current_volume is None:
             current_volume = self.parameters["volume_vial"]
-        volume_added = current_volume * (dilution_factor - 1)
+        added_volume = current_volume * (dilution_factor - 1)
+        stock1_concentration = self.parameters["pump1_stock_drug_concentration"]
+        stock2_concentration = self.parameters["pump2_stock_drug_concentration"]
+        max_added_amount = added_volume * max(stock1_concentration, stock2_concentration)
+
+        if self.drug_concentration is None:
+            self.drug_concentration = self.parameters["pump1_stock_drug_concentration"]
 
         current_concentration = self.drug_concentration
-        if current_concentration is None:
-            current_concentration = 0
-        # stock_concentration = float(self.experiment.model.parameters["stock_concentration_drug"])
+        current_amount = current_concentration * current_volume
 
-        try:
-            stock1_concentration = self.parameters["pump1_stock_drug_concentration"]
-        except KeyError:
-            stock1_concentration = 0
-        stock2_concentration = self.parameters["pump2_stock_drug_concentration"]
-        total_volume = volume_added + current_volume
-        drug_total_amount = total_volume * target_concentration
-        drug_current_amount = current_volume * current_concentration
-        drug_pumped_amount = drug_total_amount - drug_current_amount
-        drug_pump_volume = drug_pumped_amount / stock2_concentration
-        drug_pump_volume = round(drug_pump_volume, 3)
-        drug_pump_volume = min(volume_added, max(0.001, drug_pump_volume))
-        if target_concentration == 0:
-            drug_pump_volume = 0
-        main_pump_volume = volume_added - drug_pump_volume
+        total_volume = current_volume + added_volume
+        added_amount = target_concentration * total_volume - current_amount
+        added_amount = min(added_amount, max_added_amount)
+        added_concentration = added_amount / added_volume
+
+        # pump1_volume * stock1_concentration + pump2_volume * stock2_concentration = added_volume * added_concentration
+        # pump1_volume + pump2_volume = added_volume
+        # solve for pump1_volume and pump2_volume, handling the case where stock1_concentration == stock2_concentration and stock1_concentration > stock2_concentration and stock1_concentration < stock2_concentration
+        if stock1_concentration == stock2_concentration:
+            main_pump_volume = added_volume / 2
+            drug_pump_volume = added_volume / 2
+
+        elif stock1_concentration > stock2_concentration:
+            drug_pump_volume = added_volume * (stock1_concentration - added_concentration) / (stock1_concentration - stock2_concentration)
+            main_pump_volume = added_volume - drug_pump_volume
+        else:
+            main_pump_volume = added_volume * (added_concentration - stock2_concentration) / (stock1_concentration - stock2_concentration)
+            drug_pump_volume = added_volume - main_pump_volume
+
         return main_pump_volume, drug_pump_volume
 
     def calculate_generation_concentration_after_dil(self, main_pump_volume, drug_pump_volume):
@@ -375,6 +386,16 @@ class Culture:
         self.log_generation(generation, drug_concentration)  # also stores to self
         self.get_latest_data_from_db()  # TODO: speed up by not querying db again
 
+    def get_info(self):
+        return {
+            "od": self.od,
+            "growth_rate": self.growth_rate,
+            "drug_concentration": self.drug_concentration,
+            "generation": self.generation,
+            "last_stress_increase_generation": self.last_stress_increase_generation,
+            "last_dilution_time": self.last_dilution_time,
+            "parameters": self.parameters.inner_dict
+        }
 
 
 

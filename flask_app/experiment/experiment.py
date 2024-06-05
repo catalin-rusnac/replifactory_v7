@@ -298,7 +298,7 @@ class Experiment:
             for vial in range(1, 8):
                 c = self.cultures[vial]
                 pprint(object_to_dict(c))
-                c.get_info()
+                pprint(c.get_info())
             if self.device is not None:
                 pprint(object_to_dict(self.device.__dict__))
             else:
