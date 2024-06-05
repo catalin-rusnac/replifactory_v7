@@ -93,9 +93,9 @@ class MorbidostatUpdater:
         if len(model.doses) > 0:
             od_timestamp = model.population[-1][1]
             doses_timestamp = model.doses[-1][1]
-            if od_timestamp < doses_timestamp:
+            minimum_duration_minutes = 1
+            if od_timestamp < doses_timestamp + timedelta(minutes=minimum_duration_minutes):
                     return # No need to dilute if the population has not changed since the last dilution
-
 
         time_to_dilute = False
         if self.od_dilution_threshold != -1 and model.population[-1][0] >= self.od_dilution_threshold:
