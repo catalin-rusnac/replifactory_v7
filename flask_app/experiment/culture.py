@@ -337,12 +337,17 @@ class Culture:
         if current_concentration is None:
             current_concentration = 0
         # stock_concentration = float(self.experiment.model.parameters["stock_concentration_drug"])
-        stock_concentration = self.parameters["pump2_stock_drug_concentration"]
+
+        try:
+            stock1_concentration = self.parameters["pump1_stock_drug_concentration"]
+        except KeyError:
+            stock1_concentration = 0
+        stock2_concentration = self.parameters["pump2_stock_drug_concentration"]
         total_volume = volume_added + current_volume
         drug_total_amount = total_volume * target_concentration
         drug_current_amount = current_volume * current_concentration
         drug_pumped_amount = drug_total_amount - drug_current_amount
-        drug_pump_volume = drug_pumped_amount / stock_concentration
+        drug_pump_volume = drug_pumped_amount / stock2_concentration
         drug_pump_volume = round(drug_pump_volume, 3)
         drug_pump_volume = min(volume_added, max(0.001, drug_pump_volume))
         if target_concentration == 0:

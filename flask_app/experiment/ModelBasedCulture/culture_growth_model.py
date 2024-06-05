@@ -123,20 +123,24 @@ class CultureGrowthModel:
         Dilute the culture and adjust the drug dose based on the dilution factor and the added dose.
         """
         added_volume = self.updater.volume_vial * (dilution_factor - 1)
-        # stock1_concentration = self.updater.pump1_stock_drug_concentration
-        stock1_concentration = 0
+        stock1_concentration = self.updater.pump1_stock_drug_concentration
         stock2_concentration = self.updater.pump2_stock_drug_concentration
         current_dose = self.drug_concentration
         current_volume = self.updater.volume_vial
         total_volume = current_volume + added_volume
-        min_dose = (current_dose * current_volume + stock1_concentration * added_volume) / total_volume
-        max_dose = (current_dose * current_volume + stock2_concentration * added_volume) / total_volume
+        only_pump1_resulting_dose = (current_dose * current_volume + stock1_concentration * added_volume) / total_volume
+        only_pump2_resulting_dose = (current_dose * current_volume + stock2_concentration * added_volume) / total_volume
+        min_dose, max_dose = min(only_pump1_resulting_dose, only_pump2_resulting_dose), max(only_pump1_resulting_dose, only_pump2_resulting_dose)
         target_dose = min(max_dose, max(min_dose, target_dose))
 
         added_dose = target_dose - self.drug_concentration
         self.drug_concentration += added_dose
         self.doses.append((self.drug_concentration, self.time_current))
         self.population[-1] = (self.population[-1][0] / dilution_factor, self.time_current)
+        # print("Stock 1 concentration: {:.2f}, Stock 2 concentration: {:.2f}".format(stock1_concentration, stock2_concentration))
+        # print("min dose: {:.2f}, max dose: {:.2f}".format(min_dose, max_dose))
+        # print("Current dose: {:.2f}, Added dose: {:.2f}, Target dose: {:.2f}".format(self.drug_concentration, added_dose, target_dose))
+
         generation_number = np.log2(dilution_factor)
         if self.generations:
             generation_number += self.generations[-1][0]

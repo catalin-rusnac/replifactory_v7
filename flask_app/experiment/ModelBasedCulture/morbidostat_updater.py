@@ -1,12 +1,13 @@
 from datetime import timedelta
 
 morbidostat_updater_default_parameters = {
-    'dose_initialization': 0.1,
-    'od_dilution_threshold': 0.3,  # OD at which dilution occurs
+    'dose_initialization': 5,  # Initial dose added to the culture immediately when the experiment starts
+    'od_dilution_threshold': 0.3,  # OD at which dilution occurs, -1 to disable OD triggered dilution
     'dilution_factor': 1.6,  # Factor by which the population is reduced during dilution
-    'dilution_number_first_drug_addition': 1,  # Number of dilutions before adding the drug
+    'dilution_number_first_drug_addition': 2,  # Number of dilutions before adding the drug
     'dose_first_drug_addition': 10,  # Initial dose added to the culture at the first dilution triggered by OD or time
-    'dose_increase_value': 1,  # Value by which the dose is increased at stress increases after the initial one
+    'dose_increase_factor': 2,  # Factor by which the dose is increased at stress increases after the initial one
+    'dose_increase_amount': 0,  # Amount by which the dose is increased at stress increases after the initial one
     'threshold_growth_rate_increase_stress': 0.15,  # Min growth rate threshold for stress increase
     'threshold_growth_rate_decrease_stress': -0.1,  # Max growth rate threshold for stress decrease
     'delay_dilution_max_hours': 4,  # Maximum time between dilutions
@@ -24,32 +25,21 @@ class MorbidostatUpdater:
     If the growth rate is too low, the culture will be rescued by diluting it to reduce the drug concentration,
     irrespective of the population size.
     """
-    def rescue_condition_is_met(self, model):
-        """
-        Check that the conditions for a rescue dilution are met positively.:
-        - The last dilution was long enough ago (no need to rescue if the last dilution was recent)
-        - The growth rate is low enough (no need to rescue if the culture is growing well)
-        - The first dilution has already occurred (no need to rescue before the first dilution)
-
-        Used to rescue the culture by diluting it to reduce the drug concentration towards 0, in cases where
-        the culture is not growing for a long time and is not adapting to the stress.
-        """
-        if len(model.doses) < 1:
-            # First dilution has not occurred yet, no need to rescue
-            return False
-        if model.doses[-1][1] > model.time_current - timedelta(hours=self.delay_dilution_max_hours):
-            # Last dilution was too recent
-            return False
-        if model.growth_rate > self.threshold_growth_rate_decrease_stress:
-            # Growth rate is too high,
-            return False
-        print(model.growth_rate, self.threshold_growth_rate_decrease_stress,"Rescue condition met")
-        return True
 
     def rescue_if_necessary(self, model):
-        if self.rescue_condition_is_met(model):
-            print("Rescue dilution")
-            model.dilute_culture(target_dose=0)
+        """
+        Check if the conditions for a rescue dilution are met and perform the dilution if necessary.
+        """
+        if len(model.doses) < 1:
+            return  # First dilution has not occurred yet, no need to rescue
+        last_dilution_time = model.doses[-1][1]
+        if last_dilution_time > model.time_current - timedelta(hours=self.delay_dilution_max_hours):
+            return  # Last dilution was too recent
+        if model.growth_rate > self.threshold_growth_rate_decrease_stress:
+            return  # Growth rate is too high, no need to rescue
+
+        print("Rescue dilution")  # All conditions for rescue are met
+        model.dilute_culture(target_dose=0, dilution_factor=self.dilution_factor)
 
     def __init__(self, **kwargs):
         defaults = morbidostat_updater_default_parameters.copy()
@@ -57,13 +47,32 @@ class MorbidostatUpdater:
         for key, value in defaults.items():
             setattr(self, key, value)
 
+    def calculate_dilution_dose(self, model):
+        if len(model.doses) == self.dilution_number_first_drug_addition-1:
+            target_dose = self.dose_first_drug_addition
+
+    def calculate_increased_dose(self, current_dose):
+        """
+        Calculate the new dose based on the current dose, dose increase factor, and dose increase amount.
+        """
+        new_dose = current_dose * self.dose_increase_factor + self.dose_increase_amount
+        return round(new_dose, 3)
+
     def dilute_to_wash_if_necessary(self, model):
         """
         Perform a washing dilution to keep the tubing wet and prevent clogging.
         """
+        minimum_pumped_volume = 0.1  # Minimum volume to pump to keep the tubing wet
+        washing_dilution_factor = 1.2  # Factor by which the population is reduced during washing
+        pump2_volume = minimum_pumped_volume
+        pump1_volume = self.volume_vial*washing_dilution_factor - pump2_volume
+        current_dose = model.doses[-1][0] if model.doses else 0
+        total_volume = self.volume_vial + pump1_volume + pump2_volume
+        target_dose = (self.volume_vial * current_dose + pump1_volume * self.pump1_stock_drug_concentration +
+                        pump2_volume * self.pump2_stock_drug_concentration) / total_volume
+
         if not model.population:
             return
-        target_dose = self.pump2_stock_drug_concentration * 0.02
         if model.doses:
             target_dose = max(target_dose, model.doses[-1][0])
             last_pump_time = model.doses[-1][1]
@@ -71,7 +80,7 @@ class MorbidostatUpdater:
             last_pump_time = model.population[0][1]
         if model.time_current - last_pump_time > timedelta(hours=self.delay_dilution_max_hours):
             # print("Washing dilution, target dose", target_dose, "time_current", model.time_current)
-            model.dilute_culture(target_dose=target_dose, dilution_factor=1.2)
+            model.dilute_culture(target_dose=target_dose, dilution_factor=washing_dilution_factor)
 
     def update(self, model):
         if self.dose_initialization > 0 and len(model.doses) == 0:
@@ -99,7 +108,7 @@ class MorbidostatUpdater:
                 target_dose = model.doses[-1][0]
                 time_to_increase_dose = True
                 if -1 in [self.threshold_growth_rate_increase_stress, self.delay_stress_increase_min_generations,
-                          self.dose_increase_value]:
+                          self.dose_increase_factor]:
                     time_to_increase_dose = False  # Stress increase disabled
                 if model.growth_rate < self.threshold_growth_rate_increase_stress:
                     time_to_increase_dose = False  # Growth rate too low
@@ -115,8 +124,7 @@ class MorbidostatUpdater:
                     time_to_increase_dose = False  # No stress increase before initial drug addition
 
                 if time_to_increase_dose:
-                    target_dose = model.doses[-1][0] + self.dose_increase_value
-                    target_dose = round(target_dose, 3)
+                    target_dose = self.calculate_increased_dose(model.doses[-1][0])
             else:
                 target_dose = model.doses[-1][0] if model.doses else 0
 
