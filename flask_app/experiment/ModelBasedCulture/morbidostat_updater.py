@@ -1,21 +1,23 @@
 from datetime import timedelta
 
 morbidostat_updater_default_parameters = {
-    'dose_initialization': 5,  # Initial dose added to the culture immediately when the experiment starts
-    'od_dilution_threshold': 0.3,  # OD at which dilution occurs, -1 to disable OD triggered dilution
+    'dose_initialization': 1,  # Initial dose added to the culture immediately when the experiment starts. -1 to disable
+    'od_dilution_threshold': 0.3,  # OD at which dilution occurs, -1 to disable OD triggered dilution. -1 to disable OD triggered dilution
     'dilution_factor': 1.6,  # Factor by which the population is reduced during dilution
-    'dilution_number_first_drug_addition': 2,  # Number of dilutions before adding the drug
-    'dose_first_drug_addition': 10,  # Initial dose added to the culture at the first dilution triggered by OD or time
-    'dose_increase_factor': 2,  # Factor by which the dose is increased at stress increases after the initial one
-    'dose_increase_amount': 0,  # Amount by which the dose is increased at stress increases after the initial one
-    'threshold_growth_rate_increase_stress': 0.15,  # Min growth rate threshold for stress increase
-    'threshold_growth_rate_decrease_stress': -0.1,  # Max growth rate threshold for stress decrease
-    'delay_dilution_max_hours': 4,  # Maximum time between dilutions
-    'delay_stress_increase_min_generations': 3,  # Minimum generations between stress increases
-    'volume_vial': 12,  # Volume of the vial in mL
-    'pump1_stock_drug_concentration': 0,  # Concentration of the drug in the pump 1 stock
-    'pump2_stock_drug_concentration': 100  # Concentration of the drug in the pump 2 stock
+    'dilution_number_first_drug_addition': 2,  # Dilution number at which dose_first_drug_addition is added
+    'dose_first_drug_addition': 3,  # Initial drug dose resulting in the vial at the first dilution triggered by OD or time
+    'dose_increase_factor': 2,  # Factor by which the dose is increased at stress increases (new_dose = old_dose * factor + amount)
+    'dose_increase_amount': 0,  # Amount by which the dose is increased at stress increases (new_dose = old_dose * factor + amount)
+    'threshold_od_min_increase_stress': 0.1,  # Minimum OD for stress increase (increase dose if OD is higher)
+    'threshold_growth_rate_increase_stress': 0.15,  # Minimum growth rate for stress increase (increase dose if growth rate is higher)
+    'threshold_growth_rate_decrease_stress': -0.1,  # Maximum growth rate for rescue dilution (rescue if growth rate is lower)
+    'delay_dilution_max_hours': 4,  # Maximum time between dilutions. Exact time if there are no other dilution triggers. -1 to disable time triggered dilution
+    'delay_stress_increase_min_generations': 2,  # Minimum number of generations between stress increases.
+    'volume_vial': 12,  # Volume of the vial in mL (liquid volume under waste needle)
+    'pump1_stock_drug_concentration': 0,  # Concentration of the drug in the pump 1 stock bottle
+    'pump2_stock_drug_concentration': 100  # Concentration of the drug in the pump 2 stock bottle
 }
+
 
 class MorbidostatUpdater:
     """
@@ -73,70 +75,86 @@ class MorbidostatUpdater:
 
         if not model.population:
             return
+        if self.delay_dilution_max_hours < 0:  # Time triggered dilution disabled
+            return
         if model.doses:
             target_dose = max(target_dose, model.doses[-1][0])
             last_pump_time = model.doses[-1][1]
         else:
-            last_pump_time = model.population[0][1]
+            last_pump_time = model.first_od_timestamp
         if model.time_current - last_pump_time > timedelta(hours=self.delay_dilution_max_hours):
             # print("Washing dilution, target dose", target_dose, "time_current", model.time_current)
             model.dilute_culture(target_dose=target_dose, dilution_factor=washing_dilution_factor)
 
-    def update(self, model):
-        if self.dose_initialization > 0 and len(model.doses) == 0:
-            model.dilute_culture(target_dose=self.dose_initialization)
-            return
+    def is_time_to_increase_dose(self, model):
+        time_to_increase_dose = True
+        if -1 in [self.threshold_growth_rate_increase_stress, self.delay_stress_increase_min_generations,
+                  self.dose_increase_factor]:
+            time_to_increase_dose = False  # Stress increase disabled
+        if model.population[-1][0] < self.threshold_od_min_increase_stress:
+            time_to_increase_dose = False  # OD too low
+        if model.growth_rate < self.threshold_growth_rate_increase_stress:
+            time_to_increase_dose = False  # Growth rate too low
+        if self.delay_stress_increase_min_generations != -1 and model.doses:
+            last_dose_change_time = model.doses[0][1] if len(set([d[0] for d in model.doses])) == 1 else \
+                [dose[1] for dose in model.doses if dose[0] != model.doses[-1][0]][-1]
+            generation_at_last_dose_change = \
+                [gen[0] for gen in model.generations if gen[1] >= last_dose_change_time][0]
+            generations_since_last_dose_change = model.generations[-1][0] - generation_at_last_dose_change
+            if generations_since_last_dose_change <= self.delay_stress_increase_min_generations:
+                time_to_increase_dose = False  # Stress increase too recent
+        if len(model.doses) < self.dilution_number_first_drug_addition:
+            time_to_increase_dose = False  # No stress increase before initial drug addition
+        return time_to_increase_dose
 
-        if len(model.population) == 0:
-            return
+    def is_too_early_for_regular_dilution(self, model):
+        if len(model.population) == 0:  # No OD measurements yet
+            return True
 
         if len(model.doses) > 0:
             od_timestamp = model.population[-1][1]
             doses_timestamp = model.doses[-1][1]
             minimum_duration_minutes = 1
             if od_timestamp < doses_timestamp + timedelta(minutes=minimum_duration_minutes):
-                    return # No need to dilute if the population has not changed since the last dilution
+                    return True  # no OD measurement since the last dilution
+        return False
 
-        time_to_dilute = False
+    def is_time_to_dilute(self, model):
         if self.od_dilution_threshold != -1 and model.population[-1][0] >= self.od_dilution_threshold:
-            time_to_dilute = True # OD threshold reached
+            return True  # OD threshold reached
         if self.delay_dilution_max_hours != -1:
             if model.doses:
                 if model.time_current - model.doses[-1][1] > timedelta(hours=self.delay_dilution_max_hours):
-                    time_to_dilute = True # Time threshold reached
-            else: # No dilution yet
-                time_since_last_dilution = model.time_current - model.population[0][1]
+                    return True  # Time threshold reached
+            else:  # No dilutions yet
+                time_since_last_dilution = model.time_current - model.first_od_timestamp
                 if time_since_last_dilution > timedelta(hours=self.delay_dilution_max_hours):
-                    time_to_dilute = True
-        if time_to_dilute:
+                    return True
+        return False
+
+    def update(self, model):
+
+        # Initialization dose immediately after experiment start
+        if self.dose_initialization > 0 and len(model.doses) == 0:
+            model.dilute_culture(target_dose=self.dose_initialization)
+            return
+
+        # Check if it is too early for regular dilution
+        if self.is_too_early_for_regular_dilution(model):
+            return
+
+        # Regular dilution
+        if self.is_time_to_dilute(model):
             if len(model.doses) == self.dilution_number_first_drug_addition-1:
                 target_dose = self.dose_first_drug_addition
             elif len(model.doses) > self.dilution_number_first_drug_addition:
                 target_dose = model.doses[-1][0]
-                time_to_increase_dose = True
-                if -1 in [self.threshold_growth_rate_increase_stress, self.delay_stress_increase_min_generations,
-                          self.dose_increase_factor]:
-                    time_to_increase_dose = False  # Stress increase disabled
-                if model.growth_rate < self.threshold_growth_rate_increase_stress:
-                    time_to_increase_dose = False  # Growth rate too low
-                if self.delay_stress_increase_min_generations != -1 and model.doses:
-                    last_dose_change_time = model.doses[0][1] if len(set([d[0] for d in model.doses])) == 1 else \
-                        [dose[1] for dose in model.doses if dose[0] != model.doses[-1][0]][-1]
-                    generation_at_last_dose_change = \
-                        [gen[0] for gen in model.generations if gen[1] >= last_dose_change_time][0]
-                    generations_since_last_dose_change = model.generations[-1][0] - generation_at_last_dose_change
-                    if generations_since_last_dose_change <= self.delay_stress_increase_min_generations:
-                        time_to_increase_dose = False  # Stress increase too recent
-                if len(model.doses) < self.dilution_number_first_drug_addition:
-                    time_to_increase_dose = False  # No stress increase before initial drug addition
-
-                if time_to_increase_dose:
+                if self.is_time_to_increase_dose(model):
                     target_dose = self.calculate_increased_dose(model.doses[-1][0])
             else:
-                target_dose = model.doses[-1][0] if model.doses else 0
-
-            # print("Dilution to target dose", target_dose, "time_current", model.time_current)
+                target_dose = model.doses[-1][0] if model.doses else model.pump1_stock_drug_concentration
             model.dilute_culture(target_dose)
+            return
 
         self.rescue_if_necessary(model)
         self.dilute_to_wash_if_necessary(model)

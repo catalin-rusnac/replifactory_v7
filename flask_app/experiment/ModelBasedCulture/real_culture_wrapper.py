@@ -8,13 +8,13 @@ class RealCultureWrapper:
     @property
     def population(self):
         # od_dict = {k: v for k, v in sorted(od_dict.items(), key=lambda item: item[0])}
-        od_dict, mu_dict, _ = self.culture.get_last_ods_and_rpms(include_current=True)
+        od_dict, mu_dict, rpm_dict = self.culture.get_last_ods_and_rpms(include_current=True)
         population = [(od, time) for time, od in od_dict.items()]
         return population
 
     @property
     def effective_growth_rates(self):
-        od_dict, mu_dict, _ = self.culture.get_last_ods_and_rpms(include_current=True)
+        od_dict, mu_dict, rpm_dict = self.culture.get_last_ods_and_rpms(include_current=True)
         effective_growth_rates = [(mu, time) for time, mu in mu_dict.items()]
         return effective_growth_rates
 
@@ -37,6 +37,10 @@ class RealCultureWrapper:
     @property
     def time_current(self):
         return self.culture.time_current
+
+    @property
+    def first_od_timestamp(self):
+        return self.culture.get_first_od_timestamp()
 
     def dilute_culture(self, target_dose, dilution_factor=None):
         if dilution_factor is None:

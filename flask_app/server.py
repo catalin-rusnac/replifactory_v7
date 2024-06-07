@@ -1,5 +1,9 @@
 #server.py
 
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.realpath(__file__)))  # add dir to python path for flask-migrate
+
 from waitress import serve
 from flask import Flask, current_app
 from routes.device_routes import device_routes, connect_device

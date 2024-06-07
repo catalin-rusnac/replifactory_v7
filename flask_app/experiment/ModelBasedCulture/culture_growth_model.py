@@ -15,7 +15,6 @@ culture_growth_model_default_parameters = {
     'time_lag_drug_effect_mins': 30,
     'adaptation_rate_max': 0.08,
     'adaptation_rate_ic10_ic50_ratio': 0.8,
-    'generation_current': 0,
     'drug_concentration': 0,
     'effective_dose': 0,
 }
@@ -62,6 +61,12 @@ class CultureGrowthModel:
     @property
     def growth_rate(self):
         return self.effective_growth_rates[-1][0] if self.effective_growth_rates else 0
+
+    @property
+    def first_od_timestamp(self):
+        if not self.population:
+            print("WARNING: Getting first OD timestamp without population data")
+        return self.population[0][1] if self.population else self.time_current
 
     def calculate_effective_dose(self, time_current):
         """

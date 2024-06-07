@@ -79,9 +79,6 @@ class Culture:
         growth_parameters = self.experiment.model.parameters["growth_parameters"][str(self.vial)]
         self.culture_growth_model = CultureGrowthModel(**growth_parameters)
         self.culture_growth_model.updater = self.updater
-
-
-
         self.culture_growth_model.simulate_experiment()
         return plot_culture(self.culture_growth_model)
 
@@ -90,6 +87,13 @@ class Culture:
 
     def export_plot_html(self, output_directory=""):
         return export_culture_plot_html(self, output_directory=output_directory)
+
+    def get_first_od_timestamp(self):
+        culture_data = self.db.session.query(CultureData).filter(
+            CultureData.experiment_id == self.experiment.model.id,
+            CultureData.vial_number == self.vial
+        ).order_by(CultureData.timestamp).first()
+        return culture_data.timestamp
 
     def get_latest_data_from_db(self):
         # self.db.session.commit()
@@ -288,7 +292,12 @@ class Culture:
         rpm_dict = {data.timestamp: data.rpm for data in culture_data}
         if include_current and self.new_culture_data is not None:
             od_dict[self.new_culture_data.timestamp] = self.new_culture_data.od  # Include current uncommitted data
-        od_dict = {k: v for k, v in sorted(od_dict.items(), key=lambda item: item[0])}
+
+        #     TypeError: '<' not supported between instances of 'NoneType' and 'datetime.datetime'
+        # avoid error on sorting
+        # od_dict = {k: v for k, v in sorted(od_dict.items(), key=lambda item: item[0])}
+
+
         return od_dict, mu_dict, rpm_dict
 
     def get_last_generations(self, limit=100):
@@ -334,7 +343,12 @@ class Culture:
             dilution_factor = self.parameters["dilution_factor"]
         if current_volume is None:
             current_volume = self.parameters["volume_vial"]
-        added_volume = current_volume * (dilution_factor - 1)
+
+        total_vial_volume = 40 # ml
+        current_volume = min(max(current_volume, 0.5), total_vial_volume)  # Ensure current volume is within bounds
+        added_volume = current_volume * (dilution_factor - 1)  # Calculate the volume to be added
+        added_volume = min(added_volume, total_vial_volume - current_volume)  # Ensure added volume is within bounds
+
         stock1_concentration = self.parameters["pump1_stock_drug_concentration"]
         stock2_concentration = self.parameters["pump2_stock_drug_concentration"]
         max_added_amount = added_volume * max(stock1_concentration, stock2_concentration)
