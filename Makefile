@@ -222,6 +222,7 @@ timelapse:
 	nohup /home/pi/timelapse/timelapse.py --outputdir /home/pi/timelapse/$FOLDER &
 
 timezone:
+	chmod +x scripts/update_timezone.sh
 	sudo scripts/update_timezone.sh
 
 pull-update:
