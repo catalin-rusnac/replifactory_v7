@@ -228,7 +228,6 @@ timezone:
 pull-update:
 	git pull
 	make timezone
-	cd vue && npm install -y;
 	cd flask_app && pip install -r requirements.txt;
 	make migrate
 	make services-ctl
