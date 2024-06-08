@@ -4,7 +4,7 @@ morbidostat_updater_default_parameters = {
     'dose_initialization': 1,  # Initial dose added to the culture immediately when the experiment starts. -1 to disable
     'od_dilution_threshold': 0.3,  # OD at which dilution occurs, -1 to disable OD triggered dilution. -1 to disable OD triggered dilution
     'dilution_factor': 1.6,  # Factor by which the population is reduced during dilution
-    'dilution_number_first_drug_addition': 2,  # Dilution number at which dose_first_drug_addition is added
+    'dilution_number_first_drug_addition': 2,  # Dilution number at which dose_first_drug_addition is added. -1 to disable drug addition
     'dose_first_drug_addition': 3,  # Initial drug dose resulting in the vial at the first dilution triggered by OD or time
     'dose_increase_factor': 2,  # Factor by which the dose is increased at stress increases (new_dose = old_dose * factor + amount)
     'dose_increase_amount': 0,  # Amount by which the dose is increased at stress increases (new_dose = old_dose * factor + amount)
@@ -89,7 +89,7 @@ class MorbidostatUpdater:
     def is_time_to_increase_dose(self, model):
         time_to_increase_dose = True
         if -1 in [self.threshold_growth_rate_increase_stress, self.delay_stress_increase_min_generations,
-                  self.dose_increase_factor]:
+                  self.dose_increase_factor, self.dilution_number_first_drug_addition]:
             time_to_increase_dose = False  # Stress increase disabled
         if model.population[-1][0] < self.threshold_od_min_increase_stress:
             time_to_increase_dose = False  # OD too low
@@ -145,14 +145,14 @@ class MorbidostatUpdater:
 
         # Regular dilution
         if self.is_time_to_dilute(model):
-            if len(model.doses) == self.dilution_number_first_drug_addition-1:
+            if self.dilution_number_first_drug_addition < 0:
+                target_dose = self.pump1_stock_drug_concentration
+            elif len(model.doses) == self.dilution_number_first_drug_addition - 1:
                 target_dose = self.dose_first_drug_addition
-            elif len(model.doses) > self.dilution_number_first_drug_addition:
-                target_dose = model.doses[-1][0]
-                if self.is_time_to_increase_dose(model):
-                    target_dose = self.calculate_increased_dose(model.doses[-1][0])
             else:
-                target_dose = model.doses[-1][0] if model.doses else model.pump1_stock_drug_concentration
+                target_dose = model.doses[-1][0] if model.doses else self.pump1_stock_drug_concentration
+                if len(model.doses) > self.dilution_number_first_drug_addition and self.is_time_to_increase_dose(model):
+                    target_dose = self.calculate_increased_dose(model.doses[-1][0])
             model.dilute_culture(target_dose)
             return
 

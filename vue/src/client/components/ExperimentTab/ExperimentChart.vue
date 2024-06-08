@@ -1,91 +1,73 @@
 <template>
   <div id="CulturePlot">
-    <!-- Add the button here -->
-    <CButton color="success" @click="plotAllData" class="mt-3 ml-3">Plot</CButton>
+    <div class="control-container">
+      <div class="button-row">
+        <CButton class="plot-button" color="success" @click="plotAllData">Plot Data</CButton>
+        <div class="button-container">
+          <div v-for="vial in vials" :key="vial" class="button-item">
+            <CButton
+              :color="selectedVials[vial] ? 'primary' : 'secondary'"
+              :style="{ 'background-color': selectedVials[vial] ? '#007bff' : 'transparent' }"
+              @click="toggleVial(vial, $event)"
+              :id="`vial-button-${vial}`"
+            >
+              {{ `Vial ${vial}` }}
+            </CButton>
+          </div>
+        </div>
+      </div>
+    </div>
 
-
-    <div class="graph-container" v-for="vial in vials" :key="vial" :id="`vial-${vial}`"></div>
+    <div v-for="vial in filteredVials" :key="vial">
+      <VialPlot :vial="vial" :data="plot_data[vial]" />
+    </div>
   </div>
 </template>
 
 <script>
-import Plotly from 'plotly.js';
 import { mapActions, mapState } from 'vuex';
-import {CButton} from "@coreui/vue";
+import { CButton } from '@coreui/vue';
+import VialPlot from './VialPlot.vue';
 
 export default {
   components: {
     CButton,
+    VialPlot,
   },
   name: "ExperimentChart",
   computed: {
-    ...mapState('experiment', ['plot_data', 'currentExperiment']),
+    ...mapState('experiment', ['currentExperiment', 'selectedVials', 'plot_data']),
+    filteredVials() {
+      return this.vials.filter(vial => this.selectedVials[vial]);
+    }
   },
   data() {
     return {
-      vials: Array.from({length: 7}, (_, i) => i + 1)
+      vials: [1, 2, 3, 4, 5, 6, 7], // 7 vials
     };
   },
   methods: {
-    ...mapActions('experiment', ['fetchCulturePlot']),
+    ...mapActions('experiment', ['fetchCulturePlot', 'setSelectedVials']),
 
     async plotAllData() {
-      // Fetch and plot data for each vial
       if (!this.currentExperiment) {
         return;
       }
-      for (let vial of this.vials) {
-        console.log(this.currentExperiment,"currentExperiment")
+      for (let vial of this.filteredVials) {
         await this.fetchCulturePlot(vial);
-        this.plotData(vial);
       }
     },
 
-    plotData(vial) {
-      const data = this.plot_data[vial] || [];
-
-      const layout = {
-        title: `Culture ${vial}`,
-        xaxis: {
-          title: 'Time',
-        },
-        yaxis: {
-          title: 'Optical Density',
-          automargin: true,
-          mode: 'lines+markers',
-        },
-        yaxis2: {
-          title: 'Generation',
-          overlaying: 'y',
-          side: 'right',
-          automargin: true,
-        },
-        yaxis3: {
-          title: 'Concentration',
-          overlaying: 'y',
-          side: 'right',
-          position: 0.92,
-          automargin: true,
-        },
-        yaxis4: {
-          title: 'Growth Rate',
-          overlaying: 'y',
-          side: 'left',
-          position: 0.08,
-          automargin: true,
-        },
-        yaxis5: {
-          title: 'RPM',
-          overlaying: 'y',
-          side: 'right',
-          position: 0.1,
-          automargin: true,
-        },
-      };
-
-      const graphDiv = document.getElementById(`vial-${vial}`);
-      if(graphDiv) {
-        Plotly.react(`vial-${vial}`, data, layout);
+    async toggleVial(vial, event) {
+      let updatedVials;
+      if (event.ctrlKey) {
+        updatedVials = { [vial]: true };
+      } else {
+        updatedVials = { ...this.selectedVials, [vial]: !this.selectedVials[vial] };
+      }
+      this.setSelectedVials(updatedVials);
+      if (updatedVials[vial]) {
+        await this.fetchCulturePlot(vial);
       }
     },
   },
@@ -101,15 +83,35 @@ export default {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  width: 100%;
 }
-
-.graph-container {
-  width: 90vw;
-  height: 80vh;
+.control-container {
   display: flex;
-  justify-content: center;
   flex-direction: column;
   align-items: center;
+  max-width: 800px;
+  margin-bottom: 20px;
+}
+
+.button-row {
+  display: flex;
+  align-items: center;
+}
+
+.plot-button {
+  width: fit-content;
+  min-width: 120px;
+  height: 60px;
+}
+
+.button-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+}
+
+.button-item {
+  margin: 5px;
 }
 </style>
-

@@ -14,6 +14,9 @@ run: run-flask run-express
 run-flask:
 	python flask_app/server.py &
 
+develop-flask:
+	python flask_app/server.py develop &
+
 run-express:
 	node vue/src/server/express_server.js &
 
@@ -209,7 +212,6 @@ migrate:
 	if ! pip show Flask-Migrate > /dev/null; then \
 		pip install Flask-Migrate; \
 	fi && \
-	flask db migrate && \
 	flask db upgrade)
 
 timelapse:

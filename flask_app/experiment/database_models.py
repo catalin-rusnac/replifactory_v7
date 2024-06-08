@@ -19,28 +19,6 @@ default_parameters = {"stock_volume_drug": 1000, "stock_volume_main": 2000,
                       'growth_parameters': {i: culture_growth_model_default_parameters for i in range(1, 8)}}
 
 
-# culture_parameters = {"name": "Species 1",
-#                       "description": "Strain 1",
-#
-#                       "volume_fixed": 15,
-#                       "volume_added": 10,
-#
-#                       "od_threshold": 0.3,
-#                       "od_threshold_first_dilution": 0.4,
-#                       "stress_dose_first_dilution": 2.0,
-#
-#                       "stress_increase_delay_generations": 3.0,
-#                       "stress_increase_tdoubling_max_hrs": 4,
-#
-#                       "stress_decrease_delay_hrs": 16,
-#                       "stress_decrease_tdoubling_min_hrs": 24,
-#                       }
-
-
-
-
-
-
 class ExperimentModel(db.Model):
     __tablename__ = 'experiments'
     id = db.Column(db.Integer, primary_key=True)

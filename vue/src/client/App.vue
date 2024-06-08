@@ -5,8 +5,8 @@
         <a class="nav-link" :class="{ active: currentTab === tab }" href="#" @click="currentTab = tab">{{ tab }}</a>
       </li>
     </ul>
+
     <div class="tab-content">
-<!--      <HomeTab v-if="currentTab === 'Home'"/>-->
       <ExperimentTab v-if="currentTab === 'Experiment'"/>
       <PredictionTab v-if="currentTab === 'Prediction'"/>
       <DeviceControl v-if="currentTab === 'Device'" />
@@ -65,11 +65,19 @@ export default {
   -moz-osx-font-smoothing: grayscale;
   color: #2c3e50;
   margin: 0 auto;
+  justify-content: center;
 }
 
 .nav {
   display: flex;
   justify-content: center; /* Center the tabs horizontally */
   align-items: center; /* Center the tabs vertically */
+}
+
+.tab-content {
+  max-width: 1600px;
+  justify-content: center;
+  align-items: center;
+  margin: 0 auto;
 }
 </style>

@@ -1,12 +1,23 @@
 {
-  "name": "replifactory_gui",
-  "version": "0.1.0",
-  "private": true,
+  "name": "replifactory",
+  "version": "0.2.0",
+  "description": "replifactory user interface",
+  "main": "babel.config.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/catalin-rusnac/replifactory_v7.git"
+  },
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
     "lint": "vue-cli-service lint"
   },
+  "author": "Catalin Rusnac",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/catalin-rusnac/replifactory_v7/issues"
+  },
+  "homepage": "https://github.com/catalin-rusnac/replifactory_v7#readme",
   "dependencies": {
     "@coreui/coreui": "^4.2.6",
     "@coreui/icons": "^3.0.1",
@@ -15,8 +26,6 @@
     "@ngrok/ngrok": "^0.4.1",
     "@ngrok/ngrok-api": "^0.9.0",
     "@vue/compat": "^3.2.47",
-    "ag-grid-community": "^31.3.2",
-    "ag-grid-vue3": "^31.3.2",
     "assert": "^2.0.0",
     "axios": "^1.4.0",
     "bootstrap-vue": "^2.23.1",
@@ -34,7 +43,7 @@
     "stream-browserify": "^3.0.0",
     "vue": "^3.2.13",
     "vue-chartjs": "^5.2.0",
-    "vue-good-table-next": "^0.2.1",
+    "vue-final-modal": "^4.5.4",
     "vuex": "^4.1.0"
   },
   "devDependencies": {

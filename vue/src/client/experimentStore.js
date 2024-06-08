@@ -14,11 +14,14 @@ export default {
       parameters: null,
       data: {},
     },
+    selectedVials: {1: true, 2: true, 3: false, 4: false, 5: false, 6: false, 7: false},
     plot_data: {1: null, 2: null, 3: null, 4: null, 5: null, 6: null, 7: null},
     simulation_data: {1: null, 2: null, 3: null, 4: null, 5: null, 6: null, 7: null},
-
   },
   mutations: {
+    setSelectedVials(state, selectedVials) {
+        state.selectedVials = selectedVials;
+    },
     setExperiments(state, experiments) {
       state.experiments = experiments;
     },
@@ -26,18 +29,19 @@ export default {
       state.currentExperiment = experiment;
     },
     setExperimentPlotData(state, { data, vial }) {
-      console.log(data,vial,"data,vial replacing current:", state.plot_data[vial])
-    state.plot_data[vial] = data;
+      state.plot_data[vial] = data;
     },
     setSimulationPlotData(state, { data, vial }) {
-        console.log(data,vial,"data,vial replacing current:", state.simulation_data[vial])
-        state.simulation_data[vial] = data;
+      state.simulation_data[vial] = data;
     },
     setCurrentExperimentParameters(state, parameters) {
       state.currentExperiment.parameters = parameters;
     },
   },
   actions: {
+    setSelectedVials({ commit }, selectedVials) {
+        commit('setSelectedVials', selectedVials);
+    },
     async fetchExperiments({ commit}) {
       console.log("fetchExperiments");
       const response = await api.get('/experiments');
@@ -57,12 +61,20 @@ export default {
       console.log(`fetchSimulationPlot for vial ${vial}`);
       if (!state.plot_data) {
         console.log('Current experiment or its plot data is not defined');
-        return;
+        throw new Error('Current experiment or its plot data is not defined');
       }
-      const response = await api.get(`/plot_simulation/${vial}`);
-      const figure = response.data;
-      commit('setSimulationPlotData', { data: JSON.parse(figure).data, vial }); // Parse the figure and extract data
-    },
+      // if response is error then open popup with error message
+      try {
+        const response = await api.get(`/plot_simulation/${vial}`);
+        const figure = response.data;
+        commit('setSimulationPlotData', { data: JSON.parse(figure).data, vial }); // Parse the figure and extract data
+        }
+        catch (error) {
+          console.error(error);
+          alert(error.response.data.error);
+        }
+      },
+
 
     async setCurrentExperimentAction({ commit, state }, experimentId) {
       console.log("setCurrentExperimentAction");
@@ -207,7 +219,6 @@ export default {
     }, delays[i] * 1000);
   });
 },
-
 
   },
 };

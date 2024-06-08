@@ -182,6 +182,7 @@ def update_experiment_status():
 
 @experiment_routes.route('/get_info', methods=['GET'])
 def get_info():
+    print("get_info")
     try:
         return current_app.experiment.get_info()
     except Exception as e:
@@ -207,9 +208,12 @@ def get_culture_plot(vial):
 
 @experiment_routes.route('/plot_simulation/<int:vial>', methods=['GET'])
 def get_culture_predicted_plot(vial):
-    fig=current_app.experiment.cultures[vial].plot_predicted()
-    fig_json = fig.to_json()
-    return jsonify(fig_json)
+    try:
+        fig = current_app.experiment.cultures[vial].plot_predicted()
+        fig_json = fig.to_json()
+        return jsonify(fig_json)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # @experiment_routes.route('/export/<int:vial>/excel', methods=['GET'])
 # def export(vial):
