@@ -137,7 +137,6 @@ services-ctl: directories
 	sudo systemctl start flask.service
 	sudo systemctl start vue.service
 
-
 update-full:
 	git pull
 	make install
@@ -160,7 +159,6 @@ push:
 
 
 dwservice_install:
-
 	cd services
 	if [ ! -f dwagent.sh ]; then \
 		wget https://www.dwservice.net/download/dwagent.sh; \
@@ -222,3 +220,14 @@ timelapse:
 	FOLDER=$(date +%Y%m%d)
 	mkdir -p /home/pi/timelapse/$FOLDER
 	nohup /home/pi/timelapse/timelapse.py --outputdir /home/pi/timelapse/$FOLDER &
+
+pull-update:
+	git pull
+	sudo ln -sf /usr/share/zoneinfo/$(curl -s https://ipinfo.io/timezone) /etc/localtime
+	echo "Timezone updated to $(readlink /etc/localtime)"
+	cd vue && npm install -y;
+	cd flask_app && pip install -r requirements.txt;
+	make migrate
+	make services-ctl
+	make vps
+	make kill
