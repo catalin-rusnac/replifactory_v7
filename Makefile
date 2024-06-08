@@ -221,10 +221,11 @@ timelapse:
 	mkdir -p /home/pi/timelapse/$FOLDER
 	nohup /home/pi/timelapse/timelapse.py --outputdir /home/pi/timelapse/$FOLDER &
 
+timezone:
+	sudo scripts/update_timezone.sh
+
 pull-update:
 	git pull
-	@sudo ln -sf /usr/share/zoneinfo/$$(curl -s https://ipinfo.io/timezone) /etc/localtime
-	@echo "Timezone updated to $$(readlink /etc/localtime)"
 	cd vue && npm install -y;
 	cd flask_app && pip install -r requirements.txt;
 	make migrate
