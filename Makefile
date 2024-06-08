@@ -97,7 +97,7 @@ updatepath:
 		. ~/.bashrc; \
 	fi
 
-kill: kill-flask kill-express
+kill: kill-express kill-flask
 
 kill-express:
 	sudo nohup fuser -k 3000/tcp &
@@ -227,6 +227,7 @@ timezone:
 
 pull-update:
 	git pull
+	make timezone
 	cd vue && npm install -y;
 	cd flask_app && pip install -r requirements.txt;
 	make migrate
