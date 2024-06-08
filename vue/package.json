@@ -1,12 +1,23 @@
 {
-  "name": "replifactory_gui",
-  "version": "0.1.0",
-  "private": true,
+  "name": "replifactory",
+  "version": "0.2.0",
+  "description": "replifactory user interface",
+  "main": "babel.config.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/catalin-rusnac/replifactory_v7.git"
+  },
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
     "lint": "vue-cli-service lint"
   },
+  "author": "Catalin Rusnac",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/catalin-rusnac/replifactory_v7/issues"
+  },
+  "homepage": "https://github.com/catalin-rusnac/replifactory_v7#readme",
   "dependencies": {
     "@coreui/coreui": "^4.2.6",
     "@coreui/icons": "^3.0.1",
@@ -24,6 +35,7 @@
     "express": "^4.18.2",
     "fs": "^0.0.1-security",
     "googleapis": "^118.0.0",
+    "handsontable": "^14.3.0",
     "http-proxy-middleware": "^2.0.6",
     "ngrok": "^5.0.0-beta.2",
     "path": "^0.12.7",
@@ -31,6 +43,7 @@
     "stream-browserify": "^3.0.0",
     "vue": "^3.2.13",
     "vue-chartjs": "^5.2.0",
+    "vue-final-modal": "^4.5.4",
     "vuex": "^4.1.0"
   },
   "devDependencies": {

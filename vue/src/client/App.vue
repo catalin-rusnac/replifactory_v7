@@ -5,9 +5,10 @@
         <a class="nav-link" :class="{ active: currentTab === tab }" href="#" @click="currentTab = tab">{{ tab }}</a>
       </li>
     </ul>
+
     <div class="tab-content">
-<!--      <HomeTab v-if="currentTab === 'Home'"/>-->
       <ExperimentTab v-if="currentTab === 'Experiment'"/>
+      <PredictionTab v-if="currentTab === 'Prediction'"/>
       <DeviceControl v-if="currentTab === 'Device'" />
       <NgrokTab v-if="currentTab === 'Remote'" />
       <HelpTab v-if="currentTab === 'Help'" />
@@ -27,6 +28,7 @@ import NgrokTab from "@/client/components/Remote/NgrokTab";
 import HelpTab from "@/client/components/HelpTab/HelpTab";
 import StatusTab from "@/client/components/StatusTab/StatusTab";
 import LogsTab from "@/client/components/LogsTab/LogsTab";
+import PredictionTab from "@/client/components/PredictionTab/PredictionTab";
 
 export default {
   name: 'App',
@@ -44,12 +46,13 @@ export default {
     NgrokTab,
     HelpTab,
     StatusTab,
-    LogsTab
+    LogsTab,
+    PredictionTab
   },
   data() {
     return {
       currentTab: 'Experiment',
-      tabs: ['Experiment', 'Device', 'Remote', 'Help', "Status", "Logs"]
+      tabs: ['Experiment', 'Prediction', 'Device', 'Remote', 'Help', "Status", "Logs"]
     };
   },
 };
@@ -62,6 +65,19 @@ export default {
   -moz-osx-font-smoothing: grayscale;
   color: #2c3e50;
   margin: 0 auto;
-  max-width: 1024px;
+  justify-content: center;
+}
+
+.nav {
+  display: flex;
+  justify-content: center; /* Center the tabs horizontally */
+  align-items: center; /* Center the tabs vertically */
+}
+
+.tab-content {
+  max-width: 1600px;
+  justify-content: center;
+  align-items: center;
+  margin: 0 auto;
 }
 </style>

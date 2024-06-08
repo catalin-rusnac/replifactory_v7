@@ -6,7 +6,7 @@ from experiment.experiment import Experiment
 
 dev = None
 
-from experiment.models import ExperimentModel, db
+from experiment.database_models import ExperimentModel, db
 import os
 
 from flask_app.server import create_app

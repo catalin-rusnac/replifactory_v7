@@ -10,7 +10,9 @@ from pprint import pformat, pprint
 
 import numpy as np
 import schedule
-from experiment.models import CultureData, ExperimentModel
+from experiment.database_models import ExperimentModel
+from .ModelBasedCulture.culture_growth_model import culture_growth_model_default_parameters
+from .ModelBasedCulture.morbidostat_updater import morbidostat_updater_default_parameters
 from .culture import Culture
 from flask import current_app
 
@@ -83,22 +85,22 @@ class QueueWorker:
                 self.is_performing_operation = False
 
 
-class AutoCommitParameters:
-    def __init__(self, model, db):
-        self.model = model
-        self.db = db
-
-    def __getattr__(self, name):
-        return self.model.parameters[name]
-
-    def __setattr__(self, name, value):
-        if name in ["model", "db"]:
-            self.__dict__[name] = value
-        else:
-            self.model.parameters[name] = value
-            self.model.parameters = self.model.parameters
-            self.db.session.add(self.model)
-            self.db.session.commit()
+# class AutoCommitParameters:
+#     def __init__(self, model, db):
+#         self.model = model
+#         self.db = db
+#
+#     def __getattr__(self, name):
+#         return self.model.parameters[name]
+#
+#     def __setattr__(self, name, value):
+#         if name in ["model", "db"]:
+#             self.__dict__[name] = value
+#         else:
+#             self.model.parameters[name] = value
+#             self.model.parameters = self.model.parameters
+#             self.db.session.add(self.model)
+#             self.db.session.commit()
 
 
 class Experiment:
@@ -136,7 +138,22 @@ class Experiment:
             # Make a deep copy of the parameters, modify it, and assign it back
             id = self.model.id
             experiment_model = self.db.session.get(ExperimentModel, id)
-            print("Updating experiment_model parameters", id, new_parameters)
+
+            # modify to float
+            for v, culture_parameters in new_parameters["cultures"].items():
+                for key, value in new_parameters["cultures"][v].items():
+                    if key in morbidostat_updater_default_parameters.keys():
+                        if type(value) not in [int, float]:
+                            value = float(value)
+                            new_parameters["cultures"][v][key] = value
+            if "growth_parameters" in new_parameters.keys():
+                for v, culture_parameters in new_parameters["growth_parameters"].items():
+                    for key, value in new_parameters["growth_parameters"][v].items():
+                        if key in culture_growth_model_default_parameters.keys():
+                            if type(value) not in [int, float]:
+                                value = float(value)
+                                new_parameters["growth_parameters"][v][key] = value
+            # print("New parameters", new_parameters)
             experiment_model.parameters = new_parameters
             self.model.parameters = new_parameters
             self.db.session.commit()
@@ -184,7 +201,7 @@ class Experiment:
                 time.sleep(0.5)
         return
 
-    def measure_od_in_background(self):
+    def measure_od_and_rpm_in_background(self):
         def task():
             available_vials = []
             try:
@@ -192,9 +209,10 @@ class Experiment:
                     if not self.locks[vial].locked():
                         self.locks[vial].acquire(blocking=False)
                         available_vials.append(vial)
+                new_rpms = self.device.stirrers.measure_all_rpms(vials_to_measure=available_vials)
                 new_ods = self.measure_od_all(vials_to_measure=available_vials)
-                for vial in new_ods.keys():
-                    self.cultures[vial].log_od(new_ods[vial])
+                for vial in available_vials:
+                    self.cultures[vial].log_od_and_rpm(new_ods[vial],new_rpms[vial])
             finally:
                 for vial in available_vials:
                     self.locks[vial].release()
@@ -262,7 +280,7 @@ class Experiment:
         print("Making schedule")
         self.schedule.clear()
         self.schedule.every().minute.at(":05").do(self.update_cultures_in_background)
-        self.schedule.every().minute.at(":00").do(self.measure_od_in_background)
+        self.schedule.every().minute.at(":00").do(self.measure_od_and_rpm_in_background)
         # self.schedule.every().minute.at(":20").do(self.measure_od_in_background)
         # self.schedule.every().minute.at(":40").do(self.measure_od_in_background)
 
@@ -280,7 +298,7 @@ class Experiment:
             for vial in range(1, 8):
                 c = self.cultures[vial]
                 pprint(object_to_dict(c))
-                c.get_info()
+                pprint(c.get_info())
             if self.device is not None:
                 pprint(object_to_dict(self.device.__dict__))
             else:

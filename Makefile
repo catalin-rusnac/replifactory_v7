@@ -1,4 +1,4 @@
-#git clone http://github.com/catalin-rusnac/replifactory_v7; cd replifactory_v7; make install
+#cd; git clone http://github.com/catalin-rusnac/replifactory_v7; cd replifactory_v7; make install
 include /etc/environment
 install: check_env_variables install_apt_dependencies node-pi updatepath pip ngrok dwservice_install
 	cd vue && npm install -y;
@@ -13,6 +13,9 @@ run: run-flask run-express
 
 run-flask:
 	python flask_app/server.py &
+
+develop-flask:
+	python flask_app/server.py develop &
 
 run-express:
 	node vue/src/server/express_server.js &
@@ -138,6 +141,7 @@ services-ctl: directories
 update-full:
 	git pull
 	make install
+	make migrate
 	make kill
 
 update-backend:
@@ -156,7 +160,11 @@ push:
 
 
 dwservice_install:
-	cd services && wget https://www.dwservice.net/download/dwagent.sh
+
+	cd services
+	if [ ! -f dwagent.sh ]; then \
+		wget https://www.dwservice.net/download/dwagent.sh; \
+	fi
 	chmod +x ./services/dwagent.sh
 
 dwservice_run:
@@ -189,6 +197,28 @@ secrets:
 	make dwservice_run
 	make update-hostname
 	sudo systemctl daemon-reload
-	#ssh-keygen -t rsa -b 4096 -C "pi@$(RASPBERRY_NAME)" -f ~/.ssh/id_rsa -N ""
+	#ssh-keygen -t rsa -b 4096 -C "pi@$HOSTNAME" -f ~/.ssh/id_rsa -N ""; cat ~/.ssh/id_rsa.pub
 	#ssh-copy-id -i ~/.ssh/id_rsa.pub replifactory-device@$(VPS_IP)   << do this manually, then ssh into the vps and add the public key to the authorized_keys file
 	#make vps
+
+	echo $HOSTNAME > .env
+
+migrate:
+	(cd flask_app && \
+	export FLASK_APP=./server.py && \
+	if ! echo $$PYTHONPATH | grep -q "$$PWD"; then \
+		export PYTHONPATH=$$PYTHONPATH:$$PWD; \
+	fi && \
+	if ! pip show Flask-Migrate > /dev/null; then \
+		pip install Flask-Migrate; \
+	fi && \
+	flask db upgrade)
+
+timelapse:
+	if ps -ef | grep -v grep | grep timelapse.py ; then
+		echo "timelapse.py is already running"
+		exit 0
+	fi
+	FOLDER=$(date +%Y%m%d)
+	mkdir -p /home/pi/timelapse/$FOLDER
+	nohup /home/pi/timelapse/timelapse.py --outputdir /home/pi/timelapse/$FOLDER &

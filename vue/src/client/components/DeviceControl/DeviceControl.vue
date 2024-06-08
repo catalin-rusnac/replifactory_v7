@@ -3,7 +3,7 @@
   <div class="disconnected-overlay" v-if="deviceConnected === false"></div>
     <div v-if="deviceConnected === false" class="centered-text"> device connection not available </div>
   <div class="experiment-running-overlay" v-if="deviceControlEnabled === false"></div>
-  <div style="text-align: right;">
+  <div class="calibration-switch" style="text-align: right;">
     <CFormSwitch
       label="Calibration Mode"
       id="formSwitchCheckChecked"
@@ -78,6 +78,22 @@ export default {
 </script>
 
 <style scoped>
+.DeviceControl {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+  position: relative;
+}
+
+.calibration-switch {
+    left: 50%; /* Start from the center */
+    transform: translateX(calc(min(400px, 90vw)));
+}
+
+
 .disconnected-overlay {
   position: absolute;
   top: 0;

@@ -6,14 +6,14 @@ from minimal_device.base_device import BaseDevice
 dev = BaseDevice()
 dev.connect()
 # dev.hello()
-from experiment.models import ExperimentModel, Culture, ExperimentParameterHistory, CultureParameterHistory, db
+from experiment.database_models import ExperimentModel, db
 import os
 
 def create_test_app():
     app = Flask(__name__)
 
     script_dir = os.path.dirname(os.getcwd())
-    db_path = os.path.join(script_dir, '../db/replifactory.db')
+    db_path = os.path.join(script_dir, 'replifactory_v7/db/replifactory.db')
     app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 
     db.init_app(app)
@@ -21,15 +21,21 @@ def create_test_app():
         db.create_all()
     return app
 
-
 # Create test app and keep the context for further use
 app = create_test_app()
 ctx = app.app_context()
 ctx.push()  # This enters the application context
 
-experiment_model = db.session.get(ExperimentModel, 1) #? method in experiment.py
-experiment = Experiment(dev, experiment_model)
-experiment.start()
+experiment_model = db.session.get(ExperimentModel, 2)
+print(experiment_model)
+experiment = Experiment(dev, experiment_model, db)
+experiment.device.connect()
+#%%
+experiment.cultures[6].update()
+#%%
+experiment.cultures[7].update()
+#%%
+experiment.cultures[7].get_first_od_timestamp()
 #%%
 experiment.start()
 #%%
