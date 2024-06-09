@@ -68,7 +68,7 @@ def main():
         if development:
             app.run(debug=True, host="0.0.0.0", port=5000, use_reloader=True)
         else:
-            serve(app, host="0.0.0.0", port=5000, threads=1)
+            serve(app, host="0.0.0.0", port=5000, threads=4)
 
 
 if __name__ == '__main__':
