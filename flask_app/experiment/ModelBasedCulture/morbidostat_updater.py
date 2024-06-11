@@ -175,10 +175,10 @@ class MorbidostatUpdater:
         self.dilute_and_adjust_dose(model)
 
     def must_wait_since_last_dilution(self, model):
+        minutes_since_last_dilution = 4
         if len(model.doses) > 0:
             od_timestamp = model.population[-1][1]
             doses_timestamp = model.doses[-1][1]
-            minutes_since_last_dilution = 4
             if od_timestamp < doses_timestamp + timedelta(minutes=minutes_since_last_dilution):
                 self.status_dict["must_wait_since_last_dilution"] = "%d minutes have not passed since last dilution" % minutes_since_last_dilution
                 return True
