@@ -24,7 +24,6 @@ morbidostat_updater_default_parameters = {
 }
 
 
-
 class MorbidostatUpdater:
     """
     Class to update the culture based on the morbidostat algorithm.
@@ -60,7 +59,7 @@ class MorbidostatUpdater:
         if len(model.doses) > 0:
             od_timestamp = model.population[-1][1]
             doses_timestamp = model.doses[-1][1]
-            if od_timestamp < doses_timestamp + timedelta(minutes=1):
+            if od_timestamp < doses_timestamp + timedelta(minutes=4):
                 self.status_dict["time_to_dilute"] = "No OD measurement since last dilution at %s, not diluting" % str(doses_timestamp)
                 return False
 
