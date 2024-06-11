@@ -66,6 +66,7 @@ def main():
     with app.app_context():
         logging.info("Starting server...")
         if development:
+            print("Running in development mode")
             app.run(debug=True, host="0.0.0.0", port=5000, use_reloader=True)
         else:
             serve(app, host="0.0.0.0", port=5000, threads=4)

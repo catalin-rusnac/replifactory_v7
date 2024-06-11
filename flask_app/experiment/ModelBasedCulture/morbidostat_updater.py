@@ -40,55 +40,6 @@ class MorbidostatUpdater:
             setattr(self, key, value)
         self.status_dict = {}
 
-    def is_time_to_dilute(self, model):
-        # No OD measurements yet
-        if len(model.population) == 0:
-            self.status_dict["time_to_dilute"] = "No OD measurements yet, not diluting"
-            return False
-
-        # Check if dilution is disabled
-        initialization_dilution_disabled = self.dose_initialization < 0
-        od_dilution_disabled = self.od_dilution_threshold < 0
-        time_dilution_disabled = self.delay_dilution_max_hours < 0
-
-        if od_dilution_disabled and time_dilution_disabled and initialization_dilution_disabled:
-            self.status_dict["time_to_dilute"] = "Initialization, OD and Time triggered dilutions disabled, not diluting"
-            return False
-
-        # check if at least one od point has been measured since the last dilution
-        if len(model.doses) > 0:
-            od_timestamp = model.population[-1][1]
-            doses_timestamp = model.doses[-1][1]
-            if od_timestamp < doses_timestamp + timedelta(minutes=4):
-                self.status_dict["time_to_dilute"] = "No OD measurement since last dilution at %s, not diluting" % str(doses_timestamp)
-                return False
-
-        # OD triggered dilution
-        if not od_dilution_disabled:
-            if model.population[-1][0] >= self.od_dilution_threshold:
-                self.status_dict["time_to_dilute"] = "OD %3f >= threshold %3f, diluting" % (model.population[-1][0], self.od_dilution_threshold)
-                return True
-            else:
-                self.status_dict["time_to_dilute"] = "Will dilute when current OD %3f will reach threshold %3f" % (model.population[-1][0], self.od_dilution_threshold)
-                return False
-
-        # Time triggered dilution
-        if not time_dilution_disabled:
-            if model.doses:
-                last_dilution_timestamp = model.doses[-1][1]
-            else:
-                last_dilution_timestamp = model.first_od_timestamp
-
-            hours_since_last_dilution = (model.time_current - last_dilution_timestamp).total_seconds() / 3600
-
-            if hours_since_last_dilution < self.delay_dilution_max_hours:
-                next_time_trigger = model.doses[-1][1] + timedelta(hours=self.delay_dilution_max_hours)
-                self.status_dict["time_to_dilute"] = "Hours since last dilution %.2f < max %.1f Next time triggered dilution: %s" % (hours_since_last_dilution, self.delay_dilution_max_hours, str(next_time_trigger))
-                return False
-            else:
-                self.status_dict["time_to_dilute"] = "Hours since last dilution %.2f > max %.1f, diluting" % (hours_since_last_dilution, self.delay_dilution_max_hours)
-                return True
-
     def is_time_to_increase_stress(self, model):
         """
         Check if it is time to increase stress.
@@ -223,7 +174,20 @@ class MorbidostatUpdater:
         self.status_dict["od_triggered_dilution"] = "OD %3f >= threshold %3f, diluting" % (model.population[-1][0], self.od_dilution_threshold)
         self.dilute_and_adjust_dose(model)
 
+    def must_wait_since_last_dilution(self, model):
+        if len(model.doses) > 0:
+            od_timestamp = model.population[-1][1]
+            doses_timestamp = model.doses[-1][1]
+            minutes_since_last_dilution = 4
+            if od_timestamp < doses_timestamp + timedelta(minutes=minutes_since_last_dilution):
+                self.status_dict["must_wait_since_last_dilution"] = "%d minutes have not passed since last dilution" % minutes_since_last_dilution
+                return True
+        self.status_dict["must_wait_since_last_dilution"] = "No, last OD data more than %d minutes since last dilution" % minutes_since_last_dilution
+        return False
+
     def update(self, model):
+        if self.must_wait_since_last_dilution(model):
+            return
         self.make_initialization_dilution_if_necessary(model)
         self.make_time_triggered_dilution_if_necessary(model)
         self.make_od_triggered_dilution_if_necessary(model)

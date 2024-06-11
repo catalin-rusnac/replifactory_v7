@@ -10,7 +10,6 @@ model.simulate_experiment(24)
 fig = plot_culture(model)
 import plotly.io as pio
 pio.show(fig)
-print(model.updater.get_status())
 print(model.updater.status_dict)
 # model.plot_parameters()
 # score_updater(model)

@@ -1,7 +1,7 @@
 #cd; git clone http://github.com/catalin-rusnac/replifactory_v7; cd replifactory_v7; make install
 include /etc/environment
 install: check_env_variables install_apt_dependencies node-pi updatepath pip ngrok dwservice_install
-	cd vue && npm install -y;
+	#cd vue && npm install -y; # not needed with built files
 	cd flask_app && pip install -r requirements.txt;
 	make services-ctl
 
