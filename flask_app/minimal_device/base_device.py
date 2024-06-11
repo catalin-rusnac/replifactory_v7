@@ -104,7 +104,7 @@ class BaseDevice:
             self.connect()
         self.testing = Testing(self)
 
-    def connect_i2c_spi(self, ftdi_address="ftdi://ftdi:2232h", retries=5):
+    def connect_i2c_spi(self, ftdi_address="ftdi://ftdi:2232h", retries=10):
         for attempt in range(retries):
             self.spi = SpiController(cs_count=5)
             self.i2c = pyftdi.i2c.I2cController()
@@ -198,27 +198,6 @@ class BaseDevice:
         self.pwm_controller.play_turn_on_sound()
         self.lasers.blink()
 
-    def pump_to(self, vial, p1=0, p2=0, p3=0, p4=0):
-        if self.valves.not_all_closed():
-            self.valves.close_all()
-        self.valves.open(
-            vial
-        )  # valve number might be different for e.g. a lagoon setup
-        if p1 > 0:
-            self.pump1.pump(p1)
-        if p2 > 0:
-            self.pump2.pump(p2)
-        if p3 > 0:
-            self.pump3.pump(p3)
-        if p4 > 0:
-            self.pump4.pump(p4)
-        while self.is_pumping():
-            time.sleep(0.5)
-        time.sleep(0.5)
-        self.valves.close(
-            vial
-        )  # valve number might be different for e.g. a lagoon setup
-
     def update_cultures(self):
         def queued_function():
             for v, c in self.cultures.items():
@@ -263,25 +242,6 @@ class BaseDevice:
         else:
             print("Temperature measurement not queued. od thread queue is not empty.")
 
-    def prime_tubing(self, vial_number, pump_number, volume):
-        assert self.lock_pumps.acquire(timeout=10)
-        assert self.locks_vials[vial_number].acquire(timeout=10)
-        self.valves.open(valve=vial_number)
-        for i in range(20):
-            q = input(
-                "%.2f ml of air available in pump_number %d tubing to vial %d?"
-                % (volume, pump_number, vial_number)
-            )
-            if q == "":
-                self.pumps[pump_number].pump(volume=volume)
-                while self.is_pumping():
-                    time.sleep(0.5)
-            else:
-                break
-        self.valves.close(valve=vial_number)
-        self.lock_pumps.release()
-        self.locks_vials[vial_number].release()
-
     def release_locks(self):
         if self.is_pumping():
             self.stop_pumps()
@@ -296,40 +256,6 @@ class BaseDevice:
         if self.lock_pumps.locked():
             self.lock_pumps.release()
             print("released pump lock")
-
-    # def flush_tubing(self):
-    #     """
-    #     to prevent tube drying
-    #     """
-    #
-    #     def queued_function():
-    #         if self.is_lagoon_device():
-    #             for v in range(1, 8):
-    #                 self.cultures[v].flush_culture()
-    #         else:
-    #             for v in range(1, 8):
-    #                 c = self.cultures[v]
-    #                 flush_volumes = {1: 0, 2: 0, 3: 0}  # pump: ml
-    #
-    #                 tstart = c.experiment_start_time
-    #                 for pump_number in self.active_pumps:
-    #                     tdil = np.float32(c._time_last_dilution[pump_number])
-    #                     last_pump_time = np.nanmax([tdil, tstart])
-    #                     if (
-    #                         time.time() - last_pump_time
-    #                     ) > self.drying_prevention_pump_period_hrs * 3600:
-    #                         flush_volumes[
-    #                             pump_number
-    #                         ] = self.drying_prevention_pump_volume
-    #                 if flush_volumes[1] > 0 or flush_volumes[2] or flush_volumes[3] > 0:
-    #                     c.dilute(
-    #                         pump1_volume=flush_volumes[1],
-    #                         pump2_volume=flush_volumes[2],
-    #                         pump3_volume=flush_volumes[3],
-    #                         extra_vacuum=3,
-    #                     )
-    #
-    #     self.dilution_worker.queue.put(queued_function)
 
     def is_pumping(self):
         return any(
@@ -520,34 +446,3 @@ class BaseDevice:
             finally:
                 self.locks_vials[v].release()
                 self.lock_pumps.release()
-
-    def run_self_test(self):
-        # assert not self.hard_stop_trigger
-        # assert not self.soft_stop_trigger
-        # if not self.is_connected():
-        #     self.connect()
-        if not self.is_connected():
-            print(bcolors.FAIL + "Device not connected." + bcolors.ENDC)
-        else:
-            if self.directory is None:
-                print(bcolors.FAIL + "Device directory undefined" + bcolors.ENDC)
-            else:
-                if os.path.exists(self.directory):
-                    print(
-                        "Device directory: "
-                        + bcolors.OKBLUE
-                        + os.path.abspath(self.directory)
-                        + bcolors.ENDC
-                    )
-                else:
-                    print(
-                        "Device directory doesn't exist: "
-                        + bcolors.FAIL
-                        + os.path.abspath(self.directory)
-                        + bcolors.ENDC)
-
-            assert not self.file_lock.locked()
-            assert not self.lock_pumps.locked()
-            for lock in self.locks_vials.values():
-                assert not lock.locked()
-            assert not self.is_pumping()
