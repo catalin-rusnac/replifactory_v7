@@ -56,6 +56,27 @@ class BaseDevice:
         # t0=time.time()
         assert ftdi_address[-1] != "/", "ftdi_address should not end with a '/'"
         self.spi = SpiController(cs_count=5)
+        #   File "/home/pi/replifactory_v7/flask_app/tests/debug/debug_device.py", line 66, in <module>
+        #     dev.connect()
+        #   File "/home/pi/replifactory_v7/flask_app/tests/debug/debug_device.py", line 59, in connect
+        #     self.spi.configure(ftdi_address + "/1")
+        #   File "/home/pi/.local/lib/python3.9/site-packages/pyftdi/spi.py", line 439, in configure
+        #     self._frequency = self._ftdi.open_mpsse_from_url(url, **kwargs)
+        #   File "/home/pi/.local/lib/python3.9/site-packages/pyftdi/ftdi.py", line 633, in open_mpsse_from_url
+        #     devdesc, interface = self.get_identifiers(url)
+        #   File "/home/pi/.local/lib/python3.9/site-packages/pyftdi/ftdi.py", line 399, in get_identifiers
+        #     return UsbTools.parse_url(url,
+        #   File "/home/pi/.local/lib/python3.9/site-packages/pyftdi/usbtools.py", line 312, in parse_url
+        #     candidates, idx = cls.enumerate_candidates(urlparts, vdict, pdict,
+        #   File "/home/pi/.local/lib/python3.9/site-packages/pyftdi/usbtools.py", line 417, in enumerate_candidates
+        #     devices = cls.find_all(vps)
+        #   File "/home/pi/.local/lib/python3.9/site-packages/pyftdi/usbtools.py", line 101, in find_all
+        #     description = UsbTools.get_string(dev, dev.iProduct)
+        #   File "/home/pi/.local/lib/python3.9/site-packages/pyftdi/usbtools.py", line 556, in get_string
+        #     return usb_get_string(device, stridx)
+        #   File "/home/pi/.local/lib/python3.9/site-packages/usb/util.py", line 313, in get_string
+        #     raise ValueError("The device has no langid"
+        # ValueError: The device has no langid (permission issue, no string descriptors supported or device error)
         self.spi.configure(ftdi_address + "/1")
         self.i2c = I2cController()
         self.i2c.configure(ftdi_address + "/2", frequency=5e4)
