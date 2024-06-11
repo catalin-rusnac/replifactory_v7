@@ -293,11 +293,9 @@ class Culture:
         if include_current and self.new_culture_data is not None:
             od_dict[self.new_culture_data.timestamp] = self.new_culture_data.od  # Include current uncommitted data
 
-        #     TypeError: '<' not supported between instances of 'NoneType' and 'datetime.datetime'
-        # avoid error on sorting
-        # od_dict = {k: v for k, v in sorted(od_dict.items(), key=lambda item: item[0])}
-
-
+        od_dict = {k: v for k, v in sorted(od_dict.items(), key=lambda item: item[0])}
+        mu_dict = {k: v for k, v in sorted(mu_dict.items(), key=lambda item: item[0])}
+        rpm_dict = {k: v for k, v in sorted(rpm_dict.items(), key=lambda item: item[0])}
         return od_dict, mu_dict, rpm_dict
 
     def get_last_generations(self, limit=100):
@@ -401,15 +399,18 @@ class Culture:
         self.get_latest_data_from_db()  # TODO: speed up by not querying db again
 
     def get_info(self):
-        return {
+
+        culture_info = {
             "od": self.od,
             "growth_rate": self.growth_rate,
             "drug_concentration": self.drug_concentration,
             "generation": self.generation,
             "last_stress_increase_generation": self.last_stress_increase_generation,
             "last_dilution_time": self.last_dilution_time,
-            "parameters": self.parameters.inner_dict
+            "parameters": self.parameters.inner_dict,
+            "updater_status": self.updater.status_dict,
         }
+        return culture_info
 
 
 
