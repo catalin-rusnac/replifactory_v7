@@ -139,9 +139,6 @@ class Stirrers:
 
         # Check if any periods were found
         if len(periods) < 1:
-            print("No periods found")
-            print(binstr)
-            print("New estimation:", estimated_rpm / 2)
             if estimated_rpm > 400:
                 time.sleep(4)
                 return self.measure_rpm(vial_number, estimated_rpm / 2)
@@ -165,9 +162,9 @@ class Stirrers:
         # print("ms measured total:", ms_per_bit * nbytes * 8)
         # print("Time taken:", dt)
         # print("Bits:", len(binstr), "%.2f %%"% ones_ratio, "periods:", len(periods), periods)
-        if max(periods)-min(periods) > max(periods) * 0.2:
-            print("Warning: Periods vary too much")
-            # print(binstr)
+        # if max(periods)-min(periods) > max(periods) * 0.2:
+        #     print("Warning: Periods vary too much")
+        #     print(binstr)
         # print("Speed:", int(rpm), "RPM ±", int(err * rpm), "Error: %.1f%%" % (err * 100))
         # print("ms per rotation actual: %.3f" % (1000 / (rpm / 60)))
         return rpm

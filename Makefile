@@ -233,3 +233,7 @@ pull-update:
 	make services-ctl
 	make vps
 	make kill
+
+pull-nokill:
+	git reset --hard
+	git pull

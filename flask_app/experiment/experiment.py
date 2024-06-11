@@ -289,30 +289,11 @@ class Experiment:
         return self.status
 
     def get_info(self):
-        # Simulated method to get experiment status from database
-        # Create a StringIO object to capture output
-        buffer = io.StringIO()
-        sys.stdout = buffer
-
-        try:
-            for vial in range(1, 8):
-                c = self.cultures[vial]
-                pprint(object_to_dict(c))
-                pprint(c.get_info())
-            if self.device is not None:
-                pprint(object_to_dict(self.device.__dict__))
-            else:
-                print("Device is None")
-            pprint(object_to_dict(self.__dict__))
-        except Exception as e:
-            print(e)
-        finally:
-            # Restore sys.stdout
-            sys.stdout = sys.__stdout__
-        # Get the output string from the buffer
-        text = buffer.getvalue()
-        buffer.close()
-        return text
+        info={}
+        for vial in range(1, 8):
+            c = self.cultures[vial]
+            info[vial] = c.get_info()
+        return info
 
 
 def object_to_dict(obj):

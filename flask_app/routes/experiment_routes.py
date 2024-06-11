@@ -184,7 +184,8 @@ def update_experiment_status():
 def get_info():
     print("get_info")
     try:
-        return current_app.experiment.get_info()
+        info = current_app.experiment.get_info()
+        return jsonify(info)
     except Exception as e:
         import traceback
         return traceback.format_exc()
