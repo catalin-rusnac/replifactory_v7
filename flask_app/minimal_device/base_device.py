@@ -111,10 +111,21 @@ class BaseDevice:
             try:
                 self.spi.configure(ftdi_address + "/1")
                 self.i2c.configure(ftdi_address + "/2", frequency=5e4)
+                self.pwm_controller.connect()  # valves and stirrers
                 print("Device connected successfully.")
                 return
             except Exception as e:
                 self.reset_usb_device()
+                UsbTools.release_all_devices()
+                UsbTools.flush_cache()
+                try:
+                    self.spi.terminate()
+                except Exception:
+                    pass
+                try:
+                    self.i2c.terminate()
+                except Exception:
+                    pass
                 print(f"Attempt {attempt + 1} failed: {e}")
                 time.sleep(2)
                 raise ConnectionError(f"Failed to connect to the device after {retries} attempts")
@@ -139,7 +150,6 @@ class BaseDevice:
 
     def connect(self):
         self.connect_i2c_spi()
-        self.pwm_controller.connect()  # valves and stirrers
         self.stirrers.connect()
         self.photodiodes.connect()
         self.lasers.connect()
