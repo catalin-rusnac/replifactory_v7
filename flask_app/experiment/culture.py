@@ -398,8 +398,7 @@ class Culture:
         self.log_generation(generation, drug_concentration)  # also stores to self
         self.get_latest_data_from_db()  # TODO: speed up by not querying db again
 
-    def get_info(self):
-
+    def get_culture_status_dict(self):
         culture_info = {
             "od": self.od,
             "growth_rate": self.growth_rate,

@@ -6,24 +6,18 @@ from experiment.ModelBasedCulture.culture_growth_model import CultureGrowthModel
 
 
 def plot_culture(culture, limit=100000):
-    plotting_model = False
+    culture_parameters = culture.updater.__dict__
+
     if isinstance(culture, CultureGrowthModel):
-        plotting_model = True
         ods = {p[1]: p[0] for p in culture.population}
         mus = {p[1]: p[0] for p in culture.effective_growth_rates}
         concs = {p[1]: p[0] for p in culture.doses}
         gens = {p[1]: p[0] for p in culture.generations}
         rpms = {}
-        vial_number = 1
-        experiment_name = "Model"
-        culture_parameters = culture.updater.__dict__
     else:
         # Extract data from real experiment
         ods, mus, rpms = culture.get_last_ods_and_rpms(limit=limit)
         gens, concs = culture.get_last_generations(limit=limit)
-        vial_number = culture.vial
-        experiment_name = culture.experiment.model.name
-        culture_parameters = culture.parameters.inner_dict
 
     if len(ods) == 0:
         trace1 = go.Scattergl(
@@ -136,7 +130,7 @@ def plot_culture(culture, limit=100000):
     )
 
     layout = go.Layout(
-        title="Culture: " + str(vial_number) + "<br>Experiment: "+experiment_name,
+        # title="Culture: " + str(vial_number) + "<br>Experiment: "+experiment_name,
         # annotations=[
         #     dict(
         #         x=0,
@@ -183,6 +177,5 @@ def plot_culture(culture, limit=100000):
             automargin=True,
         ),
     )
-
     fig = go.Figure(data=[trace1, trace2, trace3, trace4, trace5, params_trace], layout=layout)
     return fig

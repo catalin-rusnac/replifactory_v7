@@ -43,7 +43,7 @@ class RoutesTestCase(unittest.TestCase):
             # timepoint = datetime.datetime.strptime("2023-06-12 0:38:38.958148", "%Y-%m-%d %H:%M:%S.%f")
             # c.get_data_at_timepoint(timepoint)
         pprint(c.__dict__)
-        pprint(c.get_info())
+        pprint(c.get_status())
 
     def test_new_update(self):
         from experiment.ModelBasedCulture.morbidostat_updater import MorbidostatUpdater

@@ -84,10 +84,10 @@ class MorbidostatUpdater:
 
             if hours_since_last_dilution < self.delay_dilution_max_hours:
                 next_time_trigger = model.doses[-1][1] + timedelta(hours=self.delay_dilution_max_hours)
-                self.status_dict["time_to_dilute"] = "Time since last dilution %sh < max hours %s. Next time triggered dilution: %s" % (str(hours_since_last_dilution), str(timedelta(hours=self.delay_dilution_max_hours)), str(next_time_trigger))
+                self.status_dict["time_to_dilute"] = "Hours since last dilution %.2f < max %.1f Next time triggered dilution: %s" % (hours_since_last_dilution, self.delay_dilution_max_hours, str(next_time_trigger))
                 return False
             else:
-                self.status_dict["time_to_dilute"] = "Time since last dilution %s > max hours %s, diluting" % (str(time_since_last_dilution), str(timedelta(hours=self.delay_dilution_max_hours)))
+                self.status_dict["time_to_dilute"] = "Hours since last dilution %.2f > max %.1f, diluting" % (hours_since_last_dilution, self.delay_dilution_max_hours)
                 return True
 
     def is_time_to_increase_stress(self, model):
@@ -139,7 +139,6 @@ class MorbidostatUpdater:
         """
         Dilute the culture to the target dose and adjust the dose if necessary.
         """
-        pprint(self.status_dict)
         # check if time to initialize culture
         next_dilution_number = len(model.doses) + 1
         if next_dilution_number < self.dilution_number_first_drug_addition:
@@ -207,9 +206,9 @@ class MorbidostatUpdater:
         last_dilution_timestamp = model.doses[-1][1]
         hours_since_last_dilution = (model.time_current - last_dilution_timestamp).total_seconds() / 3600
         if hours_since_last_dilution < self.delay_dilution_max_hours:
-            self.status_dict["time_triggered_dilution"] = "Hours since last dilution %s < max %s, not diluting" % (str(hours_since_last_dilution), str(timedelta(hours=self.delay_dilution_max_hours)))
+            self.status_dict["time_triggered_dilution"] = "Hours since last dilution %.2f < max %.2f, not diluting" % (hours_since_last_dilution, self.delay_dilution_max_hours)
             return
-        self.status_dict["time_triggered_dilution"] = "Hours since last dilution %s > max %s, diluting" % (str(hours_since_last_dilution), str(timedelta(hours=self.delay_dilution_max_hours)))
+        self.status_dict["time_triggered_dilution"] = "Hours since last dilution %.2f > max %.2f, diluting" % (hours_since_last_dilution, self.delay_dilution_max_hours)
         self.dilute_and_adjust_dose(model)
 
     def make_od_triggered_dilution_if_necessary(self, model):

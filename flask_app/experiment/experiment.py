@@ -288,11 +288,11 @@ class Experiment:
         # Simulated method to get experiment status from database
         return self.status
 
-    def get_info(self):
+    def get_experiment_status_dict(self):
         info={}
         for vial in range(1, 8):
             c = self.cultures[vial]
-            info[vial] = c.get_info()
+            info[vial] = c.get_culture_status_dict()
         return info
 
 

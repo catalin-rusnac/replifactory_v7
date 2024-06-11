@@ -77,7 +77,7 @@ for c in experiment.cultures.values():
 #%%
 from pprint import pprint
 pprint(c.parameters.__dict__)
-pprint(str(c.experiment.get_info()).replace("'", '').replace('"', ''))
+pprint(str(c.experiment.get_status()).replace("'", '').replace('"', ''))
 
 #%%
 with app.app_context():
@@ -86,7 +86,7 @@ with app.app_context():
     print(c.parameters)
     c.update()
 pprint(c.__dict__)
-pprint(c.get_info())
+pprint(c.get_status())
 [c.experiment.device.stirrers.set_speed(v,"stopped") for v in range(1, 8)]
 
 c.update()

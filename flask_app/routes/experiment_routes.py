@@ -180,11 +180,11 @@ def update_experiment_status():
         return jsonify({'error': 'Experiment not found'}), 404
 
 
-@experiment_routes.route('/get_info', methods=['GET'])
-def get_info():
-    print("get_info")
+@experiment_routes.route('/status', methods=['GET'])
+def get_status_dict():
+    # not to be confused with running or stopped
     try:
-        info = current_app.experiment.get_info()
+        info = current_app.experiment.get_experiment_status_dict()
         return jsonify(info)
     except Exception as e:
         import traceback

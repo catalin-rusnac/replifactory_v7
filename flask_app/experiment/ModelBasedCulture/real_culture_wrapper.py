@@ -1,3 +1,7 @@
+from datetime import datetime
+from pprint import pprint
+
+
 class RealCultureWrapper:
     """
     Adapter class to convert the culture class to the model class.
@@ -42,10 +46,17 @@ class RealCultureWrapper:
     def first_od_timestamp(self):
         return self.culture.get_first_od_timestamp()
 
+    def print_updater_status(self):
+        # print time formatted as string
+        print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Vial", self.culture.vial)
+        pprint(self.culture.updater.status_dict)
+
     def dilute_culture(self, target_dose, dilution_factor=None):
+        self.print_updater_status()
         if dilution_factor is None:
             dilution_factor = self.culture.updater.dilution_factor
         self.culture.make_dilution(target_dose, dilution_factor)
+
 
 
 # if isinstance(culture, CultureGrowthModel):
