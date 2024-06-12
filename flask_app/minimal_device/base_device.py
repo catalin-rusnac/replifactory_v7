@@ -103,13 +103,14 @@ class BaseDevice:
         self.testing = Testing(self)
 
     def connect_i2c_spi(self, ftdi_address="ftdi://ftdi:2232h", retries=10):
+        self.spi = SpiController(cs_count=5)
+        self.i2c = pyftdi.i2c.I2cController()
         for attempt in range(retries):
-            self.spi = SpiController(cs_count=5)
-            self.i2c = pyftdi.i2c.I2cController()
             try:
                 self.spi.configure(ftdi_address + "/1")
-                self.i2c.configure(ftdi_address + "/2", frequency=5e4)
+                self.i2c.configure(ftdi_address + "/2", frequency=1e4)
                 print("Device connected successfully.")
+                time.sleep(1)
                 return
             except Exception as e:
                 self.reset_usb_device()
