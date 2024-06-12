@@ -5,9 +5,6 @@ After=network.target
 [Service]
 User=pi
 ExecStart=/usr/bin/stunnel4 /etc/stunnel/stunnel.conf
-KillMode=process
-Restart=on-failure
-Type=simple
 
 [Install]
 WantedBy=multi-user.target
