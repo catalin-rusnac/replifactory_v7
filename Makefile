@@ -118,7 +118,7 @@ directories:
 		chmod 777 db; \
 	fi
 
-services-ctl: directories
+services-ctl: directories stunnel
 	@echo "Checking for flask and vue services..."
 	@if ! cmp services/flask/flask.service /etc/systemd/system/flask.service >/dev/null 2>&1; then \
 		sudo cp services/flask/flask.service /etc/systemd/system/flask.service; \
@@ -181,6 +181,18 @@ vps:
 	sudo systemctl daemon-reload
 	sudo systemctl enable autossh.service
 	sudo systemctl restart autossh.service
+
+stunnel:
+	#install stunnel if not already installed
+	if ! dpkg -s stunnel4 > /dev/null; then \
+		sudo apt-get install stunnel4 -y; \
+	fi
+	sudo cp services/stunnel.conf /etc/stunnel/stunnel.conf
+	sudo cp services/stunnel.service /etc/systemd/system/stunnel.service
+
+	sudo systemctl daemon-reload
+	sudo systemctl enable stunnel.service
+	sudo systemctl restart stunnel.service
 
 check_env_variables:
 	@echo "Setting up " $(RASPBERRY_NAME)": "$(VPS_IP)":"$(VPS_PORT)"..."
