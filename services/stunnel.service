@@ -3,7 +3,7 @@ Description=SSL tunnel for network daemons
 After=network.target
 
 [Service]
-ExecStart=/usr/bin/stunnel /etc/stunnel/stunnel.conf
+ExecStart=/usr/bin/stunnel4 /etc/stunnel/stunnel.conf
 ExecReload=/bin/kill -HUP $MAINPID
 KillMode=process
 Restart=on-failure
