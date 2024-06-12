@@ -194,8 +194,11 @@ stunnel:
 	sudo chmod 755 /run/stunnel4
 
 	sudo mkdir -p /var/log/stunnel4
+	sudo touch /var/log/stunnel4/stunnel.log
 	sudo chown pi:pi /var/log/stunnel4
 	sudo chmod 755 /var/log/stunnel4
+	sudo chmod 755 /var/log/stunnel4/stunnel.log
+
 	sudo systemctl daemon-reload
 	sudo systemctl enable stunnel.service
 	sudo systemctl restart stunnel.service
