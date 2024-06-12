@@ -4,11 +4,9 @@ After=network.target
 
 [Service]
 ExecStart=/usr/bin/stunnel4 /etc/stunnel/stunnel.conf
-ExecReload=/bin/kill -HUP $MAINPID
 KillMode=process
 Restart=on-failure
-Type=forking
-PIDFile=/run/stunnel4.pid
+Type=simple
 
 [Install]
 WantedBy=multi-user.target
