@@ -4,7 +4,15 @@ After=network.target
 
 [Service]
 User=pi
+
 ExecStart=/usr/bin/stunnel4 /etc/stunnel/stunnel.conf
+PIDFile=/run/stunnel/stunnel.pid
+RuntimeDirectory=stunnel
+RuntimeDirectoryMode=0755
+Restart=on-failure
+User=pi
+
+
 
 [Install]
 WantedBy=multi-user.target
