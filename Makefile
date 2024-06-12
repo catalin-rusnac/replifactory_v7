@@ -189,6 +189,13 @@ stunnel:
 	fi
 	sudo cp services/stunnel.conf /etc/stunnel/stunnel.conf
 	sudo cp services/stunnel.service /etc/systemd/system/stunnel.service
+	sudo mkdir -p /run/stunnel4
+	sudo chown pi:pi /run/stunnel4
+	sudo chmod 755 /run/stunnel4
+
+	sudo mkdir -p /var/log/stunnel4
+	sudo chown pi:pi /var/log/stunnel4
+	sudo chmod 755 /var/log/stunnel4
 	sudo systemctl daemon-reload
 	sudo systemctl enable stunnel.service
 	sudo systemctl restart stunnel.service
