@@ -3,6 +3,7 @@ Description=SSL tunnel for network daemons
 After=network.target
 
 [Service]
+User=pi
 ExecStart=/usr/bin/stunnel4 /etc/stunnel/stunnel.conf
 KillMode=process
 Restart=on-failure
