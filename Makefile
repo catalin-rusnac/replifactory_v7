@@ -195,8 +195,7 @@ stunnel:
 
 	sudo mkdir -p /var/log/stunnel4
 	sudo touch /var/log/stunnel4/stunnel.log
-	sudo chown pi:pi /var/log/stunnel4
-	sudo chmod 755 /var/log/stunnel4
+	sudo chown pi:pi /var/log/stunnel4/stunnel.log
 	sudo chmod 755 /var/log/stunnel4/stunnel.log
 
 	sudo systemctl daemon-reload
