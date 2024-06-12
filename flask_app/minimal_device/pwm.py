@@ -1,5 +1,6 @@
 import threading
 import time
+import traceback
 
 import pyftdi.i2c
 
@@ -23,29 +24,32 @@ class PwmController:
         :return:
         """
         try:
-            self.port = self.device.i2c.get_port(self.device.PORT_PWM)
+            for i in range(3):
+                try:
+                    self.port = self.device.i2c.get_port(self.device.PORT_PWM)
+                    break
+                except Exception as e:
+                    traceback.print_exc()
+                    print("PCA9685 PWM controller connection ERROR:", e)
+                    time.sleep(1)
             self.set_frequency(self.frequency)
             self.stop_all()
-
             all_led_on_l = 250
             all_led_on_h = 251
 
             self.port.write_to(all_led_on_l, [0x0])
             self.port.write_to(all_led_on_h, [0x00])
 
-            # for led_number in range(16):
-            #     led_on_l = led_number * 4 + 6
-            #     led_on_h = led_number * 4 + 7
-            #     self.port.write_to(led_on_h, [0x0])
-            #     self.port.write_to(led_on_l, [0x00])
-
             self.stop_all()
             self.set_duty_cycle_all(0)
             self.set_frequency(self.frequency)
-        except pyftdi.i2c.I2cNackError:
+        except Exception as e:
             self.port = None
-            print("PCA9685 PWM controller connection ERROR.")
-            raise
+            traceback.print_exc()
+            print("PCA9685 PWM controller connection ERROR:", e)
+
+
+
 
     def set_frequency(self, frequency):
         """

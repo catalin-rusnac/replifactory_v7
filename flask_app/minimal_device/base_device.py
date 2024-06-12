@@ -5,12 +5,10 @@ import time
 import pyftdi.i2c
 import usb
 
-# import pandas as pd
 import yaml
 from pyftdi.spi import SpiController
 from pyftdi.usbtools import UsbTools
 
-from .blank import BlankCulture
 from .adc import Photodiodes
 from .dilution import make_dilution
 from .eeprom import EEPROM
@@ -111,7 +109,6 @@ class BaseDevice:
             try:
                 self.spi.configure(ftdi_address + "/1")
                 self.i2c.configure(ftdi_address + "/2", frequency=5e4)
-                self.pwm_controller.connect()  # valves and stirrers
                 print("Device connected successfully.")
                 return
             except Exception as e:
@@ -128,7 +125,7 @@ class BaseDevice:
                     pass
                 print(f"Attempt {attempt + 1} failed: {e}")
                 time.sleep(2)
-                raise ConnectionError(f"Failed to connect to the device after {retries} attempts")
+        raise ConnectionError(f"Failed to connect to the device after {retries} attempts")
 
     @staticmethod
     def reset_usb_device():
@@ -150,6 +147,7 @@ class BaseDevice:
 
     def connect(self):
         self.connect_i2c_spi()
+        self.pwm_controller.connect()  # valves and stirrers
         self.stirrers.connect()
         self.photodiodes.connect()
         self.lasers.connect()
