@@ -190,7 +190,7 @@ stunnel:
 	sudo cp services/stunnel.conf /etc/stunnel/stunnel.conf
 	sudo cp services/stunnel.service /etc/systemd/system/stunnel.service
 
-	sudo touch /run/stunnel.pid
+	sudo touch /run/stunnel4.pid
 	sudo chown pi:pi /run/stunnel4.pid
 	sudo chmod 755 /run/stunnel4.pid
 
