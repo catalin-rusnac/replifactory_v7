@@ -8,7 +8,7 @@ ExecReload=/bin/kill -HUP $MAINPID
 KillMode=process
 Restart=on-failure
 Type=forking
-PIDFile=/var/run/stunnel4.pid
+PIDFile=/run/stunnel4.pid
 
 [Install]
 WantedBy=multi-user.target
