@@ -1,6 +1,7 @@
 import os
 import threading
 import time
+import traceback
 
 import pyftdi.i2c
 import usb
@@ -108,8 +109,8 @@ class BaseDevice:
         for attempt in range(retries):
             try:
                 self.spi.configure(ftdi_address + "/1")
-                self.i2c.configure(ftdi_address + "/2", frequency=1e4)
-                print("Device connected successfully.")
+                self.i2c.configure(ftdi_address + "/2", frequency=5e4)
+                print("SPI and I2C connected")
                 time.sleep(1)
                 return
             except Exception as e:
@@ -124,6 +125,7 @@ class BaseDevice:
                     self.i2c.terminate()
                 except Exception:
                     pass
+                traceback.print_exc()
                 print(f"Attempt {attempt + 1} failed: {e}")
                 time.sleep(2)
         raise ConnectionError(f"Failed to connect to the device after {retries} attempts")
