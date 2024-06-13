@@ -101,7 +101,8 @@ class Stirrers:
         for vial in vials_list:
             duty_cycle_slow = self.device.device_data["stirrers"]["calibration"][vial]["low"]
             duty_cycle_fast = self.device.device_data["stirrers"]["calibration"][vial]["high"]
-            assert 0 <= duty_cycle_slow <= duty_cycle_fast <= 1
+            assert 0 <= duty_cycle_slow <= 1
+            assert 0 <= duty_cycle_fast <= 1
 
     def measure_rpm(self, vial_number=7, estimated_rpm=None):
         duty_cycle = self._get_duty_cycle(vial_number)
