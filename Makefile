@@ -246,7 +246,7 @@ pull-nokill:
 	sudo apt-get update
 	make timezone
 	make migrate
-	make wifi_new_config
 	make stunnel
 	make vps
 	make services-ctl
+	make wifi_new_config
