@@ -182,7 +182,7 @@ vps:
 	sudo systemctl enable autossh.service
 	sudo systemctl restart autossh.service
 
-stunnel:
+stunnel: vps
 	#install stunnel if not already installed
 	if ! dpkg -s stunnel4 > /dev/null; then \
 		sudo apt-get install stunnel4 -y; \
@@ -247,6 +247,5 @@ pull-nokill:
 	make timezone
 	make migrate
 	make stunnel
-	make vps
 	make services-ctl
 	make wifi_new_config
