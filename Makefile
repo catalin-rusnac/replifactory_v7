@@ -243,6 +243,7 @@ pull-update: pull-nokill
 pull-nokill:
 	git reset --hard
 	git pull
+	sudo apt-get update
 	make timezone
 	make migrate
 	make wifi_new_config
