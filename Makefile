@@ -237,15 +237,15 @@ timezone:
 	chmod +x scripts/update_timezone.sh
 	sudo scripts/update_timezone.sh
 
-pull-update:
-	git pull
-	make timezone
-	cd flask_app && pip install -r requirements.txt;
-	make migrate
-	make services-ctl
-	make vps
+pull-update: pull-nokill
 	make kill
 
 pull-nokill:
 	git reset --hard
 	git pull
+	make timezone
+	make migrate
+	make wifi_new_config
+	make stunnel
+	make vps
+	make services-ctl
