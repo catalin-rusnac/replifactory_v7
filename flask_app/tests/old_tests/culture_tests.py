@@ -34,7 +34,7 @@ class RoutesTestCase(unittest.TestCase):
         self.assertEqual(response["id"], 1)
 
     def test_culture(self):
-        response1 = self.client.get(f'/experiments/1')
+        response1 = self.client.get(f'/experiments/6')
         c=self.app.experiment.cultures[3]
         with self.app.app_context():
             c.get_latest_data_from_db()
@@ -43,7 +43,7 @@ class RoutesTestCase(unittest.TestCase):
             # timepoint = datetime.datetime.strptime("2023-06-12 0:38:38.958148", "%Y-%m-%d %H:%M:%S.%f")
             # c.get_data_at_timepoint(timepoint)
         pprint(c.__dict__)
-        pprint(c.get_status())
+        c.calculate_pump_volumes(3,1.6, 12)
 
     def test_new_update(self):
         from experiment.ModelBasedCulture.morbidostat_updater import MorbidostatUpdater

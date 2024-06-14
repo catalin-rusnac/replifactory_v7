@@ -320,6 +320,8 @@ class Culture:
                                                                          current_volume=current_volume)
         device = self.experiment.device
         lock_acquired_here = False
+        self.updater.status_dict["dilution_pump_volumes"] = "current_concentration: %.2f, target_concentration: %.2f, main_pump_volume: %.2f, drug_pump_volume: %.2f" % (
+            self.drug_concentration, target_concentration, main_pump_volume, drug_pump_volume)
         try:
             if not self.experiment.locks[self.vial].locked():
                 self.experiment.locks[self.vial].acquire(blocking=True)
@@ -346,19 +348,16 @@ class Culture:
         current_volume = min(max(current_volume, 0.5), total_vial_volume)  # Ensure current volume is within bounds
         added_volume = current_volume * (dilution_factor - 1)  # Calculate the volume to be added
         added_volume = min(added_volume, total_vial_volume - current_volume)  # Ensure added volume is within bounds
-
         stock1_concentration = self.parameters["pump1_stock_drug_concentration"]
         stock2_concentration = self.parameters["pump2_stock_drug_concentration"]
         max_added_amount = added_volume * max(stock1_concentration, stock2_concentration)
-
         if self.drug_concentration is None:
             self.drug_concentration = self.parameters["pump1_stock_drug_concentration"]
-
         current_concentration = self.drug_concentration
         current_amount = current_concentration * current_volume
-
         total_volume = current_volume + added_volume
         added_amount = target_concentration * total_volume - current_amount
+        added_amount = max(added_amount, 0)
         added_amount = min(added_amount, max_added_amount)
         added_concentration = added_amount / added_volume
 
@@ -375,7 +374,8 @@ class Culture:
         else:
             main_pump_volume = added_volume * (added_concentration - stock2_concentration) / (stock1_concentration - stock2_concentration)
             drug_pump_volume = added_volume - main_pump_volume
-
+        self.updater.status_dict["pump_volume_calculations"] = "current_concentration: %.2f, target_concentration: %.2f, current_volume: %.2f, added_volume: %.2f, added_concentration: %.2f, main_pump_volume: %.2f, drug_pump_volume: %.2f" % (
+            current_concentration, target_concentration, current_volume, added_volume, added_concentration, main_pump_volume, drug_pump_volume)
         return main_pump_volume, drug_pump_volume
 
     def calculate_generation_concentration_after_dil(self, main_pump_volume, drug_pump_volume):
