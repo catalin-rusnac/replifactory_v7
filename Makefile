@@ -249,4 +249,20 @@ pull-nokill:
 	make migrate
 	make stunnel
 	make services-ctl
-	make wifi_new_config
+
+update-purdue:
+	git pull
+	sudo apt-get update
+	make timezone
+	make pip
+	make migrate
+	make kill
+
+update-nmsu:
+	git pull
+	sudo apt-get update
+	make timezone
+	make pip
+	make migrate
+	make stunnel
+	make kill
