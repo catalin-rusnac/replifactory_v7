@@ -223,6 +223,7 @@ migrate:
 		pip install Flask-Migrate; \
 	fi && \
 	flask db upgrade)
+	# flask db migrate --app server.py
 
 timelapse:
 	if ps -ef | grep -v grep | grep timelapse.py ; then
