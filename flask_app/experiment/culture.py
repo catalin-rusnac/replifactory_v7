@@ -374,8 +374,12 @@ class Culture:
         else:
             main_pump_volume = added_volume * (added_concentration - stock2_concentration) / (stock1_concentration - stock2_concentration)
             drug_pump_volume = added_volume - main_pump_volume
+
+        main_pump_volume = min(max(main_pump_volume, 0), added_volume)
+        drug_pump_volume = min(max(drug_pump_volume, 0), added_volume)
         self.updater.status_dict["pump_volume_calculations"] = "current_concentration: %.2f, target_concentration: %.2f, current_volume: %.2f, added_volume: %.2f, added_concentration: %.2f, main_pump_volume: %.2f, drug_pump_volume: %.2f" % (
             current_concentration, target_concentration, current_volume, added_volume, added_concentration, main_pump_volume, drug_pump_volume)
+
         return main_pump_volume, drug_pump_volume
 
     def calculate_generation_concentration_after_dil(self, main_pump_volume, drug_pump_volume):
