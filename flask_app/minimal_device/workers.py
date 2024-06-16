@@ -110,6 +110,7 @@ class QueueWorker:
             self.logger.info("Started Logger")
         self.is_performing_operation = False
         self.thread.start()
+        print("%s worker started." % self.name)
 
     def stop(self):
         if self.thread._tstate_lock:

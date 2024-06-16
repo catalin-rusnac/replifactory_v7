@@ -167,6 +167,7 @@ class BaseDevice:
 
         for lock in self.locks_vials.values():
             if lock.locked():
+                print("Releasing vial lock")
                 lock.release()
 
     def reinitialize_workers(self):
