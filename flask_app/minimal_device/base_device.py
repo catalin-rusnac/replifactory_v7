@@ -197,6 +197,7 @@ class BaseDevice:
         UsbTools.flush_cache()
 
     def hello(self):
+        print("Hello from device")
         self.pwm_controller.play_turn_on_sound()
         self.lasers.blink()
 

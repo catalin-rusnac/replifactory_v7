@@ -58,10 +58,6 @@ class PwmController:
         pre_scale = round(25000000 / (4096 * frequency)) - 1
         try:
             self.port.write_to(0x00, [0b00010001])  # sleep mode
-        #     if nack:
-        #         print("NACK")
-        #         self.port.write_to(0x00, [0b00010001])  # sleep mode
-
         except Exception:
             time.sleep(0.5)
             self.port.write_to(0x00, [0b0])  # reset
