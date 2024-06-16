@@ -32,6 +32,7 @@ class PwmController:
                     traceback.print_exc()
                     print("PCA9685 PWM controller connection ERROR:", e)
                     time.sleep(1)
+            print("Connected to PCA9685 PWM controller port", self.port)
             self.set_frequency(self.frequency)
             self.stop_all()
             all_led_on_l = 250
@@ -47,9 +48,6 @@ class PwmController:
             self.port = None
             traceback.print_exc()
             print("PCA9685 PWM controller connection ERROR:", e)
-
-
-
 
     def set_frequency(self, frequency):
         """
