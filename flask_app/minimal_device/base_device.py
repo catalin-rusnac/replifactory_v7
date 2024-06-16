@@ -197,9 +197,10 @@ class BaseDevice:
         UsbTools.flush_cache()
 
     def hello(self):
-        print("Hello from device")
         self.pwm_controller.play_turn_on_sound()
         self.lasers.blink()
+        print("Said hello from device")
+
 
     def update_cultures(self):
         def queued_function():
