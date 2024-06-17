@@ -44,10 +44,9 @@ class PwmController:
             self.stop_all()
             self.set_duty_cycle_all(0)
             self.set_frequency(self.frequency)
-        except Exception as e:
+        except pyftdi.i2c.I2cNackError:
             self.port = None
-            traceback.print_exc()
-            print("PCA9685 PWM controller connection ERROR:", e)
+            print("PCA9685 PWM controller connection ERROR.")
 
     def set_frequency(self, frequency):
         """

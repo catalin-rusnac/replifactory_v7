@@ -276,11 +276,19 @@ class Experiment:
                 self.device.stirrers.set_speed(vial=vial, speed="high")
         return measured_od_values
 
+    def reconnect_device_if_disconnected(self):
+        if self.device.is_connected():
+            return
+        else:
+            print("Device disconnected. Attempting to reconnect.")
+            self.device.connect()
+
     def make_schedule(self):
         print("Making schedule")
         self.schedule.clear()
         self.schedule.every().minute.at(":05").do(self.update_cultures_in_background)
         self.schedule.every().minute.at(":00").do(self.measure_od_and_rpm_in_background)
+        # self.schedule.every().minute.at(":20").do(self.reconnect_device_if_disconnected)
         # self.schedule.every().minute.at(":20").do(self.measure_od_in_background)
         # self.schedule.every().minute.at(":40").do(self.measure_od_in_background)
 
