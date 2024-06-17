@@ -182,7 +182,7 @@ vps:
 	sudo systemctl enable autossh.service
 	sudo systemctl restart autossh.service
 
-stunnel: vps
+stunnel:
 	#install stunnel if not already installed
 	if ! dpkg -s stunnel4 > /dev/null; then \
 		sudo apt-get install stunnel4 -y; \
@@ -193,6 +193,7 @@ stunnel: vps
 	sudo systemctl daemon-reload
 	sudo systemctl enable stunnel.service
 	sudo systemctl restart stunnel.service
+	make vps
 
 check_env_variables:
 	@echo "Setting up " $(RASPBERRY_NAME)": "$(VPS_IP)":"$(VPS_PORT)"..."
@@ -249,14 +250,6 @@ pull-nokill:
 	make migrate
 	make stunnel
 	make services-ctl
-
-update-purdue:
-	git pull
-	sudo apt-get update
-	make timezone
-	make pip
-	make migrate
-	make kill
 
 update-nmsu:
 	git pull
