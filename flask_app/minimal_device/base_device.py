@@ -345,7 +345,7 @@ class BaseDevice:
 
     def is_connected(self):
         try:
-            return self.spi.configured() and self.i2c.configured()
+            return self.spi.configured and self.i2c.configured
         except Exception as e:
             print(e)
             return False
