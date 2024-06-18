@@ -332,13 +332,10 @@ class BaseDevice:
         self.stirrers.emergency_stop()
 
     def is_connected(self):
-        """
-        tries to send spi command. If device does not respond, returns False.
-        """
         try:
-            self.pump1.is_busy()
-            return True
-        except Exception:
+            return self.spi.configured() and self.i2c.configured()
+        except Exception as e:
+            print(e)
             return False
 
     def save(self):

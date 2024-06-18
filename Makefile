@@ -226,6 +226,9 @@ migrate:
 	flask db upgrade)
 	# flask db migrate --app server.py
 
+keygen:
+	echo "run ssh-keygen -t rsa -b 4096 -C \"pi@$(RASPBERRY_NAME)\" -f ~/.ssh/id_rsa -N \"\"; cat ~/.ssh/id_rsa.pub"
+
 timelapse:
 	if ps -ef | grep -v grep | grep timelapse.py ; then
 		echo "timelapse.py is already running"
@@ -259,3 +262,4 @@ update-nmsu:
 	make migrate
 	make stunnel
 	make kill
+
