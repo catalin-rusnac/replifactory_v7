@@ -103,92 +103,20 @@ class BaseDevice:
             self.connect()
         self.testing = Testing(self)
 
-    # def connect_i2c_spi(self, ftdi_address="ftdi://ftdi:2232h", retries=10):
-    #     self.spi = SpiController(cs_count=5)
-    #     self.i2c = pyftdi.i2c.I2cController()
-    #     for attempt in range(retries):
-    #         try:
-    #             self.spi.configure(ftdi_address + "/1")
-    #             self.i2c.configure(ftdi_address + "/2", frequency=5e4)
-    #             print("SPI and I2C connected")
-    #             time.sleep(1)
-    #             return
-    #         except Exception as e:
-    #             self.reset_usb_device()
-    #             UsbTools.release_all_devices()
-    #             UsbTools.flush_cache()
-    #             try:
-    #                 self.spi.terminate()
-    #             except Exception:
-    #                 pass
-    #             try:
-    #                 self.i2c.terminate()
-    #             except Exception:
-    #                 pass
-    #             traceback.print_exc()
-    #             print(f"Attempt {attempt + 1} failed: {e}")
-    #             time.sleep(2)
-    #     raise ConnectionError(f"Failed to connect to the device after {retries} attempts")
-
-
-    # def connect(self):
-    #     self.connect_i2c_spi()
-    #     self.pwm_controller.connect()  # valves and stirrers
-    #     self.stirrers.connect()
-    #     self.photodiodes.connect()
-    #     self.lasers.connect()
-    #     self.thermometers.connect()
-    #     self.pump1.connect()
-    #     self.pump2.connect()
-    #     self.pump3.connect()
-    #     self.pump4.connect()
-    #     self.eeprom.connect()
-    #     self.dilution_worker = QueueWorker(device=self, worker_name="dilution")
-    #     self.od_worker = QueueWorker(device=self, worker_name="od")
-    #     self.hard_stop_trigger = False
-    #     self.soft_stop_trigger = False
-    #
-    #     for lock in self.locks_vials.values():
-    #         if lock.locked():
-    #             print("Releasing vial lock")
-    #             lock.release()
-
-
-    def connect(self, ftdi_address="ftdi://ftdi:2232h", retries=10):
-        # if ftdi_address is None:
-        #     ftdi_address = self.ftdi_address
-        # else:
-        try:
-            # t0=time.time()
-            assert ftdi_address[-1] != "/", "ftdi_address should not end with a '/'"
-            self.spi = SpiController(cs_count=5)
-            self.spi.configure(ftdi_address + "/1")
-            self.i2c = pyftdi.i2c.I2cController()
-            self.i2c.configure(ftdi_address + "/2", frequency=5e4)
-            self.pwm_controller.connect()  # valves and stirrers
-            # self.valves.connect()
-            self.stirrers.connect()
-            self.photodiodes.connect()
-            self.lasers.connect()
-            self.thermometers.connect()
-            self.pump1.connect()
-            self.pump2.connect()
-            self.pump3.connect()
-            self.pump4.connect()
-            self.eeprom.connect()
-            # print("Device %s connection established" % ftdi_address)
-            self.dilution_worker = QueueWorker(device=self, worker_name="dilution")
-            self.od_worker = QueueWorker(device=self, worker_name="od")
-            self.hard_stop_trigger = False
-            self.soft_stop_trigger = False
-
-        # except USBError as ex:
-        #     raise FtdiError('UsbError: %s' % str(ex)) from None
-
-        except pyftdi.ftdi.FtdiError as ex:
-            raise ConnectionError("Connection failed! %s" % ex) from None
-        except pyftdi.usbtools.USBError:
-            if retries >0:
+    def connect_i2c_spi(self, ftdi_address="ftdi://ftdi:2232h", retries=10):
+        self.spi = SpiController(cs_count=5)
+        self.i2c = pyftdi.i2c.I2cController()
+        for attempt in range(retries):
+            try:
+                self.spi.configure(ftdi_address + "/1")
+                self.i2c.configure(ftdi_address + "/2", frequency=5e4)
+                print("SPI and I2C connected")
+                time.sleep(1)
+                return
+            except Exception as e:
+                self.reset_usb_device()
+                UsbTools.release_all_devices()
+                UsbTools.flush_cache()
                 try:
                     self.spi.terminate()
                 except Exception:
@@ -197,17 +125,89 @@ class BaseDevice:
                     self.i2c.terminate()
                 except Exception:
                     pass
-                UsbTools.release_all_devices()
-                UsbTools.flush_cache()
-                print("Retrying connection...")
-                self.connect(ftdi_address=ftdi_address, retries=retries - 1)
-            print("Device connected but does not recognize the command.\nPlease reset connections.")
-        except pyftdi.usbtools.UsbToolsError as ex:
-            print("Connection failed! %s" % ex)
-            print("Device %s not connected." % ftdi_address)
+                traceback.print_exc()
+                print(f"Attempt {attempt + 1} failed: {e}")
+                time.sleep(2)
+        raise ConnectionError(f"Failed to connect to the device after {retries} attempts")
+
+
+    def connect(self):
+        self.connect_i2c_spi()
+        self.pwm_controller.connect()  # valves and stirrers
+        self.stirrers.connect()
+        self.photodiodes.connect()
+        self.lasers.connect()
+        self.thermometers.connect()
+        self.pump1.connect()
+        self.pump2.connect()
+        self.pump3.connect()
+        self.pump4.connect()
+        self.eeprom.connect()
+        self.dilution_worker = QueueWorker(device=self, worker_name="dilution")
+        self.od_worker = QueueWorker(device=self, worker_name="od")
+        self.hard_stop_trigger = False
+        self.soft_stop_trigger = False
+
         for lock in self.locks_vials.values():
             if lock.locked():
+                print("Releasing vial lock")
                 lock.release()
+
+
+    # def connect(self, ftdi_address="ftdi://ftdi:2232h", retries=10):
+    #     # if ftdi_address is None:
+    #     #     ftdi_address = self.ftdi_address
+    #     # else:
+    #     try:
+    #         # t0=time.time()
+    #         assert ftdi_address[-1] != "/", "ftdi_address should not end with a '/'"
+    #         self.spi = SpiController(cs_count=5)
+    #         self.spi.configure(ftdi_address + "/1")
+    #         self.i2c = pyftdi.i2c.I2cController()
+    #         self.i2c.configure(ftdi_address + "/2", frequency=5e4)
+    #         self.pwm_controller.connect()  # valves and stirrers
+    #         # self.valves.connect()
+    #         self.stirrers.connect()
+    #         self.photodiodes.connect()
+    #         self.lasers.connect()
+    #         self.thermometers.connect()
+    #         self.pump1.connect()
+    #         self.pump2.connect()
+    #         self.pump3.connect()
+    #         self.pump4.connect()
+    #         self.eeprom.connect()
+    #         # print("Device %s connection established" % ftdi_address)
+    #         self.dilution_worker = QueueWorker(device=self, worker_name="dilution")
+    #         self.od_worker = QueueWorker(device=self, worker_name="od")
+    #         self.hard_stop_trigger = False
+    #         self.soft_stop_trigger = False
+    #
+    #     # except USBError as ex:
+    #     #     raise FtdiError('UsbError: %s' % str(ex)) from None
+    #
+    #     except pyftdi.ftdi.FtdiError as ex:
+    #         raise ConnectionError("Connection failed! %s" % ex) from None
+    #     except pyftdi.usbtools.USBError:
+    #         if retries >0:
+    #             try:
+    #                 self.spi.terminate()
+    #             except Exception:
+    #                 pass
+    #             try:
+    #                 self.i2c.terminate()
+    #             except Exception:
+    #                 pass
+    #             UsbTools.release_all_devices()
+    #             UsbTools.flush_cache()
+    #             print("Retrying connection...")
+    #             self.connect(ftdi_address=ftdi_address, retries=retries - 1)
+    #         print("Device connected but does not recognize the command.\nPlease reset connections.")
+    #     except pyftdi.usbtools.UsbToolsError as ex:
+    #         print("Connection failed! %s" % ex)
+    #         print("Device %s not connected." % ftdi_address)
+    #     for lock in self.locks_vials.values():
+    #         if lock.locked():
+    #             lock.release()
 
     @staticmethod
     def reset_usb_device():
