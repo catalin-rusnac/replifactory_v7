@@ -3,8 +3,10 @@ import time
 import pyftdi
 from pyftdi.i2c import I2cController
 from pyftdi.spi import SpiController
-
-
+import sys
+print(sys.path)
+sys.path.append('./flask_app/')
+from minimal_device.pwm import PwmController
 class BaseDevice:
     PORT_ADC = 0x68  # MCP3421A0  1101 000
     # PORT_ADC = 0x69  # MCP3421A1  1101 001
@@ -36,7 +38,7 @@ class BaseDevice:
         self.i2c = None
         self.spi = None
 
-        # self.pwm_controller = PwmController(device=self, frequency=50)
+        self.pwm_controller = PwmController(device=self, frequency=50)
         # self.valves = Valves(device=self)
         # self.stirrers = Stirrers(device=self)
         # self.photodiodes = Photodiodes(device=self)
@@ -55,7 +57,10 @@ class BaseDevice:
         self.spi.configure(ftdi_address + "/1")
         self.i2c = I2cController()
         self.i2c.configure(ftdi_address + "/2", frequency=1e4)
+        self.pwm_controller.connect()
 
+    def is_connected(self):
+        return self.spi is not None and self.i2c is not None
 
 if __name__ == "__main__":
     dev = BaseDevice()

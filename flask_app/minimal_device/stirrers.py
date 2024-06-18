@@ -105,69 +105,61 @@ class Stirrers:
             assert 0 <= duty_cycle_fast <= 1
 
     def measure_rpm(self, vial_number=7, estimated_rpm=None):
-        duty_cycle = self._get_duty_cycle(vial_number)
-        if estimated_rpm is None:
-            estimated_rpm = self.rpms[vial_number]
-        if estimated_rpm is None:
-            estimated_rpm = 2000*duty_cycle
-        if estimated_rpm < 10:
-            return 0
-        ms_per_rotation = 60 / estimated_rpm * 1000
-        bits_per_minute = self.freq * 60
-        ms_per_bit = 1 / self.freq * 1000
-        bits_per_rotation = ms_per_rotation / ms_per_bit
-        nbytes_per_rotation = bits_per_rotation / 8
-        nbytes = int(nbytes_per_rotation*0.8)+16  # Safety factor to avoid overflow
-
-        # Set up the multiplexer for the given vial
-        self.multiplexer_port.write_to(7, [0x00])  # Output pin
-        self.multiplexer_port.write_to(2, [vial_number-1])
-        t0 = time.time()
-        # Read data from SPI port
-        res = self.fans_spi_port.read(nbytes)
-        dt = time.time() - t0
-        binstr = "".join([bin(r)[2:].rjust(8, "0") for r in res])
-
-        # Clean up the binary string
-        binstr = binstr.replace("1110111", "1111111").replace("11100111", "11111111")
-
-        # Calculate the ratio of '1's in the binary data
-        ones_ratio = sum(1 for i in binstr if i == "1") / (8 * nbytes)
-
-        # Find repeated sequences in the binary string
-        periods = [len(match.group()) for match in re.finditer(r'(0+|1+)', binstr)]
-        periods = periods[1:-1] # cut first and last incomplete sequences
-
-        # Check if any periods were found
-        if len(periods) < 1:
-            if estimated_rpm > 400:
-                time.sleep(4)
-                return self.measure_rpm(vial_number, estimated_rpm / 2)
-            else:
+        assert self.pwm_controller.lock.acquire(timeout=1)
+        try:
+            duty_cycle = self._get_duty_cycle(vial_number)
+            if estimated_rpm is None:
+                estimated_rpm = self.rpms[vial_number]
+            if estimated_rpm is None:
+                estimated_rpm = 2000*duty_cycle
+            if estimated_rpm < 10:
                 return 0
+            ms_per_rotation = 60 / estimated_rpm * 1000
+            bits_per_minute = self.freq * 60
+            ms_per_bit = 1 / self.freq * 1000
+            bits_per_rotation = ms_per_rotation / ms_per_bit
+            nbytes_per_rotation = bits_per_rotation / 8
+            nbytes = int(nbytes_per_rotation*0.8)+16  # Safety factor to avoid overflow
 
-        periods = np.array(periods)
+            # Set up the multiplexer for the given vial
+            self.multiplexer_port.write_to(7, [0x00])  # Output pin
+            self.multiplexer_port.write_to(2, [vial_number-1])
+            t0 = time.time()
+            # Read data from SPI port
+            res = self.fans_spi_port.read(nbytes)
+            dt = time.time() - t0
+            binstr = "".join([bin(r)[2:].rjust(8, "0") for r in res])
 
-        if len(periods) > 5:
-            # remove outliers
-            periods = periods[abs(periods - np.median(periods)) < 2 * np.std(periods)]
+            # Clean up the binary string
+            binstr = binstr.replace("1110111", "1111111").replace("11100111", "11111111")
 
-        if periods[0] > 1000:
-            rpm = 60 * self.freq / periods[0] / 4
-        else:
-            rpm = 60 * self.freq / np.median(periods) / 4
+            # Calculate the ratio of '1's in the binary data
+            ones_ratio = sum(1 for i in binstr if i == "1") / (8 * nbytes)
 
-        # err = periods.std() / periods.mean()
-        # print("estimated_rps: ", estimated_rpm / 60)
-        # print("ms per rotation estimated: %.2f" % (1000 / estimated_rpm * 60))
-        # print("ms measured total:", ms_per_bit * nbytes * 8)
-        # print("Time taken:", dt)
-        # print("Bits:", len(binstr), "%.2f %%"% ones_ratio, "periods:", len(periods), periods)
-        # if max(periods)-min(periods) > max(periods) * 0.2:
-        #     print("Warning: Periods vary too much")
-        #     print(binstr)
-        # print("Speed:", int(rpm), "RPM ±", int(err * rpm), "Error: %.1f%%" % (err * 100))
-        # print("ms per rotation actual: %.3f" % (1000 / (rpm / 60)))
+            # Find repeated sequences in the binary string
+            periods = [len(match.group()) for match in re.finditer(r'(0+|1+)', binstr)]
+            periods = periods[1:-1] # cut first and last incomplete sequences
+
+            # Check if any periods were found
+            if len(periods) < 1:
+                if estimated_rpm > 400:
+                    time.sleep(4)
+                    return self.measure_rpm(vial_number, estimated_rpm / 2)
+                else:
+                    return 0
+
+            periods = np.array(periods)
+
+            if len(periods) > 5:
+                # remove outliers
+                periods = periods[abs(periods - np.median(periods)) < 2 * np.std(periods)]
+
+            if periods[0] > 1000:
+                rpm = 60 * self.freq / periods[0] / 4
+            else:
+                rpm = 60 * self.freq / np.median(periods) / 4
+        finally:
+            self.pwm_controller.lock.release()
         return rpm
 
     def measure_all_rpms(self, vials_to_measure=(1, 2, 3, 4, 5, 6, 7)):
