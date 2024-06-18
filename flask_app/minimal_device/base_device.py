@@ -66,7 +66,6 @@ class BaseDevice:
         self.locks_vials = {v: threading.Lock() for v in range(1, 8)}
         self.lock_pumps = threading.Lock()
         self.file_lock = threading.Lock()
-
         # self.pump_calibrations_rotations_to_ml = {1: {}, 2: {}, 3: {}, 4: {}}
         self.pump_stock_concentrations = {1: None, 2: None, 3: None, 4: None}
         self.pump_stock_volumes = {1: None, 2: None, 3: None, 4: None}
@@ -104,30 +103,43 @@ class BaseDevice:
         self.testing = Testing(self)
 
     def connect_i2c_spi(self, ftdi_address="ftdi://ftdi:2232h", retries=10):
-        self.spi = SpiController(cs_count=5)
-        self.i2c = pyftdi.i2c.I2cController()
-        for attempt in range(retries):
-            try:
-                self.spi.configure(ftdi_address + "/1")
-                self.i2c.configure(ftdi_address + "/2", frequency=5e4)
-                print("SPI and I2C connected")
-                time.sleep(1)
-                return
-            except Exception as e:
-                self.reset_usb_device()
-                UsbTools.release_all_devices()
-                UsbTools.flush_cache()
+        # acquire lock_pumps to prevent concurrent attempts to connect
+        assert self.lock_pumps.acquire(timeout=5)
+        try:
+            self.spi = SpiController(cs_count=5)
+            self.i2c = pyftdi.i2c.I2cController()
+            for attempt in range(retries):
                 try:
-                    self.spi.terminate()
-                except Exception:
-                    pass
-                try:
-                    self.i2c.terminate()
-                except Exception:
-                    pass
-                traceback.print_exc()
-                print(f"Attempt {attempt + 1} failed: {e}")
-                time.sleep(2)
+                    self.spi.configure(ftdi_address + "/1")
+                    self.i2c.configure(ftdi_address + "/2", frequency=5e4)
+                    print("closing SPI and I2C")
+                    self.spi.close()
+                    self.i2c.close()
+                    print("opening SPI and I2C again")
+                    self.spi.configure(ftdi_address + "/1")
+                    self.i2c.configure(ftdi_address + "/2", frequency=5e4)
+
+
+                    print("SPI and I2C connected")
+                    time.sleep(1)
+                    return
+                except Exception as e:
+                    self.reset_usb_device()
+                    UsbTools.release_all_devices()
+                    UsbTools.flush_cache()
+                    try:
+                        self.spi.close()
+                    except Exception as e:
+                        traceback.print_exc()
+                    try:
+                        self.i2c.close()
+                    except Exception as e:
+                        traceback.print_exc()
+                    traceback.print_exc()
+                    print(f"Attempt {attempt + 1} failed: {e}")
+                    time.sleep(2)
+        finally:
+            self.lock_pumps.release()
         raise ConnectionError(f"Failed to connect to the device after {retries} attempts")
 
 
