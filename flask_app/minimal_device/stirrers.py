@@ -159,7 +159,7 @@ class Stirrers:
         return rpm
 
     def measure_rpm(self, vial_number=7):
-        assert self.pwm_controller.lock.acquire(timeout=5)
+        assert self.pwm_controller.lock.acquire(timeout=1)
         try:
             rpm = self._measure_rpm_no_lock(vial_number)
         finally:
