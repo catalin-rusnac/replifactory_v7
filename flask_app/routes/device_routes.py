@@ -249,6 +249,7 @@ def connect_device():
             current_app.device = dev
             return jsonify({'success': True, 'device_states': dev.device_data})
         elif dev.is_connected() == False:
+            print("Device not connected, disconnecting")
             dev.disconnect_all()
     except:
         print("Device not connected")
