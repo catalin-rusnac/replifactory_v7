@@ -69,6 +69,7 @@ def main():
             print("Running in development mode")
             app.run(debug=True, host="0.0.0.0", port=5000, use_reloader=True)
         else:
+            print("Running in production mode, using waitress with 8 threads")
             serve(app, host="0.0.0.0", port=5000, threads=8)
 
 
