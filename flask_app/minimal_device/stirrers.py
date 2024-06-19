@@ -56,7 +56,9 @@ class Stirrers:
         else:
             duty_cycle = self.device.device_data["stirrers"]["calibration"][vial][speed]
 
-        assert self.pwm_controller.lock.acquire(timeout=2)
+        lock_acquired = self.pwm_controller.lock.acquire(timeout=2)
+        if not lock_acquired:
+            raise Exception("Could not acquire lock for setting stirrer speed at time %s" % time.time())
         try:
             if 0 < duty_cycle < 0.2 and accelerate:
                 accelerate_duty_cycle = self.device.device_data["stirrers"]["calibration"][vial]["high"] * 1.2
@@ -69,7 +71,9 @@ class Stirrers:
             self.pwm_controller.lock.release()
 
     def emergency_stop(self):
-        assert self.pwm_controller.lock.acquire(timeout=1)
+        lock_acquired = self.pwm_controller.lock.acquire(timeout=5)
+        if not lock_acquired:
+            raise Exception("Could not acquire lock for emergency stop at time %s" % time.time())
         try:
             for vial in range(1, 8):
                 self._set_duty_cycle(vial, duty_cycle=0)
@@ -79,7 +83,9 @@ class Stirrers:
     def set_speed_all(self, speed, accelerate=True):
         assert speed in ["stopped", "low", "high"]
         # self.check_calibration()
-        assert self.pwm_controller.lock.acquire(timeout=2)
+        lock_acquired = self.pwm_controller.lock.acquire(timeout=2)
+        if not lock_acquired:
+            raise Exception("Could not acquire lock for setting all stirrer speeds at time %s" % time.time())
         try:
             for vial in range(1, 8):
                 if speed == "stopped":
@@ -159,7 +165,9 @@ class Stirrers:
         return rpm
 
     def measure_rpm(self, vial_number=7):
-        assert self.pwm_controller.lock.acquire(timeout=1)
+        lock_acquired = self.pwm_controller.lock.acquire(timeout=2)
+        if not lock_acquired:
+            raise Exception("Could not acquire lock for measuring stirrer speed at time %s" % time.time())
         try:
             rpm = self._measure_rpm_no_lock(vial_number)
         finally:

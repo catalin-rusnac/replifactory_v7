@@ -207,7 +207,7 @@ class Experiment:
             try:
                 for vial in range(1, 8):
                     if not self.locks[vial].locked():
-                        self.locks[vial].acquire(blocking=False)
+                        self.locks[vial].acquire(blocking=False) # blocking=False means don't wait for lock, just check if it's available
                         available_vials.append(vial)
                 new_rpms = self.device.stirrers.measure_all_rpms(vials_to_measure=available_vials)
                 new_ods = self.measure_od_all(vials_to_measure=available_vials)

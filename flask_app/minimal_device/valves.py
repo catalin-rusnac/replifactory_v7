@@ -47,7 +47,9 @@ class Valves:
         sets 0 duty cycle for all valves fast
         :return:
         """
-        assert self.pwm_controller.lock.acquire(timeout=10)
+        lock_acquired = self.pwm_controller.lock.acquire(timeout=2)
+        if not lock_acquired:
+            raise Exception("Could not acquire lock to set all valves to idle at time %s" % time.time())
         try:
             self.pwm_controller.stop_all()
             for valve in range(1, 9):
@@ -64,7 +66,9 @@ class Valves:
         moving after writing the first byte.
         """
         led_number = self.led_numbers[valve]
-        assert self.pwm_controller.lock.acquire(timeout=2)
+        lock_acquired = self.pwm_controller.lock.acquire(timeout=2)
+        if not lock_acquired:
+            raise Exception("Could not acquire lock to set duty cycle for valve %d at time %s" % (valve, time.time()))
         try:
             # self.pwm_controller.stop_all()
             self.pwm_controller.set_duty_cycle(

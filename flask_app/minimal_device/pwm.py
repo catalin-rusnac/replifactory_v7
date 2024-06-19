@@ -11,9 +11,7 @@ class PwmController:
     def __init__(self, device, frequency=50):
         self.device = device
         self.frequency = frequency
-        self.lock = (
-            threading.Lock()
-        )  # valves and stirrers can be used on different threads
+        self.lock = (threading.Lock())  # valves and stirrers can be used on different threads
         self.port = None
         if self.device.is_connected():
             self.connect()
