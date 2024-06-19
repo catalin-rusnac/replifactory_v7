@@ -9,8 +9,8 @@ def make_dilution(
     assert 0 <= pump2_volume <= 15
     assert 0 <= pump3_volume <= 15
     assert 0 <= extra_vacuum <= 15
-    assert device.locks_vials[vial].acquire(timeout=60)
-    assert device.lock_pumps.acquire(timeout=60)
+    assert device.locks_vials[vial].acquire(timeout=10)
+    assert device.lock_pumps.acquire(timeout=10)
     # must have been checked before releasing the pump_number lock
     assert not device.is_pumping(), "pumping in progress"
     # assert not device.hard_stop_trigger

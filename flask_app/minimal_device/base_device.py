@@ -466,39 +466,3 @@ class BaseDevice:
                 self.__dict__[k] = loaded_dict[k]
         print("Loaded calibration data from %s" % config_path)
         self.fit_calibration_functions()
-
-    def fill_vials(self, volume=15, vials=(1, 2, 3, 4, 5, 6, 7)):
-        for v in vials:
-            assert 1 <= v <= 7
-        for v in vials:
-            try:
-                assert self.locks_vials[v].acquire(timeout=60)
-                assert self.lock_pumps.acquire(timeout=60)
-                self.valves.open(v)
-                self.pump1.pump(volume)
-                while self.is_pumping():
-                    time.sleep(0.5)
-                time.sleep(2)
-                assert not self.is_pumping()
-                self.valves.close(v)
-            finally:
-                self.locks_vials[v].release()
-                self.lock_pumps.release()
-
-    def aspirate_vials(self, volume=24, vials=(1, 2, 3, 4, 5, 6, 7)):
-        for v in vials:
-            assert 1 <= v <= 7
-        for v in vials:
-            try:
-                assert self.locks_vials[v].acquire(timeout=60)
-                assert self.lock_pumps.acquire(timeout=60)
-                self.valves.open(v)
-                self.pump4.pump(volume)
-                while self.is_pumping():
-                    time.sleep(0.5)
-                time.sleep(2)
-                assert not self.is_pumping(), "device "
-                self.valves.close(v)
-            finally:
-                self.locks_vials[v].release()
-                self.lock_pumps.release()
