@@ -64,7 +64,7 @@ class Valves:
         moving after writing the first byte.
         """
         led_number = self.led_numbers[valve]
-        assert self.pwm_controller.lock.acquire(timeout=10)
+        assert self.pwm_controller.lock.acquire(timeout=2)
         try:
             # self.pwm_controller.stop_all()
             self.pwm_controller.set_duty_cycle(
