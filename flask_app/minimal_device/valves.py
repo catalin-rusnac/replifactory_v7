@@ -49,7 +49,7 @@ class Valves:
         """
         lock_acquired = self.pwm_controller.lock.acquire(timeout=2)
         if not lock_acquired:
-            raise Exception("Could not acquire lock to set all valves to idle at time %s" % time.time())
+            raise Exception("Could not acquire lock to set all valves to idle at time %s" % time.ctime())
         try:
             self.pwm_controller.stop_all()
             for valve in range(1, 9):
@@ -68,7 +68,7 @@ class Valves:
         led_number = self.led_numbers[valve]
         lock_acquired = self.pwm_controller.lock.acquire(timeout=2)
         if not lock_acquired:
-            raise Exception("Could not acquire lock to set duty cycle for valve %d at time %s" % (valve, time.time()))
+            raise Exception("Could not acquire lock to set duty cycle for valve %d at time %s" % (valve, time.ctime()))
         try:
             # self.pwm_controller.stop_all()
             self.pwm_controller.set_duty_cycle(

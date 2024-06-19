@@ -58,7 +58,7 @@ class Stirrers:
 
         lock_acquired = self.pwm_controller.lock.acquire(timeout=2)
         if not lock_acquired:
-            raise Exception("Could not acquire lock for setting stirrer speed at time %s" % time.time())
+            raise Exception("Could not acquire lock for setting stirrer speed at time %s" % time.ctime())
         try:
             if 0 < duty_cycle < 0.2 and accelerate:
                 accelerate_duty_cycle = self.device.device_data["stirrers"]["calibration"][vial]["high"] * 1.2
@@ -73,7 +73,7 @@ class Stirrers:
     def emergency_stop(self):
         lock_acquired = self.pwm_controller.lock.acquire(timeout=5)
         if not lock_acquired:
-            raise Exception("Could not acquire lock for emergency stop at time %s" % time.time())
+            raise Exception("Could not acquire lock for emergency stop at time %s" % time.ctime())
         try:
             for vial in range(1, 8):
                 self._set_duty_cycle(vial, duty_cycle=0)
@@ -85,7 +85,7 @@ class Stirrers:
         # self.check_calibration()
         lock_acquired = self.pwm_controller.lock.acquire(timeout=2)
         if not lock_acquired:
-            raise Exception("Could not acquire lock for setting all stirrer speeds at time %s" % time.time())
+            raise Exception("Could not acquire lock for setting all stirrer speeds at time %s" % time.ctime())
         try:
             for vial in range(1, 8):
                 if speed == "stopped":
@@ -167,7 +167,7 @@ class Stirrers:
     def measure_rpm(self, vial_number=7):
         lock_acquired = self.pwm_controller.lock.acquire(timeout=2)
         if not lock_acquired:
-            raise Exception("Could not acquire lock for measuring stirrer speed at time %s" % time.time())
+            raise Exception("Could not acquire lock for measuring stirrer speed at time %s" % time.ctime())
         try:
             rpm = self._measure_rpm_no_lock(vial_number)
         finally:
