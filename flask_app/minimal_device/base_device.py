@@ -249,7 +249,7 @@ class BaseDevice:
 
         UsbTools.release_all_devices()
         UsbTools.flush_cache()
-        # self.reset_usb_device()
+        self.reset_usb_device()
 
     def hello(self):
         self.pwm_controller.play_turn_on_sound()
