@@ -1,3 +1,5 @@
+import traceback
+
 from flask import Blueprint, request, jsonify, current_app
 import time
 import sys
@@ -260,16 +262,17 @@ def connect_device():
     except:
         print("Device not connected yet")
         pass
-
     try:
         print("Connecting device")
         current_app.device = BaseDevice(connect=True)
-        dev.hello()
+        current_app.device.hello()
         if hasattr(current_app, "experiment"):
             current_app.experiment.device = current_app.device
         return jsonify({'success': True, 'device_states': current_app.device.device_data})
     except Exception as e:
+        traceback.print_exc()
         current_app.device = None
-        current_app.experiment.device = None
+        if hasattr(current_app, "experiment"):
+            current_app.experiment.device = None
         return jsonify({'success': False, 'error': str(e)})
 
