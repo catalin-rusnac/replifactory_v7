@@ -67,7 +67,7 @@ def get_experiment(id):
 
     # Create a new experiment if not already present
     if not hasattr(current_app, 'experiment'):
-        if not hasattr(current_app, 'dev'):
+        if not hasattr(current_app, 'device'):
             connect_device()
         current_app.experiment = Experiment(current_app.device, experiment_model, db)
 

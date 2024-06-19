@@ -101,29 +101,28 @@ class EEPROM:
         :return:
         """
         loaded_config = self.read_eeprom()
-
-        try:
-            for k in default_device_data.keys():
-                if k not in loaded_config.keys():
-                    raise Exception("Key not found in EEPROM")
-        except Exception:
-            print("Loading config from EEPROM failed, erasing memory and writing default config")
-            self.device.lasers.switch_all_on()
-            time.sleep(0.3)
-            self.device.lasers.switch_all_off()
-            time.sleep(0.3)
-            self.device.lasers.switch_all_on()
-            time.sleep(1)
-            self.device.lasers.switch_all_off()
-
-            self.erase_memory()
-            self.device.device_data = default_device_data
-            self.save_config_to_eeprom()
-            for v in range(1, 8):
-                self.device.valves.open(v)
-            return
+        for k in default_device_data.keys():
+            if k not in loaded_config.keys():
+                raise Exception("Key not found in EEPROM")
         self.device.device_data = loaded_config
         print("Loaded config from EEPROM matching default config keys")
+
+    def reset_memory(self):
+        print("erasing memory and writing default config")
+        self.device.lasers.switch_all_on()
+        time.sleep(0.3)
+        self.device.lasers.switch_all_off()
+        time.sleep(0.3)
+        self.device.lasers.switch_all_on()
+        time.sleep(1)
+        self.device.lasers.switch_all_off()
+
+        self.erase_memory()
+        self.device.device_data = default_device_data
+        self.save_config_to_eeprom()
+        for v in range(1, 8):
+            self.device.valves.open(v)
+        return
 
     def write_to_page(self, page, content, byte=0, fill=True):
         assert byte < 64

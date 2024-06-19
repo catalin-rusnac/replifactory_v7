@@ -11,13 +11,13 @@ device_routes = Blueprint('device_routes', __name__)
 def set_device_state(devicePart):
     part_index = request.json['partIndex']
     new_state = request.json['newState']
-    dev.device_data[devicePart]['states'][part_index] = new_state
+    current_app.device.device_data[devicePart]['states'][part_index] = new_state
     if devicePart == 'valves':
         print(f'Toggled valve {part_index} to {new_state}')
         if new_state=='open':
-            dev.valves.open(part_index)
+            current_app.device.valves.open(part_index)
         elif new_state=='closed':
-            dev.valves.close(part_index)
+            current_app.device.valves.close(part_index)
 
     elif devicePart == 'pumps':
         print(f'Toggled pump {part_index} to {new_state}')
@@ -27,28 +27,28 @@ def set_device_state(devicePart):
             volume = None
             if 'volume' in request.json['input']:
                 volume = float(request.json['input']['volume'])
-                dev.pumps[part_index].pump(volume)
+                current_app.device.pumps[part_index].pump(volume)
             elif 'rotations' in request.json['input']:
                 rotations = float(request.json['input']['rotations'])
-                dev.pumps[part_index].move(rotations)
-            while dev.pumps[part_index].is_pumping():
+                current_app.device.pumps[part_index].move(rotations)
+            while current_app.device.pumps[part_index].is_pumping():
                 time.sleep(0.2)
             if volume:
                 adjust_stock_volume(pump_index=part_index, volume=volume)
 
         elif new_state=='stopped':
-            if dev.pumps[part_index].is_pumping():
-                dev.pumps[part_index].stop()
+            if current_app.device.pumps[part_index].is_pumping():
+                current_app.device.pumps[part_index].stop()
                 print("Actively stopped pump", part_index)
         # volume = request.json['input']
-        # dev.pumps[part_index].pump(volume)
+        # current_app.device.pumps[part_index].pump(volume)
 
     elif devicePart == 'stirrers':
         time.sleep(0.01)
         # print(f'Toggled stirrer {part_index} to {new_state}')
-        dev.stirrers.set_speed(part_index, new_state)
+        current_app.device.stirrers.set_speed(part_index, new_state)
     if devicePart == 'valves':
-        dev.eeprom.save_config_to_eeprom()
+        current_app.device.eeprom.save_config_to_eeprom()
     return jsonify({'success': True, 'newState': new_state})
 
 
@@ -71,18 +71,18 @@ def measure_device_part(devicePart):
     partIndex = int(request.json['partIndex'])
     if devicePart == 'ods':
         # print(f'Measuring OD {partIndex}')
-        od, signal = dev.od_sensors[partIndex].measure_od()
+        od, signal = current_app.device.od_sensors[partIndex].measure_od()
         # od_value = random.randint(0, 100)
-        dev.device_data[devicePart]['states'][partIndex] = od
-        dev.device_data[devicePart]['odsignals'][partIndex] = signal
+        current_app.device.device_data[devicePart]['states'][partIndex] = od
+        current_app.device.device_data[devicePart]['odsignals'][partIndex] = signal
     elif devicePart == 'thermometers':
-        t_vials, t_board = dev.thermometers.measure_temperature()
-        dev.device_data[devicePart]['states'] = {1: t_vials, 2: t_board}
-    return jsonify({'success': True, 'device_states': dev.device_data})
+        t_vials, t_board = current_app.device.thermometers.measure_temperature()
+        current_app.device.device_data[devicePart]['states'] = {1: t_vials, 2: t_board}
+    return jsonify({'success': True, 'device_states': current_app.device.device_data})
 
 @device_routes.route('/get-stirrer-speeds', methods=['GET'])
 def get_stirrer_speed():
-    speeds = dev.stirrers.measure_all_rpms()
+    speeds = current_app.device.stirrers.measure_all_rpms()
     from flask import send_file
     import matplotlib.pyplot as plt
     from io import BytesIO
@@ -109,7 +109,7 @@ def get_stirrer_calibration_curve(vial_number, n_points, time_sleep):
     import matplotlib.pyplot as plt
     from io import BytesIO
 
-    rpm_dc = dev.stirrers.get_calibration_curve(vial_number, n_points, time_sleep)
+    rpm_dc = current_app.device.stirrers.get_calibration_curve(vial_number, n_points, time_sleep)
     plt.clf()
     plt.plot(list(rpm_dc.keys()), list(rpm_dc.values()), "ro-")
     plt.title("Vial %d RPM vs Duty Cycle" % vial_number)
@@ -131,7 +131,7 @@ def get_all_device_states():
     try:
         return jsonify({
         'success': True,
-        'device_states': dev.device_data,
+        'device_states': current_app.device.device_data,
     })
     except:
         return jsonify({
@@ -162,18 +162,18 @@ def set_part_calibration(devicePart):
     # print(f'Set {devicePart} {partIndex} calibration to {newCalibration}')
     if devicePart == 'ods':
         newCalibration = fix_dict_keys_from_javascript(newCalibration)
-    dev.device_data[devicePart]['calibration'][partIndex] = newCalibration
+    current_app.device.device_data[devicePart]['calibration'][partIndex] = newCalibration
     if devicePart == 'ods':
-        dev.od_sensors[partIndex].fit_calibration_function()
+        current_app.device.od_sensors[partIndex].fit_calibration_function()
     if devicePart == 'stirrers':
-        speed = dev.device_data['stirrers']['states'][partIndex]
-        dev.stirrers.set_speed(partIndex, speed, accelerate=False)
+        speed = current_app.device.device_data['stirrers']['states'][partIndex]
+        current_app.device.stirrers.set_speed(partIndex, speed, accelerate=False)
         print("Calibrated and set stirrer speed to", speed)
-        dev.eeprom.save_config_to_eeprom()
+        current_app.device.eeprom.save_config_to_eeprom()
 
     response = jsonify(success=True, newCalibration=newCalibration)
     if devicePart == 'ods':
-        response = jsonify(success=True, newCalibration=newCalibration, coefs=dev.device_data['ods']['calibration_coefs'][partIndex])
+        response = jsonify(success=True, newCalibration=newCalibration, coefs=current_app.device.device_data['ods']['calibration_coefs'][partIndex])
     return response
 
 
@@ -184,10 +184,10 @@ def measure_od_calibration():
     odValue = float(odValue)
     print(f'Measuring OD calibration with OD {odValue}')
     for v in range(1,8):
-        dev.od_sensors[v].measure_od_calibration(odValue)
+        current_app.device.od_sensors[v].measure_od_calibration(odValue)
     for v in range(1,8):
-        dev.od_sensors[v].fit_calibration_function()
-    dev.eeprom.save_config_to_eeprom()
+        current_app.device.od_sensors[v].fit_calibration_function()
+    current_app.device.eeprom.save_config_to_eeprom()
     return jsonify(success=True, odValue=odValue)
 
 
@@ -200,14 +200,14 @@ def start_pump_calibration_sequence():
     iterations = data.get('iterations')
     print(f'Starting pump {pumpId} calibration sequence with {rotations} rotations and {iterations} iterations')
 
-    if dev.valves.all_closed():
+    if current_app.device.valves.all_closed():
         return jsonify(success=False, error="All valves are closed")
-    dev.device_data['pumps']['states'][pumpId] = 'running'
+    current_app.device.device_data['pumps']['states'][pumpId] = 'running'
     for i in range(iterations):
-        if dev.device_data['pumps']['states'][pumpId] == 'stopped':
+        if current_app.device.device_data['pumps']['states'][pumpId] == 'stopped':
             break
-        dev.pumps[pumpId].move(rotations)
-        while dev.pumps[pumpId].is_pumping():
+        current_app.device.pumps[pumpId].move(rotations)
+        while current_app.device.pumps[pumpId].is_pumping():
             time.sleep(0.1)
         time.sleep(0.5)
     return jsonify(success=True)
@@ -216,64 +216,60 @@ def start_pump_calibration_sequence():
 @device_routes.route('/force-connect-device', methods=['POST', 'GET'])
 def force_connect_device():
     print("Force connecting device")
-    global dev
     try:
-        if dev.is_connected():
-            dev.disconnect_all()
-            dev.connect()
-            dev.hello()
-            return jsonify({'success': True, 'device_states': dev.device_data})
+        if current_app.device.is_connected():
+            current_app.device.disconnect_all()
+            current_app.device.connect()
+            current_app.device.hello()
+            return jsonify({'success': True, 'device_states': current_app.device.device_data})
     except:
         print("Device not connected")
         pass
-
     try:
         print("Connecting device")
-        dev = BaseDevice(connect=True)
+        current_app.device = BaseDevice(connect=True)
+        if hasattr(current_app, "experiment"):
+            current_app.experiment.device = current_app.device
         try:
-            dev.hello()
+            current_app.device.hello()
         except Exception as e:
-            print("Device connection failed, trying again", e)
-            dev.connect() # try again
-            dev.hello()
-        current_app.device = dev
+            return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': True, 'device_states': current_app.device.device_data})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
-    return
+
+
+@device_routes.route('/reset-eeprom-memory', methods=['POST'])
+def reset_eeprom_memory():
+    current_app.device.eeprom.reset_memory()
+    return jsonify({'success': True})
+
 
 @device_routes.route('/connect-device', methods=['POST', 'GET'])
 def connect_device():
     global dev
     try:
-        if dev.is_connected():
-            current_app.device = dev
-            return jsonify({'success': True, 'device_states': dev.device_data})
-        elif dev.is_connected() == False:
-            print("Device not connected, disconnecting")
-            dev.disconnect_all()
+        if current_app.device.is_connected():
+            print("Device already connected")
+            if hasattr(current_app, "experiment"):
+                if current_app.experiment.device is not current_app.device:
+                    print("Setting device for experiment")
+                    current_app.experiment.device = current_app.device
+                    current_app.experiment.device.hello()
+            return jsonify({'success': True, 'device_states': current_app.device.device_data})
     except:
-        print("Device not connected")
+        print("Device not connected yet")
         pass
+
     try:
         print("Connecting device")
-
-        dev = BaseDevice(connect=True)
-        try:
-            dev.hello()
-        except Exception as e:
-            print("Device connection failed, trying again", e)
-            dev.connect()  # try again
-            dev.hello()
-        current_app.device = dev
+        current_app.device = BaseDevice(connect=True)
+        dev.hello()
         if hasattr(current_app, "experiment"):
             current_app.experiment.device = current_app.device
-
-        # dev.device_data = default_device_data
-        # print("sample device data", default_device_data)
-        # for v in range(1,8):
-        #     dev.od_sensors[v].fit_calibration_function()
-        # dev.eeprom.save_config_to_eeprom()
+        return jsonify({'success': True, 'device_states': current_app.device.device_data})
     except Exception as e:
         current_app.device = None
+        current_app.experiment.device = None
         return jsonify({'success': False, 'error': str(e)})
-    return jsonify({'success': True, 'device_states': dev.device_data})
+

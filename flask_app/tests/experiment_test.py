@@ -28,8 +28,9 @@ ctx.push()  # This enters the application context
 
 experiment_model = db.session.get(ExperimentModel, 2)
 print(experiment_model)
-experiment = Experiment(dev, experiment_model, db)
-experiment.device.connect()
+app.experiment = Experiment(dev, experiment_model, db)
+#%%
+app.experiment.device.hello()
 #%%
 experiment.cultures[6].update()
 #%%

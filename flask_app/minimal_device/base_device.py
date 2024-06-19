@@ -264,6 +264,7 @@ class BaseDevice:
 
         UsbTools.release_all_devices()
         UsbTools.flush_cache()
+        self.reset_usb_device()
 
     def hello(self):
         self.pwm_controller.play_turn_on_sound()
@@ -345,9 +346,9 @@ class BaseDevice:
 
     def is_connected(self):
         try:
-            return self.spi.configured and self.i2c.configured
-        except Exception as e:
-            print(e)
+            return self.spi._ftdi.is_connected and self.i2c._ftdi.is_connected
+        except:
+            traceback.print_exc()
             return False
 
     def save(self):
