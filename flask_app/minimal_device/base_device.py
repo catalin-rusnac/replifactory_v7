@@ -102,7 +102,7 @@ class BaseDevice:
             self.connect()
         self.testing = Testing(self)
 
-    def connect_i2c_spi(self, ftdi_address="ftdi://ftdi:2232h", retries=10):
+    def connect_i2c_spi(self, ftdi_address="ftdi://ftdi:2232h", retries=5):
         # acquire lock_pumps to prevent concurrent attempts to connect
         assert self.lock_pumps.acquire(timeout=5)
         try:
@@ -118,30 +118,15 @@ class BaseDevice:
                     print("opening SPI and I2C again")
                     self.spi.configure(ftdi_address + "/1")
                     self.i2c.configure(ftdi_address + "/2", frequency=5e4)
-
-
-                    print("SPI and I2C connected")
-                    time.sleep(1)
                     return
                 except Exception as e:
-                    self.reset_usb_device()
-                    UsbTools.release_all_devices()
-                    UsbTools.flush_cache()
-                    try:
-                        self.spi.close()
-                    except Exception as e:
-                        traceback.print_exc()
-                    try:
-                        self.i2c.close()
-                    except Exception as e:
-                        traceback.print_exc()
-                    traceback.print_exc()
+                    # self.reset_usb_device()
+                    self.disconnect_all()
                     print(f"Attempt {attempt + 1} failed: {e}")
-                    time.sleep(2)
+                    time.sleep(0.5)
         finally:
             self.lock_pumps.release()
-        raise ConnectionError(f"Failed to connect to the device after {retries} attempts")
-
+        raise ConnectionError("Failed to connect to I2C and SPI")
 
     def connect(self):
         self.connect_i2c_spi()
@@ -264,7 +249,7 @@ class BaseDevice:
 
         UsbTools.release_all_devices()
         UsbTools.flush_cache()
-        self.reset_usb_device()
+        # self.reset_usb_device()
 
     def hello(self):
         self.pwm_controller.play_turn_on_sound()

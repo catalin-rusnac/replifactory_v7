@@ -1,3 +1,4 @@
+import threading
 import traceback
 
 from flask import Blueprint, request, jsonify, current_app
@@ -246,33 +247,42 @@ def reset_eeprom_memory():
     current_app.device.eeprom.reset_memory()
     return jsonify({'success': True})
 
+connection_lock = threading.Lock()
 
 @device_routes.route('/connect-device', methods=['POST', 'GET'])
 def connect_device():
-    global dev
+    # check that another thread is not already connecting the device
+    lock_available = connection_lock.acquire(timeout=1)
+    if not lock_available:
+        return jsonify({'success': False, 'error': 'Another thread is already connecting the device'})
     try:
-        if current_app.device.is_connected():
-            print("Device already connected")
+        global dev
+        try:
+            if current_app.device.is_connected():
+                print("Device already connected")
+                if hasattr(current_app, "experiment"):
+                    if current_app.experiment.device is not current_app.device:
+                        print("Setting device for experiment")
+                        current_app.experiment.device = current_app.device
+                        current_app.experiment.device.hello()
+                return jsonify({'success': True, 'device_states': current_app.device.device_data})
+        except:
+            print("Device not connected yet")
+            pass
+        try:
+            print("Connecting device")
+            current_app.device = BaseDevice(connect=True)
+            current_app.device.hello()
             if hasattr(current_app, "experiment"):
-                if current_app.experiment.device is not current_app.device:
-                    print("Setting device for experiment")
-                    current_app.experiment.device = current_app.device
-                    current_app.experiment.device.hello()
+                current_app.experiment.device = current_app.device
             return jsonify({'success': True, 'device_states': current_app.device.device_data})
-    except:
-        print("Device not connected yet")
-        pass
-    try:
-        print("Connecting device")
-        current_app.device = BaseDevice(connect=True)
-        current_app.device.hello()
-        if hasattr(current_app, "experiment"):
-            current_app.experiment.device = current_app.device
-        return jsonify({'success': True, 'device_states': current_app.device.device_data})
-    except Exception as e:
-        traceback.print_exc()
-        current_app.device = None
-        if hasattr(current_app, "experiment"):
-            current_app.experiment.device = None
-        return jsonify({'success': False, 'error': str(e)})
+        except:
+            print("Connection error, printing traceback")
+            traceback.print_exc()
+            current_app.device = None
+            if hasattr(current_app, "experiment"):
+                current_app.experiment.device = current_app.device
+            return jsonify({'success': False, 'error': 'Connection error'})
+    finally:
+        connection_lock.release()
 
