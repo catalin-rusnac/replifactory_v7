@@ -139,7 +139,7 @@ def get_all_device_states():
     except:
         return jsonify({
         'success': False,
-        'device_states': default_device_data,
+        'error': 'Could not get device data',
     })
 
 

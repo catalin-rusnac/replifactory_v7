@@ -57,7 +57,7 @@ class EEPROM:
             self.port = self.device.i2c.get_port(0x53)
             self.load_config_from_eeprom()
         except Exception:
-            print("Not connected to EEPROM")
+            raise Exception("Could not connect to EEPROM")
 
     def save_config_to_eeprom(self):
         """
