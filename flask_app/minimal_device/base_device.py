@@ -144,12 +144,7 @@ class BaseDevice:
         self.od_worker = QueueWorker(device=self, worker_name="od")
         self.hard_stop_trigger = False
         self.soft_stop_trigger = False
-
-        for lock in self.locks_vials.values():
-            if lock.locked():
-                print("Releasing vial lock")
-                lock.release()
-
+        self.release_vial_locks()
 
     # def connect(self, ftdi_address="ftdi://ftdi:2232h", retries=10):
     #     # if ftdi_address is None:
@@ -256,7 +251,6 @@ class BaseDevice:
         self.lasers.blink()
         print("Said hello from device")
 
-
     def update_cultures(self):
         def queued_function():
             for v, c in self.cultures.items():
@@ -301,17 +295,16 @@ class BaseDevice:
         else:
             print("Temperature measurement not queued. od thread queue is not empty.")
 
+    def release_vial_locks(self):
+        for lock in self.locks_vials.values():
+            if lock.locked():
+                lock.release()
+
     def release_locks(self):
         if self.is_pumping():
             self.stop_pumps()
             print("Stopped pumps")
-        for v in range(1, 8):
-            try:
-                if self.locks_vials[v].locked():
-                    self.locks_vials[v].release()
-                    print("released vial %d lock" % v)
-            except Exception:
-                pass
+        self.release_vial_locks()
         if self.lock_pumps.locked():
             self.lock_pumps.release()
             print("released pump lock")

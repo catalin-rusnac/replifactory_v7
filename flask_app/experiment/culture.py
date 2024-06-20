@@ -298,7 +298,7 @@ class Culture:
         rpm_dict = {k: v for k, v in sorted(rpm_dict.items(), key=lambda item: item[0])}
         return od_dict, mu_dict, rpm_dict
 
-    def get_last_generations(self, limit=100):
+    def get_last_generations(self, limit=1000):
         generation_data = self.db.session.query(CultureGenerationData).filter(
             CultureGenerationData.experiment_id == self.experiment.model.id,
             CultureGenerationData.vial_number == self.vial
