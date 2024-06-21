@@ -34,7 +34,7 @@ class RealCultureWrapper:
 
     @property
     def doses(self):
-        generation_dict, concentration_dict = self.culture.get_last_generations(limit=100)
+        generation_dict, concentration_dict = self.culture.get_last_generations()
         doses = [(concentration, time) for time, concentration in concentration_dict.items()]
         return doses
 
