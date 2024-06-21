@@ -5,16 +5,23 @@ import time
 def make_dilution(
     device, vial, pump1_volume=0, pump2_volume=0, pump3_volume=0, extra_vacuum=5
 ):
-    assert 0 <= pump1_volume <= 15
-    assert 0 <= pump2_volume <= 15
-    assert 0 <= pump3_volume <= 15
-    assert 0 <= extra_vacuum <= 15
-    assert device.locks_vials[vial].acquire(timeout=10)
-    assert device.lock_pumps.acquire(timeout=10)
-    # must have been checked before releasing the pump_number lock
-    assert not device.is_pumping(), "pumping in progress"
-    # assert not device.hard_stop_trigger
+    assert 0 <= pump1_volume <= 20
+    assert 0 <= pump2_volume <= 20
+    assert 0 <= pump1_volume + pump2_volume <= 25
+    assert 0 <= pump3_volume <= 20
+    assert 0 <= extra_vacuum <= 20
+
+    vial_lock_acquired = device.locks_vials[vial].acquire(timeout=10)
+    if not vial_lock_acquired:
+        raise Exception("Could not acquire lock for vial %d at time %s" % (vial, time.ctime()))
+
+    lock_pumps_acquired = device.lock_pumps.acquire(timeout=10)
+    if not lock_pumps_acquired:
+        device.locks_vials[vial].release()
+        raise Exception("Could not acquire lock for pumps at time %s" % time.ctime())
+
     try:
+        assert not device.is_pumping(), "pumping in progress"
         device.stirrers.set_speed(vial=vial, speed="high")
         time.sleep(0.2)
         device.valves.open(vial)
@@ -51,25 +58,3 @@ def make_dilution(
         device.locks_vials[vial].release()
         device.lock_pumps.release()
     return 0
-
-
-def log_dilution(
-    device, vial_number, pump1_volume=0, pump2_volume=0, pump3_volume=0, pump4_volume=0
-):
-    directory = os.path.join(device.directory, "vial_%d" % vial_number)
-    if not os.path.exists(directory):
-        os.mkdir(directory)
-    filepath = os.path.join(directory, "dilutions.csv")
-    if not os.path.exists(filepath):
-        with open(filepath, "w+") as f:
-            f.write("time,pump1_volume,pump2_volume,pump3_volume,pump4_volume\n")
-    with open(filepath, "a") as f:
-        data_string = str(int(time.time()))
-        for vol in [pump1_volume, pump2_volume, pump3_volume, pump4_volume]:
-            if vol == 0:
-                vol_str = ""
-            else:
-                vol_str = str(vol)
-            data_string += "," + vol_str
-        data_string += "\n"
-        f.write(data_string)
