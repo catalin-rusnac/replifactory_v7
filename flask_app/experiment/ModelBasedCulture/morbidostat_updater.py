@@ -53,7 +53,6 @@ class MorbidostatUpdater:
             for dose in model.doses:
                 if round(dose[0], 3) != round(model.doses[-1][0], 3):
                     last_dose_change_time = dose[1]
-                    break
             # last_dose_change_time = [dose[1] for dose in model.doses if dose[0] != model.doses[-1][0]][-1]
 
         generations_at_last_dose_change = [gen[0] for gen in model.generations if gen[1] >= last_dose_change_time][0]
