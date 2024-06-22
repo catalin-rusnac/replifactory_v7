@@ -42,18 +42,25 @@ class MorbidostatUpdater:
 
     def is_time_to_increase_stress(self, model):
         """
-        Check if it is time to increase stress.
+        Check if it is time to increase stress. Conditions:
+        - OD is above threshold
+        - Growth rate is above threshold
+        - Sufficient generations have passed since last dose change
+        - Stress increase is not disabled
+        - At least one dilution has been made
         """
         if -1 in [self.threshold_growth_rate_increase_stress, self.delay_stress_increase_min_generations]:
             self.status_dict["time_to_increase_stress"] = "Stress increase disabled"
             return False
-        if len(set([d[0] for d in model.doses])) == 1:
-            last_dose_change_time = model.doses[0][1]
-        else:
-            for dose in model.doses:
-                if round(dose[0], 3) != round(model.doses[-1][0], 3):
-                    last_dose_change_time = dose[1]
-            # last_dose_change_time = [dose[1] for dose in model.doses if dose[0] != model.doses[-1][0]][-1]
+        if len(model.doses)<1:
+            self.status_dict["time_to_increase_stress"] = "No dilutions yet. Not increasing stress"
+            return False
+        last_dose_change_time = model.doses[0][1]
+        current_dose = round(model.doses[-1][0], 3)
+        for dose in model.doses:
+            if round(dose[0], 3) != current_dose:
+                last_dose_change_time = dose[1]
+        # last_dose_change_time = [dose[1] for dose in model.doses if dose[0] != model.doses[-1][0]][-1]
 
         generations_at_last_dose_change = [gen[0] for gen in model.generations if gen[1] >= last_dose_change_time][0]
         generations_at_next_dilution = model.generations[-1][0] + np.log2(self.dilution_factor)
@@ -66,7 +73,7 @@ class MorbidostatUpdater:
             self.status_dict["time_to_increase_stress"] = "OD %3f < threshold %3f for stress increase" % (model.population[-1][0], self.threshold_od_min_increase_stress)
             return False
         if not enough_generations_have_passed:
-            self.status_dict["time_to_increase_stress"] = "%d generations since last dose change < %.1f threshold. Not increasing stress" % (generations_since_last_dose_change, self.delay_stress_increase_min_generations)
+            self.status_dict["time_to_increase_stress"] = "%.2f generations since last dose change < %.2f threshold. Not increasing stress" % (generations_since_last_dose_change, self.delay_stress_increase_min_generations)
             return False
         if not growing_fast_enough:
             self.status_dict["time_to_increase_stress"] = "Growth rate %.3f < threshold %.3f. Not increasing stress" % (model.growth_rate, self.threshold_growth_rate_increase_stress)
@@ -104,6 +111,7 @@ class MorbidostatUpdater:
             model.dilute_culture(target_dose)
             return
 
+        # Check if time to add first drug dose
         if next_dilution_number == self.dilution_number_first_drug_addition:
             target_dose = self.dose_first_drug_addition
             self.status_dict["dilution_message"] = "First drug addition at dilution %d with dose %3f" % (next_dilution_number, target_dose)
