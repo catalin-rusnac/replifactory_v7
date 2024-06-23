@@ -156,6 +156,7 @@ class MorbidostatUpdater:
         target_dose = self.dose_initialization
         self.status_dict["dilution_message"] = "Initializing culture to %3f" % target_dose
         model.dilute_culture(target_dose)
+        return True
 
     def make_time_triggered_dilution_if_necessary(self, model):
         if self.delay_dilution_max_hours < 0:
@@ -171,6 +172,7 @@ class MorbidostatUpdater:
             return
         self.status_dict["time_triggered_dilution"] = "Hours since last dilution %.2f > max %.2f, diluting" % (hours_since_last_dilution, self.delay_dilution_max_hours)
         self.dilute_and_adjust_dose(model)
+        return True
 
     def make_od_triggered_dilution_if_necessary(self, model):
         if self.od_dilution_threshold < 0:
@@ -184,6 +186,7 @@ class MorbidostatUpdater:
             return
         self.status_dict["od_triggered_dilution"] = "OD %3f >= threshold %3f, diluting" % (model.population[-1][0], self.od_dilution_threshold)
         self.dilute_and_adjust_dose(model)
+        return True
 
     def must_wait_since_last_dilution(self, model):
         minutes_since_last_dilution = 4
@@ -199,6 +202,8 @@ class MorbidostatUpdater:
     def update(self, model):
         if self.must_wait_since_last_dilution(model):
             return
-        self.make_initialization_dilution_if_necessary(model)
-        self.make_time_triggered_dilution_if_necessary(model)
+        if self.make_initialization_dilution_if_necessary(model):
+            return
+        if self.make_time_triggered_dilution_if_necessary(model):
+            return
         self.make_od_triggered_dilution_if_necessary(model)
