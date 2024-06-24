@@ -44,11 +44,13 @@ class ExperimentWorker:
         self.od_worker.stop()
         self.dilution_worker.stop()
         while self.dilution_worker.thread.is_alive() or self.od_worker.thread.is_alive():
+            print("One of the workers is still alive")
             if self.dilution_worker.thread.is_alive():
                 print("Waiting for dilution worker to stop")
             if self.od_worker.thread.is_alive():
                 print("Waiting for OD worker to stop")
             time.sleep(0.5)
+        print("OD and dilution workers stopped. Stopping stirrers")
         self.experiment.device.stirrers.set_speed_all("stopped")
         print("Experiment worker stopped")
 
