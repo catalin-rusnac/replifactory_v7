@@ -32,7 +32,7 @@ class ExperimentWorker:
         while True:
             status = self.experiment.get_status()
             if status == 'stopped':
-                self.stop()
+                self.stop() # stop the experiment worker
                 break
             else:
                 self.experiment.schedule.run_pending()
@@ -181,6 +181,7 @@ class Experiment:
 
     def start(self):
         if self.experiment_worker is None or not self.experiment_worker.thread.is_alive():
+            self.status = "starting"
             self.experiment_worker = ExperimentWorker(self)
             self.device.stirrers.set_speed_all("high")
             # self.device.eeprom.save_config_to_eeprom()
