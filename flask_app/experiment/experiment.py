@@ -32,7 +32,6 @@ class ExperimentWorker:
         while True:
             status = self.experiment.get_status()
             if status == 'stopped':
-                print('Experiment worker stopped. Stopping OD and dilution workers')
                 self.stop()
                 break
             else:
@@ -41,12 +40,17 @@ class ExperimentWorker:
             time.sleep(1)
 
     def stop(self):
+        print("Stopping experiment worker: stopping dilution and OD workers")
         self.od_worker.stop()
         self.dilution_worker.stop()
         while self.dilution_worker.thread.is_alive() or self.od_worker.thread.is_alive():
+            if self.dilution_worker.thread.is_alive():
+                print("Waiting for dilution worker to stop")
+            if self.od_worker.thread.is_alive():
+                print("Waiting for OD worker to stop")
             time.sleep(0.5)
         self.experiment.device.stirrers.set_speed_all("stopped")
-        print("All workers stopped")
+        print("Experiment worker stopped")
 
 
 class QueueWorker:
@@ -199,6 +203,7 @@ class Experiment:
                 print("Worker is finishing up. Waiting for it to finish.")
             while self.experiment_worker.dilution_worker.thread.is_alive() or self.experiment_worker.od_worker.thread.is_alive():
                 time.sleep(0.5)
+            print("dilution worker and od worker stopped")
         return
 
     def measure_od_and_rpm_in_background(self):
