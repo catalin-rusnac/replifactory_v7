@@ -282,7 +282,7 @@ def connect_device():
             current_app.device = None
             if hasattr(current_app, "experiment"):
                 current_app.experiment.device = current_app.device
-            return jsonify({'success': False, 'error': 'Connection error'})
+            return jsonify({'success': False, 'error': 'Could not connect to the device'})
     finally:
         connection_lock.release()
 

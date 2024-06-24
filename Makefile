@@ -263,3 +263,13 @@ update-nmsu:
 	make stunnel
 	make kill
 
+clean-memory:
+	du -h --max-depth=1
+	sudo apt-get clean
+	pip cache purge
+	npm cache clean
+#   npm cache clean --force
+	npm cache verify
+	sudo journalctl --disk-usage
+	sudo journalctl --vacuum-size=500M
+	du -h --max-depth=1

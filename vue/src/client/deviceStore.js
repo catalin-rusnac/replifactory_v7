@@ -311,7 +311,7 @@ mutations: {
                     if (response.data.success) {
                         resolve(response); // Resolve the response so that it can be used in the connectDevice action
                     } else {
-                        console.error('Error connecting device: server responded with an error');
+                        console.error('Error connecting device: server responded with error:', response);
                         reject();
                     }
                 })
