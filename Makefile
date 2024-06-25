@@ -278,4 +278,4 @@ clean-memory:
 	du -h --max-depth=1
 
 update_and_restart_experiment:
-	@nohup python3 flask_app/scripts/update_and_restart_experiment.py &
+	@sudo nohup python3 scripts/update_and_restart_experiment.py &

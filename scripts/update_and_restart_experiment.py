@@ -78,15 +78,21 @@ def restart_flask_service():
     logger.debug(f"Systemctl status result:\n{result5.stdout.decode()}\n{result5.stderr.decode()}")
     if "active (running)" in result5.stdout.decode():
         logger.info("Flask service restarted successfully")
-
-        command = "ps -eo comm,etime,args | grep flask | grep -v grep | head -n 1 | awk '{print $2}'"
-        logger.debug(f"Running command:\n{command}")
-        result2 = subprocess.run(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        time_running = result2.stdout.decode().strip()
-        logger.debug(f"Time flask service running:\n{time_running}")
-
         return True
 
+def flask_backend_is_running():
+    url = f"http://localhost:5000/experiments/"
+    for i in range(20):
+        try:
+            response = requests.get(url)
+            if response.status_code == 200:
+                logger.info("Flask backend is running")
+                return True
+        except:
+            logger.error("Flask backend is not running yet, attempt: {i+1}")
+            time.sleep(2)
+    logger.error("Flask backend is not running after 20 attempts")
+    return False
 
 def select_experiment(experiment_id=None):
     if experiment_id is None:
@@ -97,6 +103,7 @@ def select_experiment(experiment_id=None):
         logger.error(f"Experiment {existing_experiment_id} is still running")
         return False
     url = f"http://localhost:5000/experiments/{experiment_id}"
+    logger.debug(f"Selecting experiment {experiment_id}")
     response = requests.get(url)
     data = response.json()
     logger.debug(f"Selected experiment {data}")
@@ -115,8 +122,12 @@ def update_and_restart():
     git_pull()
     fully_stop_if_running()
     restart_flask_service()
-    select_experiment()
-    start_current_experiment()
+    if flask_backend_is_running():
+        select_experiment()
+        start_current_experiment()
+    else:
+        logger.error("Flask backend is not running. restarting experiment failed")
+
 
 if __name__ == "__main__":
     update_and_restart()
