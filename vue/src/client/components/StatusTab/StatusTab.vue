@@ -111,7 +111,7 @@ export default {
 
     get_info: function () {
       // display text on screen, do not download
-      api.get('/get_info')
+      api.get('/status')
       .then(response => {
             this.status_text = response.data.replace(/\n/g, "<br />");
           })
