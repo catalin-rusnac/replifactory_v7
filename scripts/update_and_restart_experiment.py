@@ -25,6 +25,8 @@ def get_current_experiment_status():
     experiment_status = data["status"]
     experiment_id = data["id"]
     if experiment_status == "running" or experiment_status == "paused":
+        global current_experiment_id
+        global current_experiment_status
         current_experiment_id = experiment_id
         current_experiment_status = experiment_status
     logger.debug(f"Experiment {experiment_id} is {experiment_status}")
