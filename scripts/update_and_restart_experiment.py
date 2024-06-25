@@ -4,13 +4,16 @@ import logging
 import subprocess
 import threading
 
-# Setup logging
+# Setup logging with timestamp
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
-# log file handler
 log_file = logging.FileHandler("logs/update_and_restart.log")
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+log_file.setFormatter(formatter)
+logger.addHandler(log_file)
 
-running_experiment_id = None
+current_experiment_id = None
+current_experiment_status = None
 
 def get_current_experiment_status():
     url = "http://localhost:5000/experiments/current"
@@ -19,19 +22,20 @@ def get_current_experiment_status():
     experiment_status = data["status"]
     experiment_id = data["id"]
     if experiment_status == "running" or experiment_status == "paused":
-        running_experiment_id = experiment_id
+        current_experiment_id = experiment_id
+        current_experiment_status = experiment_status
     logger.debug(f"Experiment {experiment_id} is {experiment_status}")
     return experiment_status, experiment_id
 
 def stop_experiment():
     url = "http://localhost:5000/experiments/current/status"
     response = requests.put(url, json={"status": "stopped"})
-    print(running_experiment_id)
+    print(current_experiment_id)
     logger.debug(f"Stop experiment response: {response.json()}")
 
 def fully_stop_if_running():
     experiment_status, experiment_id = get_current_experiment_status()
-    if experiment_status == "running":
+    if experiment_status == "running" or experiment_status == "paused":
         logger.info(f"Stopping experiment {experiment_id}")
         stop_experiment()
         time.sleep(2)
@@ -86,7 +90,7 @@ def restart_flask_service():
 
 def select_experiment(experiment_id=None):
     if experiment_id is None:
-        experiment_id = running_experiment_id
+        experiment_id = current_experiment_id
     # check that no experiment is running
     existing_experiment_status, existing_experiment_id = get_current_experiment_status() # should be none after flask service restart
     if existing_experiment_status == "running" or existing_experiment_status == "paused":
@@ -102,6 +106,9 @@ def select_experiment(experiment_id=None):
 def start_current_experiment():
     url = f"http://localhost:5000/experiments/current/status"
     response = requests.put(url, json={"status": "running"})
+    if current_experiment_status == "paused":
+        response = requests.post(url)
+        logger.info(f"Resume experiment response: {response.json()}")
     logger.info(f"Start experiment response: {response.json()}")
 
 def update_and_restart():
