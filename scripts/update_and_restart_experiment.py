@@ -83,14 +83,14 @@ def restart_flask_service():
 def flask_backend_is_running():
     url = f"http://localhost:5000/experiments/"
     for i in range(20):
-        try:
-            response = requests.get(url)
-            if response.status_code == 200:
-                logger.info("Flask backend is running")
-                return True
-        except:
-            logger.error("Flask backend is not running yet, attempt: {i+1}")
-            time.sleep(2)
+        response = requests.get(url)
+        if response.status_code == 200:
+            logger.info("Flask backend is running")
+            return True
+        else:
+            logger.error(f"Flask backend is not running yet, attempt: {i+1}")
+        time.sleep(2)
+    logger.debug(response.json())
     logger.error("Flask backend is not running after 20 attempts")
     return False
 
