@@ -138,8 +138,7 @@ def update_and_restart():
         start_current_experiment()
     else:
         logger.error("Flask backend is not running. restarting experiment failed")
-
+    logger.info("Update and restart complete")
 
 if __name__ == "__main__":
     update_and_restart()
-    logger.info("Update and restart initiated in the background")
