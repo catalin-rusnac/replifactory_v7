@@ -31,7 +31,7 @@ class ExperimentWorker:
         self.experiment.device.eeprom.save_config_to_eeprom()
         while True:
             status = self.experiment.get_status()
-            if status == 'stopped':
+            if status == 'stopped' or status == 'stopping':
                 self.stop() # stop the experiment worker
                 break
             else:
@@ -200,13 +200,14 @@ class Experiment:
     def stop(self):
         if self.status == "stopped":
             print("Experiment is already stopped.")
-        self.status = "stopped"
+        self.status = "stopping"
         if self.experiment_worker is not None:
             if self.experiment_worker.dilution_worker.thread.is_alive() or self.experiment_worker.od_worker.thread.is_alive():
                 print("Worker is finishing up. Waiting for it to finish.")
             while self.experiment_worker.dilution_worker.thread.is_alive() or self.experiment_worker.od_worker.thread.is_alive():
                 time.sleep(0.5)
             print("dilution worker and od worker stopped")
+        self.status = "stopped"
         return
 
     def measure_od_and_rpm_in_background(self):

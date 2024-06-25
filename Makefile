@@ -173,6 +173,9 @@ wifi_new_config:
 	sudo chmod 600 /etc/wpa_supplicant/wpa_supplicant.conf
 	sudo systemctl restart dhcpcd
 
+wifi_add_device_specific_network:
+	sudo scripts/add_device_specific_network.sh
+
 vps:
 	if systemctl is-active --quiet autossh.service; then \
 		sudo systemctl stop autossh.service; \
@@ -273,3 +276,6 @@ clean-memory:
 	sudo journalctl --disk-usage
 	sudo journalctl --vacuum-size=500M
 	du -h --max-depth=1
+
+update_and_restart_experiment:
+	@nohup python3 flask_app/scripts/update_and_restart_experiment.py &
