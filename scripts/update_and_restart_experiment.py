@@ -19,6 +19,9 @@ def get_current_experiment_status():
     url = "http://localhost:5000/experiments/current"
     response = requests.get(url)
     data = response.json()
+    if "status" not in data:
+        logger.error(f"Error getting experiment status: {data}")
+        return None, None
     experiment_status = data["status"]
     experiment_id = data["id"]
     if experiment_status == "running" or experiment_status == "paused":
@@ -81,7 +84,7 @@ def restart_flask_service():
         return True
 
 def flask_backend_is_running():
-    url = f"http://localhost:5000/experiments/"
+    url = f"http://localhost:5000/experiments"
     for i in range(20):
         response = requests.get(url)
         if response.status_code == 200:
@@ -119,9 +122,9 @@ def start_current_experiment():
     logger.info(f"Start experiment response: {response.json()}")
 
 def update_and_restart():
-    git_pull()
-    fully_stop_if_running()
-    restart_flask_service()
+    # git_pull()
+    # fully_stop_if_running()
+    # restart_flask_service()
     if flask_backend_is_running():
         select_experiment()
         start_current_experiment()
