@@ -97,6 +97,7 @@ def flask_backend_is_running():
     logger.error("Flask backend is not running after 20 attempts")
     return False
 
+
 def select_experiment(experiment_id=None):
     if experiment_id is None:
         experiment_id = current_experiment_id
@@ -113,18 +114,20 @@ def select_experiment(experiment_id=None):
     time.sleep(1)
     return True
 
+
 def start_current_experiment():
     url = f"http://localhost:5000/experiments/current/status"
     response = requests.put(url, json={"status": "running"})
     if current_experiment_status == "paused":
-        response = requests.post(url)
+        response = requests.put(url, json={"status": "paused"})
         logger.info(f"Resume experiment response: {response.json()}")
     logger.info(f"Start experiment response: {response.json()}")
 
+
 def update_and_restart():
-    # git_pull()
-    # fully_stop_if_running()
-    # restart_flask_service()
+    git_pull()
+    fully_stop_if_running()
+    restart_flask_service()
     if flask_backend_is_running():
         select_experiment()
         start_current_experiment()
