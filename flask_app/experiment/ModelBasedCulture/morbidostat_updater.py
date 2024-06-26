@@ -91,7 +91,9 @@ class MorbidostatUpdater:
         if -1 in [self.threshold_growth_rate_decrease_stress, self.delay_stress_increase_min_generations, self.dose_increase_factor]:
             self.status_dict["time_to_decrease_stress"] = "Stress decrease disabled"
             return False
-
+        if model.growth_rate is None:
+            self.status_dict["time_to_decrease_stress"] = "Growth rate is None. Not decreasing stress"
+            return False
         if model.growth_rate > self.threshold_growth_rate_decrease_stress:
             self.status_dict["time_to_decrease_stress"] = "Growth rate %.3f > threshold %.3f. Not decreasing stress" % (model.growth_rate, self.threshold_growth_rate_decrease_stress)
             return False
