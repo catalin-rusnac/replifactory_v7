@@ -290,8 +290,13 @@ class Culture:
         od_dict = {data.timestamp: data.od for data in culture_data}
         mu_dict = {data.timestamp: data.growth_rate for data in culture_data}
         rpm_dict = {data.timestamp: data.rpm for data in culture_data}
+
         if include_current and self.new_culture_data is not None:
             od_dict[self.new_culture_data.timestamp] = self.new_culture_data.od  # Include current uncommitted data
+
+        od_dict = {k: v for k, v in od_dict.items() if v is not None}
+        mu_dict = {k: v for k, v in mu_dict.items() if v is not None}
+        rpm_dict = {k: v for k, v in rpm_dict.items() if v is not None}
 
         od_dict = {k: v for k, v in sorted(od_dict.items(), key=lambda item: item[0])}
         mu_dict = {k: v for k, v in sorted(mu_dict.items(), key=lambda item: item[0])}

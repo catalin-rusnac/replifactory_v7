@@ -13,6 +13,7 @@ class PwmController:
         self.frequency = frequency
         self.lock = (threading.Lock())  # valves and stirrers can be used on different threads
         self.port = None
+        self.lock_port = threading.Lock()
         if self.device.is_connected():
             self.connect()
 
@@ -53,15 +54,22 @@ class PwmController:
         :return:
         """
         pre_scale = round(25000000 / (4096 * frequency)) - 1
+
+        port_lock_acquired = self.lock_port.acquire(timeout=2)
+        if not port_lock_acquired:
+            raise Exception("Could not acquire i2c port lock for set_frequency at time %s" % time.ctime())
         try:
-            self.port.write_to(0x00, [0b00010001])  # sleep mode
-        except Exception:
-            time.sleep(0.5)
-            self.port.write_to(0x00, [0b0])  # reset
-            print("Reset PWM driver")
-            self.port.write_to(0x00, [0b00010001])  # sleep mode
-        self.port.write_to(0xFE, [pre_scale])  # SET_PWM_FREQUENCY
-        self.port.write_to(0x00, [0b10000001])  # restart mode
+            try:
+                self.port.write_to(0x00, [0b00010001])  # sleep mode
+            except Exception:
+                time.sleep(0.5)
+                self.port.write_to(0x00, [0b0])  # reset
+                print("Reset PWM driver")
+                self.port.write_to(0x00, [0b00010001])  # sleep mode
+            self.port.write_to(0xFE, [pre_scale])  # SET_PWM_FREQUENCY
+            self.port.write_to(0x00, [0b10000001])  # restart mode
+        finally:
+            self.lock_port.release()
 
     def get_duty_cycle(self, led_number):
         """
@@ -73,8 +81,15 @@ class PwmController:
         led_off_h = led_number * 4 + 9
         lsbr = self.port.read_from(led_off_l, 1)[0]
         msbr = self.port.read_from(led_off_h, 1)[0]
-        duty_cycle_read = ((msbr << 8) + lsbr) / 4095
-        return duty_cycle_read
+
+        port_lock_acquired = self.lock_port.acquire(timeout=2)
+        if not port_lock_acquired:
+            raise Exception("Could not acquire i2c port lock for get_duty_cycle at time %s" % time.ctime())
+        try:
+            duty_cycle_read = ((msbr << 8) + lsbr) / 4095
+            return duty_cycle_read
+        finally:
+            self.lock_port.release()
 
     def set_duty_cycle(self, led_number, duty_cycle):
         """
@@ -90,8 +105,15 @@ class PwmController:
         )  # most and least significant bytes
         led_off_l = led_number * 4 + 8
         led_off_h = led_number * 4 + 9
-        self.port.write_to(led_off_l, [lsb])
-        self.port.write_to(led_off_h, [msb])
+
+        port_lock_acquired = self.lock_port.acquire(timeout=2)
+        if not port_lock_acquired:
+            raise Exception("Could not acquire i2c port lock for set_duty_cycle at time %s" % time.ctime())
+        try:
+            self.port.write_to(led_off_l, [lsb])
+            self.port.write_to(led_off_h, [msb])
+        finally:
+            self.lock_port.release()
 
     def set_duty_cycle_all(self, duty_cycle):
         """
@@ -103,31 +125,56 @@ class PwmController:
         )  # most and least significant bytes
         all_led_off_l = 252
         all_led_off_h = 253
-        self.port.write_to(all_led_off_l, [lsb])
-        self.port.write_to(all_led_off_h, [msb])
+
+        port_lock_acquired = self.lock_port.acquire(timeout=2)
+        if not port_lock_acquired:
+            raise Exception("Could not acquire i2c port lock for set_duty_cycle_all at time %s" % time.ctime())
+        try:
+            self.port.write_to(all_led_off_l, [lsb])
+            self.port.write_to(all_led_off_h, [msb])
+        finally:
+            self.lock_port.release()
 
     def stop_all(self):
         """
         Stop all PWM signals.
         :return:
         """
-        self.port.write_to(0x00, [0b10001])
+        port_lock_acquired = self.lock_port.acquire(timeout=2)
+        if not port_lock_acquired:
+            raise Exception("Could not acquire i2c port lock for stop_all at time %s" % time.ctime())
+        try:
+            self.port.write_to(0x00, [0b10001])
+        finally:
+            self.lock_port.release()
 
     def start_all(self):
         """
         Start all PWM signals.
         :return:
         """
-        self.port.write_to(0x00, [0b00001])
-        time.sleep(0.002)
-        self.port.write_to(0x00, [0b10000001])
+        port_lock_acquired = self.lock_port.acquire(timeout=2)
+        if not port_lock_acquired:
+            raise Exception("Could not acquire i2c port lock for start_all at time %s" % time.ctime())
+        try:
+            self.port.write_to(0x00, [0b00001])
+            time.sleep(0.002)
+            self.port.write_to(0x00, [0b10000001])
+        finally:
+            self.lock_port.release()
 
     def is_sleeping(self):
         """
         Check if the PWM controller is sleeping.
         :return:
         """
-        mode1_register = self.port.read_from(0x00, 1)[0]
+        port_lock_acquired = self.lock_port.acquire(timeout=2)
+        if not port_lock_acquired:
+            raise Exception("Could not acquire i2c port lock for is_sleeping at time %s" % time.ctime())
+        try:
+            mode1_register = self.port.read_from(0x00, 1)[0]
+        finally:
+            self.lock_port.release()
         is_sleeping = bool(int(bin(mode1_register)[2:].rjust(8, "0")[-5]))  # sleep bit
         return is_sleeping
 

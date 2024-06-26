@@ -147,25 +147,34 @@ class Stepper:
         self.write_register(self.REGISTER_MAX_SPEED, value=integer / 2**10, n_bits=10, n_bytes=2)
 
     def write_register(self, reg, value, n_bits, n_bytes):
-        set_param = reg | 0b00000000
-        self.port.write([set_param])
-        bytes_to_write = split_bytes(value, n_bits, n_bytes)
-        for b in bytes_to_write:
-            self.port.write([b])
-            time.sleep(0.001)
+        lock_acquired = self.device.lock_spi.acquire(timeout=2)
+        if not lock_acquired:
+            raise Exception("Could not acquire lock for writing stepper %d register %s" % (self.cs, reg))
+        try:
+            set_param = reg | 0b00000000
+            self.port.write([set_param])  # do not use write_to_port here - lock is already acquired
+            bytes_to_write = split_bytes(value, n_bits, n_bytes)
+            for b in bytes_to_write:
+                self.port.write([b])
+                time.sleep(0.001)
+        finally:
+            self.device.lock_spi.release()
         bytes_read = self.read_register(reg=reg, n_bytes=n_bytes)
-        # print written, read, register_name in one line
-        # print(f"{bcolors.OKBLUE}Wrote: {bytes_to_write} to register {reg} {bcolors.ENDC}")
-        # print(f"{bcolors.OKGREEN}Read: {bytes_read} from register {reg} {bcolors.ENDC}")
-
-        assert [bytes_to_write[i] == bytes_read[i] for i in range(n_bytes)]
+        if not [bytes_to_write[i] == bytes_read[i] for i in range(n_bytes)]:
+            print("WARNING: register %s not set correctly" % reg)
 
     def read_register(self, reg, n_bytes=3):
-        get_param = reg | 0b00100000
-        self.port.write([get_param])
-        res = []
-        for b in range(n_bytes):
-            res += self.port.read(1)
+        lock_acquired = self.device.lock_spi.acquire(timeout=2)
+        if not lock_acquired:
+            raise Exception("Could not acquire lock for reading stepper %d register %s" % (self.cs, reg))
+        try:
+            get_param = reg | 0b00100000
+            self.port.write([get_param])
+            res = []
+            for b in range(n_bytes):
+                res += self.port.read(1)
+        finally:
+            self.device.lock_spi.release()
         return res
 
     def move(self, n_rotations=1, rot_per_sec=None):
@@ -208,9 +217,15 @@ class Stepper:
             n_microsteps = abs(n_rotations) * steps_per_rotation * microsteps_per_step
 
         write_bytes = split_bytes(n_microsteps / max_n_microsteps, 22, 3)
-        self.port.write([move_header_byte])
-        for b in write_bytes:
-            self.port.write([b])
+        lock_acquired = self.device.lock_spi.acquire(timeout=2)
+        if not lock_acquired:
+            raise Exception("Could not acquire lock for moving stepper %d" % self.cs)
+        try:
+            self.port.write([move_header_byte])
+            for b in write_bytes:
+                self.port.write([b])
+        finally:
+            self.device.lock_spi.release()
 
     def get_abs_position(self):
         microsteps = int.from_bytes(self.read_register(self.REGISTER_ABS_POS), "big")
@@ -231,12 +246,24 @@ class Stepper:
         # steps_per_sec = speed*2e-28/250e-9
         run_header_byte = 0b01010000 | direction_bit
         write_bytes = split_bytes(speed, 20, 3)
-        self.port.write([run_header_byte])
-        for b in write_bytes:
-            self.port.write([b])
+        lock_acquired = self.device.lock_spi.acquire(timeout=2)
+        if not lock_acquired:
+            raise Exception("Could not acquire lock for running stepper %d" % self.cs)
+        try:
+            self.port.write([run_header_byte])
+            for b in write_bytes:
+                self.port.write([b])
+        finally:
+            self.device.lock_spi.release()
 
     def is_busy(self):
-        self.port.write([0b11010000])  # GetStatus command, resets warning flags
+        lock_acquired = self.device.lock_spi.acquire(timeout=2)
+        if not lock_acquired:
+            raise Exception("Could not acquire lock for checking busy status of stepper %d" % self.cs)
+        try:
+            self.port.write([0b11010000])
+        finally:
+            self.device.lock_spi.release()
         msb, lsb = self.read_register(self.REGISTER_STATUS, n_bytes=2)
         busy = not (lsb >> 1 & 0b1)
         return busy
@@ -244,18 +271,32 @@ class Stepper:
     def driver_is_responsive(self):
         if self.port is None:
             return False
+        lock_acquired = self.device.lock_spi.acquire(timeout=2)
+        if not lock_acquired:
+            raise Exception("Could not acquire lock for checking driver responsiveness of stepper %d" % self.cs)
         try:
             self.port.write([0x19])  # GetStatus command, resets warning flags
-
-            msb, lsb = self.read_register(self.REGISTER_STATUS, n_bytes=2)
         except Exception:
             return False
+        finally:
+            self.device.lock_spi.release()
+
+        msb, lsb = self.read_register(self.REGISTER_STATUS, n_bytes=2)
         return not (msb == 255 and lsb == 255)
+
+    def write_to_port(self, data):
+        lock_acquired = self.device.lock_spi.acquire(timeout=2)
+        if not lock_acquired:
+            raise Exception("Could not acquire lock for writing to stepper %d" % self.cs)
+        try:
+            self.port.write(data)
+        finally:
+            self.device.lock_spi.release()
 
     def is_pumping(self):
         if not self.driver_is_responsive():
             return False
-        self.port.write([0b11010000])  # GetStatus command, resets warning flags
+        self.write_to_port([0b11010000]) # GetStatus command, resets warning flags
         msb, lsb = self.read_register(self.REGISTER_STATUS, n_bytes=2)
         status = lsb >> 5 & 0b11
         return status > 0
@@ -270,22 +311,27 @@ class Stepper:
         decelerate with programmed deceleration value until the MIN_SPEED value
         is reached and then stop the motor
         """
-        self.port.write([0b10110000])
+        # self.port.write([0b10110000])
+        self.write_to_port([0b10110000])
 
     def stop_hard(self):
         """
         stop the motor instantly, ignoring deceleration constraints
         """
-        self.port.write([0b10111000])
+        self.write_to_port([0b10111000])
+        # self.port.write([0b10111000])
 
     def hard_hiz(self):
-        self.port.write([0b10101000])  # Hard HiZ
+        # self.port.write([0b10101000])  # Hard HiZ
+        self.write_to_port([0b10101000])
 
     def soft_hiz(self):
-        self.port.write([0b10100000])  # soft HiZ
+        # self.port.write([0b10100000])  # soft HiZ
+        self.write_to_port([0b10100000])
 
     def reset(self):
-        self.port.write([0b11000000])
+        # self.port.write([0b11000000])
+        self.write_to_port([0b11000000])
         self.__init__(device=self.device, cs=self.cs)
 
     def set_step_mode(self, mode=7):
@@ -304,8 +350,10 @@ class Stepper:
         assert mode in [0, 1, 2, 3, 4, 5, 6, 7]
         assert not self.is_pumping(), "can't set step mode while pumping"
         self.hard_hiz()
-        self.port.write([self.REGISTER_STEP_MODE])
-        self.port.write([mode])
+        # self.port.write([self.REGISTER_STEP_MODE])
+        # self.port.write([mode])
+        self.write_to_port([self.REGISTER_STEP_MODE])
+        self.write_to_port([mode])
         read_mode = self.read_register(self.REGISTER_STEP_MODE)[0]
         if mode != read_mode:
             print("WARNING: step mode not set correctly")
@@ -400,7 +448,8 @@ class Stepper:
         s.update(byte1)
         s.update(byte2)
         if reset:
-            self.port.write([0b11010000])
+            # self.port.write([0b11010000])
+            self.write_to_port([0b11010000])
         if verbose:
             text = ""
             for k in list(description.keys()):

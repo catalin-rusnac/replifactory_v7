@@ -66,6 +66,9 @@ class MorbidostatUpdater:
         generations_at_next_dilution = model.generations[-1][0] + np.log2(self.dilution_factor)
         generations_since_last_dose_change = generations_at_next_dilution - generations_at_last_dose_change
         enough_generations_have_passed = generations_since_last_dose_change > self.delay_stress_increase_min_generations
+        if model.growth_rate is None:
+            self.status_dict["time_to_increase_stress"] = "Growth rate is None. Not increasing stress"
+            return False
         growing_fast_enough = model.growth_rate > self.threshold_growth_rate_increase_stress
         od_above_stress_increase_threshold = model.population[-1][0] > self.threshold_od_min_increase_stress
 

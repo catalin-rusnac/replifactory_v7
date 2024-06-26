@@ -130,7 +130,14 @@ class Stirrers:
         self.multiplexer_port.write_to(2, [vial_number - 1])
         t0 = time.time()
         # Read data from SPI port
-        res = self.fans_spi_port.read(nbytes)
+        # get self.device.lock_spi lock
+        spi_lock_acquired = self.device.lock_spi.acquire(timeout=2)
+        if not spi_lock_acquired:
+            raise Exception("Could not acquire lock for reading stirrer speed at time %s" % time.ctime())
+        try:
+            res = self.fans_spi_port.read(nbytes)
+        finally:
+            self.device.lock_spi.release()
         dt = time.time() - t0
         binstr = "".join([bin(r)[2:].rjust(8, "0") for r in res])
 

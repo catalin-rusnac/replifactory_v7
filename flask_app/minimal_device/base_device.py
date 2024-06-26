@@ -65,6 +65,7 @@ class BaseDevice:
 
         self.locks_vials = {v: threading.Lock() for v in range(1, 8)}
         self.lock_pumps = threading.Lock()
+        self.lock_spi = threading.Lock()
         self.file_lock = threading.Lock()
         # self.pump_calibrations_rotations_to_ml = {1: {}, 2: {}, 3: {}, 4: {}}
         self.pump_stock_concentrations = {1: None, 2: None, 3: None, 4: None}
@@ -324,7 +325,10 @@ class BaseDevice:
 
     def is_connected(self):
         try:
-            return self.spi._ftdi.is_connected and self.i2c._ftdi.is_connected
+            if hasattr(self.spi, "_ftdi") and hasattr(self.i2c, "_ftdi"):
+                return self.spi._ftdi.is_connected and self.i2c._ftdi.is_connected
+            else:
+                return False
         except:
             traceback.print_exc()
             return False
