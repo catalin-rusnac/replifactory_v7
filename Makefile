@@ -174,6 +174,7 @@ wifi_new_config:
 	sudo systemctl restart dhcpcd
 
 wifi_add_device_specific_network:
+	chmod 755 scripts/add_device_specific_network.sh
 	sudo scripts/add_device_specific_network.sh
 
 vps:
