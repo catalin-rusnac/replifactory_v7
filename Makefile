@@ -279,7 +279,8 @@ clean-memory:
 	du -h --max-depth=1
 
 update_and_restart_experiment:
-	@sudo nohup python3 scripts/update_and_restart_experiment.py
+	@chmod +x scripts/update_and_restart_experiment.py
+	@nohup sudo python3 scripts/update_and_restart_experiment.py
 
 update-autofix:
 	@sudo nohup make wifi_add_network &
