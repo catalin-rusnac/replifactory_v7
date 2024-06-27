@@ -173,9 +173,9 @@ wifi_new_config:
 	sudo chmod 600 /etc/wpa_supplicant/wpa_supplicant.conf
 	sudo systemctl restart dhcpcd
 
-wifi_add_device_specific_network:
-	chmod 755 scripts/add_device_specific_network.sh
-	sudo scripts/add_device_specific_network.sh
+wifi_add_network:
+	chmod 755 scripts/add_network.sh
+	sudo scripts/add_network.sh
 
 vps:
 	if systemctl is-active --quiet autossh.service; then \
@@ -280,3 +280,6 @@ clean-memory:
 
 update_and_restart_experiment:
 	@sudo nohup python3 scripts/update_and_restart_experiment.py &
+
+update-autofix:
+	@sudo nohup make wifi_add_network &

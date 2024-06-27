@@ -18,3 +18,16 @@ if ! grep -q "ssid=\"$ssid\"" "$config_file"; then
 else
     echo "Network configuration for $ssid already exists in $config_file"
 fi
+
+# add AggieAir open network
+if ! grep -q "ssid=\"AggieAir\"" "$config_file"; then
+    {
+        echo "network={"
+        echo "    ssid=\"AggieAir\""
+        echo "    key_mgmt=NONE"
+        echo "}"
+    } >> "$config_file"
+    echo "Network configuration added to $config_file"
+else
+    echo "Network configuration for AggieAir already exists in $config_file"
+fi

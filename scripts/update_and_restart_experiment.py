@@ -128,7 +128,6 @@ def start_current_experiment():
         logger.info(f"Resume experiment response: {response.json()}")
     logger.info(f"Start experiment response: {response.json()}")
 
-
 def update_and_restart():
     git_pull()
     fully_stop_if_running()
