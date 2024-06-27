@@ -73,9 +73,8 @@ def restart_flask_service():
     if "active (running)" in result3.stdout.decode():
         command = "sudo systemctl restart flask.service"
         logger.debug(f"Running command:\n{command}")
-        result4 = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        logger.debug("command executed")
-        logger.debug(f"Systemctl restart result:\n{result4.stdout.decode()}\n{result4.stderr.decode()}")
+        subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        logger.debug("Flask service restarted")
     time.sleep(5)
 
     for i in range(10):
