@@ -76,15 +76,16 @@ def restart_flask_service():
         result4 = subprocess.run(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         logger.debug(f"Systemctl restart result:\n{result4.stdout.decode()}\n{result4.stderr.decode()}")
     time.sleep(5)
-    # check if systemctl status flask.service is active
-    command = "sudo systemctl status flask.service"
-    logger.debug(f"Running command:\n{command}")
-    result5 = subprocess.run(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    logger.debug(f"Systemctl status result:\n{result5.stdout.decode()}\n{result5.stderr.decode()}")
-    if "active (running)" in result5.stdout.decode():
-        logger.info("Flask service restarted successfully")
-        return True
 
+    for i in range(10):
+        command = "sudo systemctl status flask.service"
+        logger.debug(f"Running command:\n{command}")
+        result5 = subprocess.run(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        logger.debug(f"Systemctl status result:\n{result5.stdout.decode()}\n{result5.stderr.decode()}")
+        if "active (running)" in result5.stdout.decode():
+            logger.info("Flask service restarted successfully")
+            return True
+        time.sleep(5)
 
 def flask_backend_is_running():
     url = "http://localhost:5000/experiments"
