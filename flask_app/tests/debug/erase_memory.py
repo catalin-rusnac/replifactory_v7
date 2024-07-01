@@ -67,6 +67,7 @@ class BaseDevice:
 if __name__ == "__main__":
     dev = BaseDevice()
     dev.connect()
+    dev.eeprom.connect_without_load()
 
     # user input to confirm
     print("Are you sure you want to erase the memory? (yes/no)")
