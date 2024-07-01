@@ -1,5 +1,6 @@
 import time
 import threading
+import traceback
 from queue import Queue
 
 import numpy as np
@@ -57,6 +58,7 @@ class EEPROM:
             self.port = self.device.i2c.get_port(0x53)
             self.load_config_from_eeprom()
         except Exception:
+            traceback.print_exc()
             raise Exception("Could not connect to EEPROM")
 
     def save_config_to_eeprom(self):
