@@ -54,9 +54,20 @@ class EEPROM:
         Connects to the EEPROM
         :return:
         """
+        self.connect_without_load()
+        try:
+            self.load_config_from_eeprom()
+        except Exception:
+            print("Could not load config from EEPROM")
+            traceback.print_exc()
+
+    def connect_without_load(self):
+        """
+        Connects to the EEPROM without loading the config
+        :return:
+        """
         try:
             self.port = self.device.i2c.get_port(0x53)
-            self.load_config_from_eeprom()
         except Exception:
             traceback.print_exc()
             raise Exception("Could not connect to EEPROM")

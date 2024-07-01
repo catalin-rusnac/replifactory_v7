@@ -51,6 +51,8 @@ class BaseDevice:
         # self.pump4 = Pump(device=self, cs=3)
         # self.thermometers = Thermometers(device=self)
         # self.cultures = CultureDict(self)
+        self.eeprom = EEPROM(self)
+
     def connect(self, ftdi_address="ftdi://ftdi:2232h", retries=10):
         assert ftdi_address[-1] != "/", "ftdi_address should not end with a '/'"
         self.spi = SpiController(cs_count=5)
@@ -64,8 +66,8 @@ class BaseDevice:
 
 if __name__ == "__main__":
     dev = BaseDevice()
-    dev.eeprom = EEPROM(device=dev)
     dev.connect()
+
     # user input to confirm
     print("Are you sure you want to erase the memory? (yes/no)")
     user_input = input()
