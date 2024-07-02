@@ -189,12 +189,14 @@ class EEPROM:
                 end="                    \r",
             )
         try:
-            loaded_data = gzip.decompress(bytearray(pages_read).partition(tail)[0])
+            compressed_data = bytearray(pages_read).partition(tail)[0]
+            loaded_data = gzip.decompress(compressed_data)
             loaded_data = loaded_data.decode("utf-8")
             loaded_data = yaml.load(loaded_data, Loader=yaml.Loader)
         except Exception:
             traceback.print_exc()
-            print(loaded_data)
+            print("Pages read:", pages_read)
+            print("Compressed data:", compressed_data)
             raise Exception("Could not read EEPROM")
         return loaded_data
 
