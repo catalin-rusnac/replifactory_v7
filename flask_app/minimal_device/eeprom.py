@@ -188,9 +188,14 @@ class EEPROM:
                 "Reading EEPROM: content found in %d pages" % (page + 1),
                 end="                    \r",
             )
-        loaded_data = gzip.decompress(bytearray(pages_read).partition(tail)[0])
-        loaded_data = loaded_data.decode("utf-8")
-        loaded_data = yaml.load(loaded_data, Loader=yaml.Loader)
+        try:
+            loaded_data = gzip.decompress(bytearray(pages_read).partition(tail)[0])
+            loaded_data = loaded_data.decode("utf-8")
+            loaded_data = yaml.load(loaded_data, Loader=yaml.Loader)
+        except Exception:
+            traceback.print_exc()
+            print(loaded_data)
+            raise Exception("Could not read EEPROM")
         return loaded_data
 
     def test_memory(self):
