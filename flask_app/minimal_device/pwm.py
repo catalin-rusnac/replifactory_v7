@@ -79,13 +79,13 @@ class PwmController:
         """
         led_off_l = led_number * 4 + 8
         led_off_h = led_number * 4 + 9
-        lsbr = self.port.read_from(led_off_l, 1)[0]
-        msbr = self.port.read_from(led_off_h, 1)[0]
 
         port_lock_acquired = self.lock_port.acquire(timeout=2)
         if not port_lock_acquired:
             raise Exception("Could not acquire i2c port lock for get_duty_cycle at time %s" % time.ctime())
         try:
+            lsbr = self.port.read_from(led_off_l, 1)[0]
+            msbr = self.port.read_from(led_off_h, 1)[0]
             duty_cycle_read = ((msbr << 8) + lsbr) / 4095
             return duty_cycle_read
         finally:

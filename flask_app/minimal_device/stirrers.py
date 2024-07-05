@@ -111,10 +111,10 @@ class Stirrers:
             assert 0 <= duty_cycle_fast <= 1
 
     def _measure_rpm_no_lock(self, vial_number=7, estimated_rpm=None):
-        duty_cycle = self._get_duty_cycle(vial_number)
         if estimated_rpm is None:
             estimated_rpm = self.rpms[vial_number]
         if estimated_rpm is None:
+            duty_cycle = self._get_duty_cycle(vial_number)
             estimated_rpm = 2000 * duty_cycle
         if estimated_rpm < 10:
             return 0
