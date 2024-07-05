@@ -75,7 +75,7 @@ class EEPROM:
         filename = self.filename
         with open(filename, 'w') as file:
             yaml.dump(data, file)
-        print(f"Written data to {filename}.")
+        print(f"Wrote data to {filename}.")
 
     def _read_from_file(self):
         filename = self.filename
@@ -242,7 +242,8 @@ class EEPROM:
             print("Pages read:", pages_read)
             print("Compressed data:", compressed_data)
             self.using_filewriter = True
-            raise Exception("Could not read EEPROM")
+            print("Falling back to file writer")
+            return self._read_from_file()
         self._write_to_file(loaded_data)
         return loaded_data
 
