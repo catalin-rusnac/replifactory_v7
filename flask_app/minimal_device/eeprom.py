@@ -1,3 +1,4 @@
+import os
 import time
 import threading
 import traceback
@@ -7,11 +8,13 @@ import numpy as np
 import yaml
 import gzip
 from minimal_device.device_data import default_device_data
+
 def make_addr_bytes(page=511, byte=63):
     two_bytes = page << 6 | byte
     byte1 = two_bytes >> 8
     byte2 = two_bytes & 0b11111111
     return byte1, byte2
+
 
 class EEPROM:
     PAGE_TEST = 511
@@ -32,8 +35,8 @@ class EEPROM:
                 with self.lock:
                     data = self.data
                     self.data = None
-                if data is not None:
-                    self.eeprom._write_to_eeprom(data)
+                    if data is not None:
+                        self.eeprom._write_to_eeprom(data)
                 time.sleep(1)
 
         def add_data(self, data):
@@ -48,6 +51,38 @@ class EEPROM:
         self.writer = self.EepromWriter(self)
         if self.device.is_connected():
             self.connect()
+        self.using_filewriter = False
+        self.filename = "db/device_data.yaml"
+        if not os.path.exists(self.filename):
+            with open(self.filename, 'w') as file:
+                yaml.dump(default_device_data, file)
+            print(f"Created {self.filename} with default device data.")
+
+############ Replace EEPROM with filewriter ############
+    def log_config_from_file(self):
+        filename = self.filename
+        if not os.path.exists(filename):
+            with open(filename, 'w') as file:
+                yaml.dump(default_device_data, file)
+            print(f"Created {filename} with default device data.")
+        else:
+            with open(filename, 'r') as file:
+                self.device.device_data = yaml.load(file, Loader=yaml.Loader)
+            print(f"Loaded device data from {filename}.")
+        self.using_filewriter = True
+
+    def _write_to_file(self, data):
+        filename = self.filename
+        with open(filename, 'w') as file:
+            yaml.dump(data, file)
+        print(f"Written data to {filename}.")
+
+    def _read_from_file(self):
+        filename = self.filename
+        with open(filename, 'r') as file:
+            data = yaml.load(file, Loader=yaml.Loader)
+        print(f"Read data from {filename}.")
+        return data
 
     def connect(self):
         """
@@ -81,6 +116,9 @@ class EEPROM:
         self.writer.add_data(self.device.device_data)
 
     def _write_to_eeprom(self, data):
+        if self.using_filewriter:
+            self._write_to_file(data)
+            return
         config_to_write = data
         config_to_write = yaml.dump(config_to_write)
         config_to_write = config_to_write.encode("utf-8")
@@ -118,7 +156,11 @@ class EEPROM:
             if k not in loaded_config.keys():
                 raise Exception("Key not found in EEPROM")
         self.device.device_data = loaded_config
-        print("Loaded config from EEPROM matching default config keys")
+        if self.using_filewriter:
+            print("Loaded config from file matching default config keys")
+        else:
+            self._write_to_file(loaded_config)
+            print("Loaded config from EEPROM matching default config keys")
 
     def reset_memory(self):
         print("erasing memory and writing default config")
@@ -175,6 +217,8 @@ class EEPROM:
         print("Erasing EEPROM complete")
 
     def read_eeprom(self):
+        if self.using_filewriter:
+            return self._read_from_file()
         pages_read = []
         tail = bytearray([0xFF] * 63)
         for page in range(512):
@@ -197,7 +241,9 @@ class EEPROM:
             traceback.print_exc()
             print("Pages read:", pages_read)
             print("Compressed data:", compressed_data)
+            self.using_filewriter = True
             raise Exception("Could not read EEPROM")
+        self._write_to_file(loaded_data)
         return loaded_data
 
     def test_memory(self):

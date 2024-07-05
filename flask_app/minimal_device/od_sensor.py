@@ -102,6 +102,7 @@ class OdSensor:
     def measure_od(self):
         signal = self.measure_signal()
         od = self.mv_to_od(signal)
+        od = float(od)
         self.device.device_data["ods"]['states'][self.vial_number] = od
         self.device.device_data["ods"]['odsignals'][self.vial_number] = signal
         return od, signal
@@ -152,6 +153,7 @@ class OdSensor:
             sigma=calibration_mv_err,
         )
         coefs = [round(i, 3) for i in coefs]
+        coefs = [float(i) for i in coefs]
         print(coefs)
         # a, b, c, d, g = coefs
         self.device.device_data['ods']['calibration_coefs'][self.vial_number] = coefs
