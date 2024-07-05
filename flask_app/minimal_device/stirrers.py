@@ -1,3 +1,4 @@
+import os
 import re
 import time
 import numpy as np
@@ -171,7 +172,11 @@ class Stirrers:
             rpm = 60 * self.freq / np.median(periods) / 4
         return rpm
 
+
     def measure_rpm(self, vial_number=7):
+        # if file db/skip_stirrer_speed_measurement exists, return 0
+        if os.path.exists("db/skip_stirrer_speed_measurement"):
+            return 0
         lock_acquired = self.pwm_controller.lock.acquire(timeout=2)
         if not lock_acquired:
             raise Exception("Could not acquire lock for measuring stirrer speed at time %s" % time.ctime())
