@@ -46,7 +46,8 @@ def fully_stop_if_running():
         time.sleep(2)
         while experiment_status != "stopped":
             experiment_status, experiment_id = get_current_experiment_status()
-            time.sleep(1)
+            time.sleep(2)
+            logger.info(f"Experiment {experiment_id} status: {experiment_status}. waiting 2s for it to stop")
         logger.info(f"Experiment {experiment_id} stopped")
     else:
         logger.info("No experiment running")
