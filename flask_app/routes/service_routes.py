@@ -91,6 +91,20 @@ def download_file():
     abs_file_path = os.path.join(script_dir, rel_path)
     return send_file(abs_file_path, as_attachment=True)
 
+@service_routes.route('/download_flask_err', methods=['GET'])
+def download_flask_err():
+    script_dir = os.path.dirname(__file__)
+    rel_path = "../../logs/flask-error.log"
+    abs_file_path = os.path.join(script_dir, rel_path)
+    return send_file(abs_file_path, as_attachment=True)
+
+@service_routes.route('/download_flask_log', methods=['GET'])
+def download_flask():
+    script_dir = os.path.dirname(__file__)
+    rel_path = "../../logs/flask.log"
+    abs_file_path = os.path.join(script_dir, rel_path)
+    return send_file(abs_file_path, as_attachment=True)
+
 
 @service_routes.route('/log/<int:lines>/', methods=['GET'])
 def get_log_tail(lines=100):
@@ -121,13 +135,6 @@ def get_log_tail(lines=100):
 # route to export csv of current experiment database
 @service_routes.route('/export_csv', methods=['GET'])
 def export_csv():
-    import pandas as pd
-    from flask import Response
-    from io import StringIO
-    from database import db_session
-    from database.models import Experiment
-    import os
-    import csv
     return jsonify(current_app.experiment.model.to_dict()), 200
 
     # get all experiments from database
