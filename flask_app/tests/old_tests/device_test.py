@@ -85,12 +85,12 @@ print(dev.device_data)
 print(time.time()-t)
 
 dev.stirrers.set_speed(7, "high")
-dev.stirrers._get_duty_cycle(1)
+dev.stirrers.get_stirrer_duty_cycle(1)
 time.sleep(2)
 dev.stirrers.set_speed(1, "stopped")
-dev.stirrers._get_duty_cycle(1)
+dev.stirrers.get_stirrer_duty_cycle(1)
 dev.stirrers.set_speed(1, "stopped")
-dev.stirrers._get_duty_cycle(1)
+dev.stirrers.get_stirrer_duty_cycle(1)
 #%%
 dev.disconnect_all()
 #%%

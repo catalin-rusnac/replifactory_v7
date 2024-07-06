@@ -43,9 +43,16 @@ class Thermometers:
     def measure_temperature(self):
         temps = []
         for thermometer_port in [self.thermometer_vials, self.thermometer_board]:
-            thermometer_port.write([0x04])
-            time.sleep(0.06)
-            data = thermometer_port.read_from(0x04, 2)
+            lock_acquired = self.device.lock_ftdi.acquire(timeout=3)
+            if not lock_acquired:
+                raise Exception("Could not acquire lock to measure temperature at time %s" % time.ctime())
+            try:
+                thermometer_port.write([0x04])
+                time.sleep(0.06)
+                data = thermometer_port.read_from(0x04, 2)
+            finally:
+                self.device.lock_ftdi.release()
+
             digital_temp = ((data[0] << 8) | data[1]) >> 4
             celsius_temp = digital_temp * 0.0625
             temps += [celsius_temp]

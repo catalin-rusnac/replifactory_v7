@@ -90,8 +90,14 @@ class OdSensor:
             f.write(data_string)
 
     def measure_signal(self):
-        background = self.measure_background_intensity()[0]
-        transmitted = self.measure_transmitted_intensity()[0]
+        lock_acquired = self.device.lock_ftdi.acquire(timeout=3)
+        if not lock_acquired:
+            raise Exception("Could not acquire lock to measure OD signal at time %s" % time.ctime())
+        try:
+            background = self.measure_background_intensity()[0]
+            transmitted = self.measure_transmitted_intensity()[0]
+        finally:
+            self.device.lock_ftdi.release()
         if self.device.directory is not None:
             self.log_mv(background=background, transmitted=transmitted)
         signal = transmitted - background

@@ -13,17 +13,21 @@ class Photodiodes:
             self.connect()
 
     def connect(self):
+        lock_acquired = self.device.lock_ftdi.acquire(timeout=3)
+        if not lock_acquired:
+            raise Exception("Could not acquire lock to connect photodiodes at time %s" % time.ctime())
+
         try:
             self.adc_port = self.device.i2c.get_port(
                 self.device.PORT_ADC
             )  # photodiodes ADC
-            self.multiplexer_port = self.device.i2c.get_port(
-                self.device.PORT_GPIO_MULTIPLEXER_ADC
-            )
+            self.multiplexer_port = self.device.i2c.get_port(self.device.PORT_GPIO_MULTIPLEXER_ADC)
             self.multiplexer_port.write_to(6, [0x00])  # set all GPIO pins as output
             self.multiplexer_port.write_to(7, [0x00])  # set all GPIO pins as output
         except pyftdi.i2c.I2cNackError:
             print("Photodiode multiplexer or ADC connection ERROR.")
+        finally:
+            self.device.lock_ftdi.release()
 
     def switch_to_vial(self, vial):
         vial = vial - 1

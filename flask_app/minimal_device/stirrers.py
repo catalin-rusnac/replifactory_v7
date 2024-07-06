@@ -23,11 +23,17 @@ class Stirrers:
             self.multiplexer_port = self.device.i2c.get_port(
                 self.device.PORT_GPIO_MULTIPLEXER_STIRRERS
             )
-            # all GPIO pins output
-            self.multiplexer_port.write_to(6, [0x00])
-            # all GPIO pins output
-            self.multiplexer_port.write_to(7, [0x00])
 
+            lock_acquired = self.pwm_controller.lock.acquire(timeout=3)
+            if not lock_acquired:
+                raise Exception("Could not acquire lock for connecting stirrers at time %s" % time.ctime())
+            try:
+                # all GPIO pins output
+                self.multiplexer_port.write_to(6, [0x00])
+                # all GPIO pins output
+                self.multiplexer_port.write_to(7, [0x00])
+            finally:
+                self.pwm_controller.lock.release()
             # Initialize SPI port for fan monitoring
             self.fans_spi_port = self.device.spi.get_port(cs=4, freq=self.freq, mode=3)
             self.fans_spi_port.set_frequency(self.freq)
@@ -45,7 +51,7 @@ class Stirrers:
         led_number = self.led_numbers[vial]
         self.pwm_controller.set_duty_cycle(led_number=led_number, duty_cycle=duty_cycle)
 
-    def _get_duty_cycle(self, vial):
+    def get_stirrer_duty_cycle(self, vial):
         led_number = self.led_numbers[vial]
         return self.pwm_controller.get_duty_cycle(led_number=led_number)
 
@@ -57,7 +63,7 @@ class Stirrers:
         else:
             duty_cycle = self.device.device_data["stirrers"]["calibration"][vial][speed]
 
-        lock_acquired = self.pwm_controller.lock.acquire(timeout=2)
+        lock_acquired = self.pwm_controller.lock.acquire(timeout=5)
         if not lock_acquired:
             raise Exception("Could not acquire lock for setting stirrer speed at time %s" % time.ctime())
         try:
@@ -84,7 +90,7 @@ class Stirrers:
     def set_speed_all(self, speed, accelerate=True):
         assert speed in ["stopped", "low", "high"]
         # self.check_calibration()
-        lock_acquired = self.pwm_controller.lock.acquire(timeout=2)
+        lock_acquired = self.pwm_controller.lock.acquire(timeout=3)
         if not lock_acquired:
             raise Exception("Could not acquire lock for setting all stirrer speeds at time %s" % time.ctime())
         try:
@@ -115,7 +121,7 @@ class Stirrers:
         if estimated_rpm is None:
             estimated_rpm = self.rpms[vial_number]
         if estimated_rpm is None:
-            duty_cycle = self._get_duty_cycle(vial_number)
+            duty_cycle = self.get_stirrer_duty_cycle(vial_number)  # ftdi lock is checked here
             estimated_rpm = 2000 * duty_cycle
         if estimated_rpm < 10:
             return 0
@@ -127,18 +133,19 @@ class Stirrers:
         nbytes = int(nbytes_per_rotation * 0.8) + 16  # Safety factor to avoid overflow
 
         # Set up the multiplexer for the given vial
-        self.multiplexer_port.write_to(7, [0x00])  # Output pin
-        self.multiplexer_port.write_to(2, [vial_number - 1])
-        t0 = time.time()
         # Read data from SPI port
-        # get self.device.lock_spi lock
-        spi_lock_acquired = self.device.lock_spi.acquire(timeout=2)
-        if not spi_lock_acquired:
+        # get self.device.lock_ftdi lock
+        ftdi_lock_acquired = self.device.lock_ftdi.acquire(timeout=3)
+        if not ftdi_lock_acquired:
             raise Exception("Could not acquire lock for reading stirrer speed at time %s" % time.ctime())
         try:
+            self.multiplexer_port.write_to(7, [0x00])  # Output pin
+            self.multiplexer_port.write_to(2, [vial_number - 1])
+            t0 = time.time()
+
             res = self.fans_spi_port.read(nbytes)
         finally:
-            self.device.lock_spi.release()
+            self.device.lock_ftdi.release()
         dt = time.time() - t0
         binstr = "".join([bin(r)[2:].rjust(8, "0") for r in res])
 
@@ -172,12 +179,11 @@ class Stirrers:
             rpm = 60 * self.freq / np.median(periods) / 4
         return rpm
 
-
     def measure_rpm(self, vial_number=7):
         # if file db/skip_stirrer_speed_measurement exists, return 0
         if os.path.exists("db/skip_stirrer_speed_measurement"):
             return 0
-        lock_acquired = self.pwm_controller.lock.acquire(timeout=2)
+        lock_acquired = self.pwm_controller.lock.acquire(timeout=3)
         if not lock_acquired:
             raise Exception("Could not acquire lock for measuring stirrer speed at time %s" % time.ctime())
         try:

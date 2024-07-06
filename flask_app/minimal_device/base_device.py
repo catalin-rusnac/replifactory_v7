@@ -65,7 +65,11 @@ class BaseDevice:
 
         self.locks_vials = {v: threading.Lock() for v in range(1, 8)}
         self.lock_pumps = threading.Lock()
-        self.lock_spi = threading.Lock()
+        # self.lock_spi = threading.Lock()
+        # self.lock_i2c = threading.Lock()
+
+        self.lock_ftdi = threading.Lock()
+
         self.file_lock = threading.Lock()
         # self.pump_calibrations_rotations_to_ml = {1: {}, 2: {}, 3: {}, 4: {}}
         self.pump_stock_concentrations = {1: None, 2: None, 3: None, 4: None}

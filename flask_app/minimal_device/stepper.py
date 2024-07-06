@@ -147,7 +147,7 @@ class Stepper:
         self.write_register(self.REGISTER_MAX_SPEED, value=integer / 2**10, n_bits=10, n_bytes=2)
 
     def write_register(self, reg, value, n_bits, n_bytes):
-        lock_acquired = self.device.lock_spi.acquire(timeout=2)
+        lock_acquired = self.device.lock_ftdi.acquire(timeout=3)
         if not lock_acquired:
             raise Exception("Could not acquire lock for writing stepper %d register %s" % (self.cs, reg))
         try:
@@ -158,13 +158,13 @@ class Stepper:
                 self.port.write([b])
                 time.sleep(0.001)
         finally:
-            self.device.lock_spi.release()
+            self.device.lock_ftdi.release()
         bytes_read = self.read_register(reg=reg, n_bytes=n_bytes)
         if not [bytes_to_write[i] == bytes_read[i] for i in range(n_bytes)]:
             print("WARNING: register %s not set correctly" % reg)
 
     def read_register(self, reg, n_bytes=3):
-        lock_acquired = self.device.lock_spi.acquire(timeout=2)
+        lock_acquired = self.device.lock_ftdi.acquire(timeout=3)
         if not lock_acquired:
             raise Exception("Could not acquire lock for reading stepper %d register %s" % (self.cs, reg))
         try:
@@ -174,7 +174,7 @@ class Stepper:
             for b in range(n_bytes):
                 res += self.port.read(1)
         finally:
-            self.device.lock_spi.release()
+            self.device.lock_ftdi.release()
         return res
 
     def move(self, n_rotations=1, rot_per_sec=None):
@@ -217,15 +217,15 @@ class Stepper:
             n_microsteps = abs(n_rotations) * steps_per_rotation * microsteps_per_step
 
         write_bytes = split_bytes(n_microsteps / max_n_microsteps, 22, 3)
-        lock_acquired = self.device.lock_spi.acquire(timeout=2)
+        lock_acquired = self.device.lock_ftdi.acquire(timeout=3)
         if not lock_acquired:
-            raise Exception("Could not acquire lock for moving stepper %d" % self.cs)
+            raise Exception("Could not acquire lock for moving stepper %d at time %s" % (self.cs, time.ctime()))
         try:
             self.port.write([move_header_byte])
             for b in write_bytes:
                 self.port.write([b])
         finally:
-            self.device.lock_spi.release()
+            self.device.lock_ftdi.release()
 
     def get_abs_position(self):
         microsteps = int.from_bytes(self.read_register(self.REGISTER_ABS_POS), "big")
@@ -246,24 +246,24 @@ class Stepper:
         # steps_per_sec = speed*2e-28/250e-9
         run_header_byte = 0b01010000 | direction_bit
         write_bytes = split_bytes(speed, 20, 3)
-        lock_acquired = self.device.lock_spi.acquire(timeout=2)
+        lock_acquired = self.device.lock_ftdi.acquire(timeout=3)
         if not lock_acquired:
-            raise Exception("Could not acquire lock for running stepper %d" % self.cs)
+            raise Exception("Could not acquire lock for running stepper %d at time %s" % (self.cs, time.ctime()))
         try:
             self.port.write([run_header_byte])
             for b in write_bytes:
                 self.port.write([b])
         finally:
-            self.device.lock_spi.release()
+            self.device.lock_ftdi.release()
 
     def is_busy(self):
-        lock_acquired = self.device.lock_spi.acquire(timeout=2)
+        lock_acquired = self.device.lock_ftdi.acquire(timeout=3)
         if not lock_acquired:
-            raise Exception("Could not acquire lock for checking busy status of stepper %d" % self.cs)
+            raise Exception("Could not acquire lock for checking busy status of stepper %d at time %s" % (self.cs, time.ctime()))
         try:
             self.port.write([0b11010000])
         finally:
-            self.device.lock_spi.release()
+            self.device.lock_ftdi.release()
         msb, lsb = self.read_register(self.REGISTER_STATUS, n_bytes=2)
         busy = not (lsb >> 1 & 0b1)
         return busy
@@ -271,7 +271,7 @@ class Stepper:
     def driver_is_responsive(self):
         if self.port is None:
             return False
-        lock_acquired = self.device.lock_spi.acquire(timeout=2)
+        lock_acquired = self.device.lock_ftdi.acquire(timeout=3)
         if not lock_acquired:
             raise Exception("Could not acquire lock for checking driver responsiveness of stepper %d" % self.cs)
         try:
@@ -279,24 +279,24 @@ class Stepper:
         except Exception:
             return False
         finally:
-            self.device.lock_spi.release()
+            self.device.lock_ftdi.release()
 
         msb, lsb = self.read_register(self.REGISTER_STATUS, n_bytes=2)
         return not (msb == 255 and lsb == 255)
 
     def write_to_port(self, data):
-        lock_acquired = self.device.lock_spi.acquire(timeout=2)
+        lock_acquired = self.device.lock_ftdi.acquire(timeout=3)
         if not lock_acquired:
             raise Exception("Could not acquire lock for writing to stepper %d" % self.cs)
         try:
             self.port.write(data)
         finally:
-            self.device.lock_spi.release()
+            self.device.lock_ftdi.release()
 
     def is_pumping(self):
         if not self.driver_is_responsive():
             return False
-        self.write_to_port([0b11010000]) # GetStatus command, resets warning flags
+        self.write_to_port([0b11010000])  # GetStatus command, resets warning flags
         msb, lsb = self.read_register(self.REGISTER_STATUS, n_bytes=2)
         status = lsb >> 5 & 0b11
         return status > 0

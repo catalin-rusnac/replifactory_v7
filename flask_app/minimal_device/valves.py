@@ -42,23 +42,6 @@ class Valves:
     def not_all_closed(self):
         return not self.all_closed()
 
-    def idle_all(self):
-        """
-        sets 0 duty cycle for all valves fast
-        :return:
-        """
-        lock_acquired = self.pwm_controller.lock.acquire(timeout=2)
-        if not lock_acquired:
-            raise Exception("Could not acquire lock to set all valves to idle at time %s" % time.ctime())
-        try:
-            self.pwm_controller.stop_all()
-            for valve in range(1, 9):
-                led_number = self.led_numbers[valve]
-                self.pwm_controller.set_duty_cycle(led_number=led_number, duty_cycle=0)
-            self.pwm_controller.start_all()
-        finally:
-            self.pwm_controller.lock.release()
-
     def set_duty_cycle(self, valve, duty_cycle):
         """
         sets the duty cycle of the pwm signal for the valve.
@@ -66,7 +49,7 @@ class Valves:
         moving after writing the first byte.
         """
         led_number = self.led_numbers[valve]
-        lock_acquired = self.pwm_controller.lock.acquire(timeout=2)
+        lock_acquired = self.pwm_controller.lock.acquire(timeout=3)
         if not lock_acquired:
             raise Exception("Could not acquire lock to set duty cycle for valve %d at time %s" % (valve, time.ctime()))
         try:
