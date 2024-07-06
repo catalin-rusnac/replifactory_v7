@@ -279,7 +279,7 @@ clean-memory:
 	du -h --max-depth=1
 
 update_and_restart_experiment:
-	@chmod +x scripts/update_and_restart_experiment.py
+	@sudo chmod +x scripts/update_and_restart_experiment.py
 	@nohup sudo python3 scripts/update_and_restart_experiment.py &
 
 update-autofix:
