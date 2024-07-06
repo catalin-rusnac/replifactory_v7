@@ -164,3 +164,15 @@ def execute_command(command):
             return jsonify({'error running '+command: result.stdout.decode('utf-8')}), 500
     except:
         return jsonify({'error': 'Failed to execute command: '+command}), 500
+
+
+@service_routes.route('/update_and_restart_experiment', methods=['PUT'])
+def update_and_restart_experiment():
+    import subprocess
+    command = "make update_and_restart_experiment &"
+    result = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if result.returncode == 0:
+        return jsonify({'output': result.stdout.decode('utf-8')}), 200
+    else:
+        return jsonify({'error running '+command: result.stdout.decode('utf-8')}), 500
+    return jsonify({'message': 'Update and restart initialized'})
