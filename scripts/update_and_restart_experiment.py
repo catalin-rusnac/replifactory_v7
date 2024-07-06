@@ -53,11 +53,14 @@ def fully_stop_if_running():
         logger.info("No experiment running")
     return True
 
+
 def git_pull():
     command = "git reset --hard; git pull"
     logger.debug(f"Running command:\n{command}")
     result = subprocess.run(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     logger.debug(f"Pull result:\n{result.stdout.decode()}\n{result.stderr.decode()}")
+
+
 def restart_flask_service():
     command = "ps -eo comm,etime,args | grep flask | grep -v grep | head -n 1 | awk '{print $2}'"
     logger.debug(f"Running command:\n{command}")
