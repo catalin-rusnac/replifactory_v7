@@ -133,8 +133,11 @@ def update_and_restart():
     git_pull()
     fully_stop_if_running()
     restart_flask_service()
+    logger.info("Flask service restarted. Waiting for flask backend to start")
     if flask_backend_is_running():
+        logger.info("Flask backend is running. Selecting experiment")
         select_experiment()
+        logger.info("Experiment selected. Starting experiment")
         start_current_experiment()
     else:
         logger.error("Flask backend is not running. restarting experiment failed")
