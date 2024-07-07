@@ -49,7 +49,7 @@ class Valves:
         moving after writing the first byte.
         """
         led_number = self.led_numbers[valve]
-        lock_acquired = self.pwm_controller.lock.acquire(timeout=3)
+        lock_acquired = self.pwm_controller.lock.acquire(timeout=5)
         if not lock_acquired:
             raise Exception("Could not acquire lock to set duty cycle for valve %d at time %s" % (valve, time.ctime()))
         try:
@@ -86,9 +86,7 @@ class Valves:
             open_valves = [v for v in range(1, 8) if self.is_open[v]]
             remaining_open_valves = [v for v in open_valves if v != valve]
             if len(remaining_open_valves) < 1:
-                assert (
-                    not self.device.is_pumping()
-                ), "can't close last valve while pumping"
+                assert (not self.device.is_pumping()), "can't close last valve while pumping"
             self.set_duty_cycle(valve=valve, duty_cycle=self.DUTY_CYCLE_CLOSED)
             time.sleep(self.VALVE_CLOSE_TIME)
             self.is_open[valve] = False

@@ -63,7 +63,7 @@ class Stirrers:
         else:
             duty_cycle = self.device.device_data["stirrers"]["calibration"][vial][speed]
 
-        lock_acquired = self.pwm_controller.lock.acquire(timeout=5)
+        lock_acquired = self.pwm_controller.lock.acquire(timeout=3)
         if not lock_acquired:
             raise Exception("Could not acquire lock for setting stirrer speed at time %s" % time.ctime())
         try:
@@ -78,7 +78,7 @@ class Stirrers:
             self.pwm_controller.lock.release()
 
     def emergency_stop(self):
-        lock_acquired = self.pwm_controller.lock.acquire(timeout=5)
+        lock_acquired = self.pwm_controller.lock.acquire(timeout=3)
         if not lock_acquired:
             raise Exception("Could not acquire lock for emergency stop at time %s" % time.ctime())
         try:
