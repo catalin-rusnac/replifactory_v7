@@ -1,3 +1,4 @@
+import threading
 import time
 
 import pyftdi
@@ -8,7 +9,7 @@ print(sys.path)
 sys.path.append('./flask_app/')
 from minimal_device.eeprom import EEPROM
 
-class BaseDevice:
+class BaseDeviceEraseMemory:
     PORT_ADC = 0x68  # MCP3421A0  1101 000
     # PORT_ADC = 0x69  # MCP3421A1  1101 001
     # PORT_ADC = 0x6a  # MCP3421A2  1101 010
@@ -35,6 +36,7 @@ class BaseDevice:
 
         self.hard_stop_trigger = False
         self.soft_stop_trigger = False
+        self.lock_ftdi = threading.Lock()
 
         self.i2c = None
         self.spi = None
@@ -64,8 +66,9 @@ class BaseDevice:
     def is_connected(self):
         return self.spi is not None and self.i2c is not None
 
+
 if __name__ == "__main__":
-    dev = BaseDevice()
+    dev = BaseDeviceEraseMemory()
     dev.connect()
     dev.eeprom.connect_without_load()
 
