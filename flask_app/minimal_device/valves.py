@@ -49,7 +49,11 @@ class Valves:
         moving after writing the first byte.
         """
         led_number = self.led_numbers[valve]
-        lock_acquired = self.pwm_controller.lock.acquire(timeout=5)
+        if duty_cycle == self.DUTY_CYCLE_OPEN:
+            timeout = 15
+        else:
+            timeout = 45
+        lock_acquired = self.pwm_controller.lock.acquire(timeout=timeout)
         if not lock_acquired:
             raise Exception("Could not acquire lock to set duty cycle for valve %d at time %s" % (valve, time.ctime()))
         try:
