@@ -88,6 +88,9 @@ class Culture:
     def export_plot_html(self, output_directory=""):
         return export_culture_plot_html(self, output_directory=output_directory)
 
+    def export_predicted_plot_html(self, output_directory=""):
+        return export_culture_plot_html(self, output_directory=output_directory, predicted=True)
+
     def get_first_od_timestamp(self):
         culture_data = self.db.session.query(CultureData).filter(
             CultureData.experiment_id == self.experiment.model.id,
