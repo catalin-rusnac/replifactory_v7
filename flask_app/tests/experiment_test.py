@@ -4,7 +4,7 @@ from flask import Flask
 
 from minimal_device.base_device import BaseDevice
 dev = BaseDevice()
-dev.connect()
+# dev.connect()
 # dev.hello()
 from experiment.database_models import ExperimentModel, db
 import os

@@ -147,7 +147,7 @@ class Stepper:
         self.write_register(self.REGISTER_MAX_SPEED, value=integer / 2**10, n_bits=10, n_bytes=2)
 
     def write_register(self, reg, value, n_bits, n_bytes):
-        lock_acquired = self.device.lock_ftdi.acquire(timeout=3)
+        lock_acquired = self.device.lock_ftdi.acquire(timeout=5)
         if not lock_acquired:
             raise Exception("Could not acquire lock for writing stepper %d register %s" % (self.cs, reg))
         try:
@@ -164,7 +164,7 @@ class Stepper:
             print("WARNING: register %s not set correctly" % reg)
 
     def read_register(self, reg, n_bytes=3):
-        lock_acquired = self.device.lock_ftdi.acquire(timeout=3)
+        lock_acquired = self.device.lock_ftdi.acquire(timeout=5)
         if not lock_acquired:
             raise Exception("Could not acquire lock for reading stepper %d register %s" % (self.cs, reg))
         try:
@@ -217,7 +217,7 @@ class Stepper:
             n_microsteps = abs(n_rotations) * steps_per_rotation * microsteps_per_step
 
         write_bytes = split_bytes(n_microsteps / max_n_microsteps, 22, 3)
-        lock_acquired = self.device.lock_ftdi.acquire(timeout=3)
+        lock_acquired = self.device.lock_ftdi.acquire(timeout=5)
         if not lock_acquired:
             raise Exception("Could not acquire lock for moving stepper %d at time %s" % (self.cs, time.ctime()))
         try:
@@ -246,7 +246,7 @@ class Stepper:
         # steps_per_sec = speed*2e-28/250e-9
         run_header_byte = 0b01010000 | direction_bit
         write_bytes = split_bytes(speed, 20, 3)
-        lock_acquired = self.device.lock_ftdi.acquire(timeout=3)
+        lock_acquired = self.device.lock_ftdi.acquire(timeout=5)
         if not lock_acquired:
             raise Exception("Could not acquire lock for running stepper %d at time %s" % (self.cs, time.ctime()))
         try:
@@ -257,7 +257,7 @@ class Stepper:
             self.device.lock_ftdi.release()
 
     def is_busy(self):
-        lock_acquired = self.device.lock_ftdi.acquire(timeout=3)
+        lock_acquired = self.device.lock_ftdi.acquire(timeout=5)
         if not lock_acquired:
             raise Exception("Could not acquire lock for checking busy status of stepper %d at time %s" % (self.cs, time.ctime()))
         try:
@@ -271,7 +271,7 @@ class Stepper:
     def driver_is_responsive(self):
         if self.port is None:
             return False
-        lock_acquired = self.device.lock_ftdi.acquire(timeout=3)
+        lock_acquired = self.device.lock_ftdi.acquire(timeout=5)
         if not lock_acquired:
             raise Exception("Could not acquire lock for checking driver responsiveness of stepper %d" % self.cs)
         try:
@@ -285,7 +285,7 @@ class Stepper:
         return not (msb == 255 and lsb == 255)
 
     def write_to_port(self, data):
-        lock_acquired = self.device.lock_ftdi.acquire(timeout=3)
+        lock_acquired = self.device.lock_ftdi.acquire(timeout=5)
         if not lock_acquired:
             raise Exception("Could not acquire lock for writing to stepper %d" % self.cs)
         try:

@@ -13,7 +13,7 @@ class Photodiodes:
             self.connect()
 
     def connect(self):
-        lock_acquired = self.device.lock_ftdi.acquire(timeout=3)
+        lock_acquired = self.device.lock_ftdi.acquire(timeout=5)
         if not lock_acquired:
             raise Exception("Could not acquire lock to connect photodiodes at time %s" % time.ctime())
 

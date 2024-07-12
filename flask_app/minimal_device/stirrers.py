@@ -111,7 +111,7 @@ class Stirrers:
         # Set up the multiplexer for the given vial
         # Read data from SPI port
         # get self.device.lock_ftdi lock
-        ftdi_lock_acquired = self.device.lock_ftdi.acquire(timeout=3)
+        ftdi_lock_acquired = self.device.lock_ftdi.acquire(timeout=5)
         if not ftdi_lock_acquired:
             raise Exception("Could not acquire lock for reading stirrer speed at time %s" % time.ctime())
         try:

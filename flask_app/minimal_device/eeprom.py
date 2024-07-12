@@ -119,7 +119,7 @@ class EEPROM:
         if self.using_filewriter:
             self._write_to_file(data)
             return
-        ftdi_lock_acquired = self.device.lock_ftdi.acquire(timeout=3)
+        ftdi_lock_acquired = self.device.lock_ftdi.acquire(timeout=5)
         if not ftdi_lock_acquired:
             raise Exception("Could not acquire ftdi lock for writing to EEPROM at time %s" % time.ctime())
         try:
@@ -211,7 +211,7 @@ class EEPROM:
         return data
 
     def erase_memory(self):
-        lock_acquired = self.device.lock_ftdi.acquire(timeout=3)
+        lock_acquired = self.device.lock_ftdi.acquire(timeout=5)
         if not lock_acquired:
             raise Exception("Could not acquire lock for erasing EEPROM at time %s" % time.ctime())
         try:
@@ -232,7 +232,7 @@ class EEPROM:
             return self._read_from_file()
         pages_read = []
         tail = bytearray([0xFF] * 63)
-        lock_acquired = self.device.lock_ftdi.acquire(timeout=3)
+        lock_acquired = self.device.lock_ftdi.acquire(timeout=5)
         if not lock_acquired:
             raise Exception("Could not acquire lock for reading EEPROM at time %s" % time.ctime())
         try:

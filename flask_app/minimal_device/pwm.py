@@ -45,7 +45,7 @@ class PwmController:
     def write_all_zeros(self):
         all_led_on_l = 250
         all_led_on_h = 251
-        lock_acquired = self.device.lock_ftdi.acquire(timeout=3)
+        lock_acquired = self.device.lock_ftdi.acquire(timeout=5)
         if not lock_acquired:
             raise Exception("Could not acquire lock to connect PWM controller at time %s" % time.ctime())
         try:
@@ -62,7 +62,7 @@ class PwmController:
         """
         pre_scale = round(25000000 / (4096 * frequency)) - 1
 
-        ftdi_lock_acquired = self.device.lock_ftdi.acquire(timeout=3)
+        ftdi_lock_acquired = self.device.lock_ftdi.acquire(timeout=5)
         if not ftdi_lock_acquired:
             raise Exception("Could not acquire i2c port lock for set_frequency at time %s" % time.ctime())
         try:
@@ -87,7 +87,7 @@ class PwmController:
         led_off_l = led_number * 4 + 8
         led_off_h = led_number * 4 + 9
 
-        ftdi_lock_acquired = self.device.lock_ftdi.acquire(timeout=3)
+        ftdi_lock_acquired = self.device.lock_ftdi.acquire(timeout=5)
         if not ftdi_lock_acquired:
             raise Exception("Could not acquire i2c port lock for get_duty_cycle at time %s" % time.ctime())
         try:
@@ -113,7 +113,7 @@ class PwmController:
         led_off_l = led_number * 4 + 8
         led_off_h = led_number * 4 + 9
 
-        ftdi_lock_acquired = self.device.lock_ftdi.acquire(timeout=3)
+        ftdi_lock_acquired = self.device.lock_ftdi.acquire(timeout=5)
         if not ftdi_lock_acquired:
             raise Exception("Could not acquire i2c port lock for set_duty_cycle at time %s" % time.ctime())
         try:
@@ -133,7 +133,7 @@ class PwmController:
         all_led_off_l = 252
         all_led_off_h = 253
 
-        ftdi_lock_acquired = self.device.lock_ftdi.acquire(timeout=3)
+        ftdi_lock_acquired = self.device.lock_ftdi.acquire(timeout=5)
         if not ftdi_lock_acquired:
             raise Exception("Could not acquire i2c port lock for set_duty_cycle_all at time %s" % time.ctime())
         try:
@@ -147,7 +147,7 @@ class PwmController:
         Stop all PWM signals.
         :return:
         """
-        ftdi_lock_acquired = self.device.lock_ftdi.acquire(timeout=3)
+        ftdi_lock_acquired = self.device.lock_ftdi.acquire(timeout=5)
         if not ftdi_lock_acquired:
             raise Exception("Could not acquire i2c port lock for stop_all at time %s" % time.ctime())
         try:
@@ -160,7 +160,7 @@ class PwmController:
         Start all PWM signals.
         :return:
         """
-        ftdi_lock_acquired = self.device.lock_ftdi.acquire(timeout=3)
+        ftdi_lock_acquired = self.device.lock_ftdi.acquire(timeout=5)
         if not ftdi_lock_acquired:
             raise Exception("Could not acquire i2c port lock for start_all at time %s" % time.ctime())
         try:
@@ -175,7 +175,7 @@ class PwmController:
         Check if the PWM controller is sleeping.
         :return:
         """
-        ftdi_lock_acquired = self.device.lock_ftdi.acquire(timeout=3)
+        ftdi_lock_acquired = self.device.lock_ftdi.acquire(timeout=5)
         if not ftdi_lock_acquired:
             raise Exception("Could not acquire i2c port lock for is_sleeping at time %s" % time.ctime())
         try:

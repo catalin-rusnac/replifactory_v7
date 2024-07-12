@@ -90,7 +90,7 @@ class OdSensor:
             f.write(data_string)
 
     def measure_signal(self):
-        lock_acquired = self.device.lock_ftdi.acquire(timeout=3)
+        lock_acquired = self.device.lock_ftdi.acquire(timeout=5)
         if not lock_acquired:
             raise Exception("Could not acquire lock to measure OD signal at time %s" % time.ctime())
         try:
