@@ -24,16 +24,11 @@ class Stirrers:
                 self.device.PORT_GPIO_MULTIPLEXER_STIRRERS
             )
 
-            lock_acquired = self.pwm_controller.lock.acquire(timeout=5)
-            if not lock_acquired:
-                raise Exception("Could not acquire lock for connecting stirrers at time %s" % time.ctime())
-            try:
-                # all GPIO pins output
-                self.multiplexer_port.write_to(6, [0x00])
-                # all GPIO pins output
-                self.multiplexer_port.write_to(7, [0x00])
-            finally:
-                self.pwm_controller.lock.release()
+
+            # all GPIO pins output
+            self.multiplexer_port.write_to(6, [0x00])
+            # all GPIO pins output
+            self.multiplexer_port.write_to(7, [0x00])
             # Initialize SPI port for fan monitoring
             self.fans_spi_port = self.device.spi.get_port(cs=4, freq=self.freq, mode=3)
             self.fans_spi_port.set_frequency(self.freq)
@@ -63,48 +58,29 @@ class Stirrers:
         else:
             duty_cycle = self.device.device_data["stirrers"]["calibration"][vial][speed]
 
-        lock_acquired = self.pwm_controller.lock.acquire(timeout=5)
-        if not lock_acquired:
-            raise Exception("Could not acquire lock for setting stirrer speed at time %s" % time.ctime())
-        try:
-            if 0 < duty_cycle < 0.2 and accelerate:
-                accelerate_duty_cycle = self.device.device_data["stirrers"]["calibration"][vial]["high"] * 1.2
-                accelerate_duty_cycle = min(accelerate_duty_cycle, 1)
-                self._set_duty_cycle(vial, accelerate_duty_cycle)
-                time.sleep(0.1)
+        if 0 < duty_cycle < 0.2 and accelerate:
+            accelerate_duty_cycle = self.device.device_data["stirrers"]["calibration"][vial]["high"] * 1.2
+            accelerate_duty_cycle = min(accelerate_duty_cycle, 1)
+            self._set_duty_cycle(vial, accelerate_duty_cycle)
+            time.sleep(0.1)
 
-            self._set_duty_cycle(vial=vial, duty_cycle=duty_cycle)
-        finally:
-            self.pwm_controller.lock.release()
+        self._set_duty_cycle(vial=vial, duty_cycle=duty_cycle)
 
     def emergency_stop(self):
-        lock_acquired = self.pwm_controller.lock.acquire(timeout=5)
-        if not lock_acquired:
-            raise Exception("Could not acquire lock for emergency stop at time %s" % time.ctime())
-        try:
-            for vial in range(1, 8):
-                self._set_duty_cycle(vial, duty_cycle=0)
-        finally:
-            self.pwm_controller.lock.release()
+        for vial in range(1, 8):
+            self._set_duty_cycle(vial, duty_cycle=0)
 
     def set_speed_all(self, speed, accelerate=True):
         assert speed in ["stopped", "low", "high"]
-        # self.check_calibration()
-        lock_acquired = self.pwm_controller.lock.acquire(timeout=5)
-        if not lock_acquired:
-            raise Exception("Could not acquire lock for setting all stirrer speeds at time %s" % time.ctime())
-        try:
-            for vial in range(1, 8):
-                if speed == "stopped":
-                    duty_cycle = 0
-                else:
-                    duty_cycle = self.device.device_data["stirrers"]["calibration"][vial][speed]
-                if 0 < duty_cycle < 0.2 and accelerate:
-                    self._set_duty_cycle(vial=vial, duty_cycle=1)
-                    time.sleep(0.1)
-                self._set_duty_cycle(vial, duty_cycle=duty_cycle)
-        finally:
-            self.pwm_controller.lock.release()
+        for vial in range(1, 8):
+            if speed == "stopped":
+                duty_cycle = 0
+            else:
+                duty_cycle = self.device.device_data["stirrers"]["calibration"][vial][speed]
+            if 0 < duty_cycle < 0.2 and accelerate:
+                self._set_duty_cycle(vial=vial, duty_cycle=1)
+                time.sleep(0.1)
+            self._set_duty_cycle(vial, duty_cycle=duty_cycle)
 
     def check_calibration(self, vial=-1):
         if vial == -1:
@@ -183,13 +159,7 @@ class Stirrers:
         # if file db/skip_stirrer_speed_measurement exists, return 0
         if os.path.exists("db/skip_stirrer_speed_measurement"):
             return 0
-        lock_acquired = self.pwm_controller.lock.acquire(timeout=5)
-        if not lock_acquired:
-            raise Exception("Could not acquire lock for measuring stirrer speed at time %s" % time.ctime())
-        try:
-            rpm = self._measure_rpm_no_lock(vial_number)
-        finally:
-            self.pwm_controller.lock.release()
+        rpm = self._measure_rpm_no_lock(vial_number)
         return rpm
 
     def measure_all_rpms(self, vials_to_measure=(1, 2, 3, 4, 5, 6, 7)):
