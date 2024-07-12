@@ -2,6 +2,22 @@ import os
 import time
 
 
+def close_valve_gracefully(device, vial):
+    try:
+        if device.is_pumping():
+            device.pump4.stop()
+            device.pump1.stop()
+            device.pump2.stop()
+            print("WARNING! Pumps stopped after diluting via vial %d at time %s" % (vial, time.ctime()))
+            time.sleep(2)
+    except Exception as e:
+        print("Error stopping pumps: %s" % e)
+    try:
+        device.valves.close(valve=vial)
+    except Exception as e:
+        print("Error closing valve %d: %s" % (vial, e))
+
+
 def make_dilution(
     device, vial, pump1_volume=0, pump2_volume=0, pump3_volume=0, extra_vacuum=5
 ):
@@ -44,17 +60,16 @@ def make_dilution(
         device.pump4.pump(waste_volume)
         vacuum_time_0 = time.time()
         stirrer_stopped = False
-        while device.pump4.is_busy():
+        while device.pump4.is_pumping():
             time.sleep(1)
             if time.time() - vacuum_time_0 > 3 and not stirrer_stopped:
                 device.stirrers.set_speed(vial=vial, speed="stopped")
                 stirrer_stopped = True
             assert not device.hard_stop_trigger
         device.stirrers.set_speed(vial=vial, speed="high")
-        assert not device.is_pumping()  # make sure before closing valves
         time.sleep(2)
-        device.valves.close(valve=vial)
     finally:
+        close_valve_gracefully(device, vial)
         device.locks_vials[vial].release()
         device.lock_pumps.release()
     return 0
