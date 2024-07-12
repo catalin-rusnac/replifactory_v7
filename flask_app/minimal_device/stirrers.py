@@ -24,7 +24,7 @@ class Stirrers:
                 self.device.PORT_GPIO_MULTIPLEXER_STIRRERS
             )
 
-            lock_acquired = self.pwm_controller.lock.acquire(timeout=3)
+            lock_acquired = self.pwm_controller.lock.acquire(timeout=5)
             if not lock_acquired:
                 raise Exception("Could not acquire lock for connecting stirrers at time %s" % time.ctime())
             try:
@@ -63,7 +63,7 @@ class Stirrers:
         else:
             duty_cycle = self.device.device_data["stirrers"]["calibration"][vial][speed]
 
-        lock_acquired = self.pwm_controller.lock.acquire(timeout=3)
+        lock_acquired = self.pwm_controller.lock.acquire(timeout=5)
         if not lock_acquired:
             raise Exception("Could not acquire lock for setting stirrer speed at time %s" % time.ctime())
         try:
@@ -78,7 +78,7 @@ class Stirrers:
             self.pwm_controller.lock.release()
 
     def emergency_stop(self):
-        lock_acquired = self.pwm_controller.lock.acquire(timeout=3)
+        lock_acquired = self.pwm_controller.lock.acquire(timeout=5)
         if not lock_acquired:
             raise Exception("Could not acquire lock for emergency stop at time %s" % time.ctime())
         try:
@@ -90,7 +90,7 @@ class Stirrers:
     def set_speed_all(self, speed, accelerate=True):
         assert speed in ["stopped", "low", "high"]
         # self.check_calibration()
-        lock_acquired = self.pwm_controller.lock.acquire(timeout=3)
+        lock_acquired = self.pwm_controller.lock.acquire(timeout=5)
         if not lock_acquired:
             raise Exception("Could not acquire lock for setting all stirrer speeds at time %s" % time.ctime())
         try:
@@ -183,7 +183,7 @@ class Stirrers:
         # if file db/skip_stirrer_speed_measurement exists, return 0
         if os.path.exists("db/skip_stirrer_speed_measurement"):
             return 0
-        lock_acquired = self.pwm_controller.lock.acquire(timeout=3)
+        lock_acquired = self.pwm_controller.lock.acquire(timeout=5)
         if not lock_acquired:
             raise Exception("Could not acquire lock for measuring stirrer speed at time %s" % time.ctime())
         try:
