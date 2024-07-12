@@ -119,28 +119,29 @@ class EEPROM:
         if self.using_filewriter:
             self._write_to_file(data)
             return
-        ftdi_lock_acquired = self.device.lock_ftdi.acquire(timeout=5)
+
+        config_to_write = data
+        config_to_write = yaml.dump(config_to_write)
+        config_to_write = config_to_write.encode("utf-8")
+        config_to_write = gzip.compress(config_to_write)
+        config_bytes = bytearray(config_to_write)
+        # filler_size = 32768 - len(config_bytes)
+        filler_size = 64
+        # print("Writing", len(config_bytes), "bytes to EEPROM", time.ctime())
+        # print(filler_size, "bytes of filler to write to EEPROM")
+        for i in range(filler_size):
+            config_bytes.append(0xFF)
+        n_pages_to_write = int(np.ceil(len(config_bytes) / 64))
+
+
+        ftdi_lock_acquired = self.device.lock_ftdi.acquire(timeout=15)
         if not ftdi_lock_acquired:
             raise Exception("Could not acquire ftdi lock for writing to EEPROM at time %s" % time.ctime())
         try:
-            config_to_write = data
-            config_to_write = yaml.dump(config_to_write)
-            config_to_write = config_to_write.encode("utf-8")
-            config_to_write = gzip.compress(config_to_write)
-            config_bytes = bytearray(config_to_write)
-            # filler_size = 32768 - len(config_bytes)
-            filler_size = 64
-            # print("Writing", len(config_bytes), "bytes to EEPROM", time.ctime())
-            # print(filler_size, "bytes of filler to write to EEPROM")
-            for i in range(filler_size):
-                config_bytes.append(0xFF)
-            n_pages_to_write = int(np.ceil(len(config_bytes) / 64))
             # print(n_pages_to_write,"pages to write to EEPROM")
             for page in range(n_pages_to_write):
                 b1, b2 = make_addr_bytes(page=page, byte=0)
-                self.port.write(
-                    [b1, b2] + [b for b in config_bytes[64 * page : 64 * (page + 1)]]
-                )
+                self.port.write([b1, b2] + [b for b in config_bytes[64 * page : 64 * (page + 1)]])
             self.eeprom_config = self.device.device_data
         finally:
             self.device.lock_ftdi.release()
@@ -211,7 +212,7 @@ class EEPROM:
         return data
 
     def erase_memory(self):
-        lock_acquired = self.device.lock_ftdi.acquire(timeout=5)
+        lock_acquired = self.device.lock_ftdi.acquire(timeout=15)
         if not lock_acquired:
             raise Exception("Could not acquire lock for erasing EEPROM at time %s" % time.ctime())
         try:
@@ -232,7 +233,7 @@ class EEPROM:
             return self._read_from_file()
         pages_read = []
         tail = bytearray([0xFF] * 63)
-        lock_acquired = self.device.lock_ftdi.acquire(timeout=5)
+        lock_acquired = self.device.lock_ftdi.acquire(timeout=15)
         if not lock_acquired:
             raise Exception("Could not acquire lock for reading EEPROM at time %s" % time.ctime())
         try:

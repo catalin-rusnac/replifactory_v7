@@ -43,7 +43,7 @@ class Thermometers:
     def measure_temperature(self):
         temps = []
         for thermometer_port in [self.thermometer_vials, self.thermometer_board]:
-            lock_acquired = self.device.lock_ftdi.acquire(timeout=5)
+            lock_acquired = self.device.lock_ftdi.acquire(timeout=15)
             if not lock_acquired:
                 raise Exception("Could not acquire lock to measure temperature at time %s" % time.ctime())
             try:
