@@ -34,7 +34,7 @@ def make_dilution(
             device.pump3.pump(pump3_volume)
 
         while device.is_pumping():
-            time.sleep(0.5)
+            time.sleep(1)
             assert not device.hard_stop_trigger
 
         device.stirrers.set_speed(vial=vial, speed="low")
@@ -45,7 +45,7 @@ def make_dilution(
         vacuum_time_0 = time.time()
         stirrer_stopped = False
         while device.pump4.is_busy():
-            time.sleep(0.5)
+            time.sleep(1)
             if time.time() - vacuum_time_0 > 3 and not stirrer_stopped:
                 device.stirrers.set_speed(vial=vial, speed="stopped")
                 stirrer_stopped = True
