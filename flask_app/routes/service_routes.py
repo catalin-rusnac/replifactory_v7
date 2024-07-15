@@ -1,6 +1,8 @@
 import os
 import socket
 import sys
+import time
+
 from flask import Blueprint, jsonify, send_file
 import io
 
@@ -29,6 +31,21 @@ def capture_image_cv2():
 
     _, img_encoded = cv2.imencode('.jpg', frame)
     stream = io.BytesIO(img_encoded.tostring())
+    return send_file(stream, mimetype='image/jpeg', as_attachment=False)
+
+@service_routes.route("/capturehires")
+def capture_image_hq():
+    from picamera import PiCamera
+    stream = io.BytesIO()
+    camera = PiCamera()
+    camera.resolution = (2592, 1944)
+    camera.start_preview()
+    time.sleep(2)
+    camera.capture(stream, format='jpeg')
+    camera.stop_preview()
+
+    stream.seek(0)
+    camera.close()
     return send_file(stream, mimetype='image/jpeg', as_attachment=False)
 
 
