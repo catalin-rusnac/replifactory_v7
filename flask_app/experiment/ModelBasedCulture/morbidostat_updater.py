@@ -21,6 +21,7 @@ morbidostat_updater_default_parameters = {
     'threshold_growth_rate_increase_stress': 0.15,  # Minimum growth rate for stress increase (increase dose if growth rate is higher)
     'threshold_growth_rate_decrease_stress': -0.1,  # Maximum growth rate for rescue dilution (rescue if growth rate is lower)
     'delay_stress_increase_min_generations': 2,  # Minimum number of generations between stress increases.
+    'postfill': 0, # Whether to add media before pumping waste (1) or pump waste before adding media (0)
 }
 
 

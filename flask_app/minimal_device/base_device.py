@@ -11,7 +11,6 @@ from pyftdi.spi import SpiController
 from pyftdi.usbtools import UsbTools
 
 from .adc import Photodiodes
-from .dilution import make_dilution
 from .eeprom import EEPROM
 from .lasers import Lasers
 from .od_sensor import OdSensor
@@ -278,18 +277,6 @@ class BaseDevice:
         self.pump2.stop()
         self.pump3.stop()
         self.pump4.stop()
-
-    def make_dilution(
-        self, vial, pump1_volume=0, pump2_volume=0, pump3_volume=0, extra_vacuum=5
-    ):
-        make_dilution(
-            device=self,
-            vial=vial,
-            pump1_volume=pump1_volume,
-            pump2_volume=pump2_volume,
-            pump3_volume=pump3_volume,
-            extra_vacuum=extra_vacuum,
-        )
 
     def measure_temperature(self):
         def queued_function():

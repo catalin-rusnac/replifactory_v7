@@ -55,7 +55,7 @@ class RealCultureWrapper:
         self.print_updater_status()
         if dilution_factor is None:
             dilution_factor = self.culture.updater.dilution_factor
-        self.culture.make_dilution(target_dose, dilution_factor)
+        self.culture.make_culture_dilution(target_dose, dilution_factor)
 
 
 

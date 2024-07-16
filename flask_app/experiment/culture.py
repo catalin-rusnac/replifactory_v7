@@ -4,6 +4,7 @@ import numpy as np
 from experiment.database_models import CultureData, PumpData, CultureGenerationData
 from experiment.growth_rate import calculate_last_growth_rate
 from experiment.ModelBasedCulture.morbidostat_updater import MorbidostatUpdater, morbidostat_updater_default_parameters
+from minimal_device.dilution import make_device_dilution
 
 from .ModelBasedCulture.culture_growth_model import CultureGrowthModel, culture_growth_model_default_parameters
 from .ModelBasedCulture.real_culture_wrapper import RealCultureWrapper
@@ -318,7 +319,7 @@ class Culture:
         concentration_dict = {k: v for k, v in sorted(concentration_dict.items(), key=lambda item: item[0])}
         return generation_dict, concentration_dict
 
-    def make_dilution(self, target_concentration=None, dilution_factor=None, current_volume=None):
+    def make_culture_dilution(self, target_concentration=None, dilution_factor=None, current_volume=None, postfill=False):
         if self.drug_concentration is None:
             self.drug_concentration = self.parameters["pump1_stock_drug_concentration"]
         if target_concentration is None:
@@ -326,7 +327,6 @@ class Culture:
         main_pump_volume, drug_pump_volume = self.calculate_pump_volumes(target_concentration=target_concentration,
                                                                          dilution_factor=dilution_factor,
                                                                          current_volume=current_volume)
-        device = self.experiment.device
         lock_acquired_here = False
         self.updater.status_dict["dilution_pump_volumes"] = "current_concentration: %.2f, target_concentration: %.2f, main_pump_volume: %.2f, drug_pump_volume: %.2f" % (
             self.drug_concentration, target_concentration, main_pump_volume, drug_pump_volume)
@@ -334,10 +334,13 @@ class Culture:
             if not self.experiment.locks[self.vial].locked():
                 self.experiment.locks[self.vial].acquire(blocking=True)
                 lock_acquired_here = True
-            device.make_dilution(vial=self.vial,
+            postfill = self.parameters["postfill"] > 0
+            make_device_dilution(device=self.experiment.device,
+                                 vial=self.vial,
                                  pump1_volume=main_pump_volume,
                                  pump2_volume=drug_pump_volume,
-                                 extra_vacuum=5)
+                                 extra_vacuum=5,
+                                 postfill=postfill)
             self.last_dilution_time = datetime.now()
             self.log_pump_data(main_pump_volume, drug_pump_volume)
             self.calculate_generation_concentration_after_dil(main_pump_volume=main_pump_volume,
