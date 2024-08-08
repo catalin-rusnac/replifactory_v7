@@ -19,10 +19,10 @@ def close_valve_gracefully(device, vial):
 
 
 def make_device_dilution(device, vial, pump1_volume=0, pump2_volume=0, pump3_volume=0, extra_vacuum=5, postfill=True):
-    assert 0 <= pump1_volume <= 20
-    assert 0 <= pump2_volume <= 20
-    assert 0 <= pump1_volume + pump2_volume <= 25
-    assert 0 <= pump3_volume <= 20
+    assert 0 <= pump1_volume <= 30
+    assert 0 <= pump2_volume <= 30
+    assert 0 <= pump1_volume + pump2_volume <= 30
+    assert 0 <= pump3_volume <= 30
     assert 0 <= extra_vacuum <= 20
     dilution_volume = pump1_volume + pump2_volume + pump3_volume
     waste_volume = dilution_volume + extra_vacuum
