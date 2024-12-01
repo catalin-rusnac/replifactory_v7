@@ -43,6 +43,13 @@ class Stepper:
     REGISTER_CONFIG = 0x18  # IC configuration, 16 bits
     REGISTER_STATUS = 0x19  # Status, 16 bits
 
+    COMMAND_RESET_DEVICE = 0b11000000  # Device is reset to power-up conditions
+    COMMAND_SOFT_STOP = 0b10110000  # Stops motor with a deceleration phase
+    COMMAND_HARD_STOP = 0b10111000  # Stops motor immediately
+    COMMAND_SOFT_HIZ = 0b10100000  # Puts the bridges into high impedance status after a deceleration phase
+    COMMAND_HARD_HIZ = 0b10101000  # Puts the bridges into high impedance status immediately
+    COMMAND_GET_STATUS = 0b11010000  # Returns the STATUS register value
+
     min_speed_rps = 0.01
     max_speed_rps = 4
     acceleration = 0.01
@@ -59,6 +66,27 @@ class Stepper:
         self.cs = cs
         self.port = None
         self.step_mode = None
+
+    def reset_device(self):
+        self.port.write([self.COMMAND_RESET_DEVICE])
+
+    def soft_stop(self):
+        self.port.write([self.COMMAND_SOFT_STOP])
+
+    def hard_stop(self):
+        self.port.write([self.COMMAND_HARD_STOP])
+
+    def soft_hiz(self):
+        self.port.write([self.COMMAND_SOFT_HIZ])
+
+    def hard_hiz(self):
+        self.port.write([self.COMMAND_HARD_HIZ])
+
+    def get_status_command(self):
+        self.port.write([self.COMMAND_GET_STATUS])
+        # Assuming the status needs to be read back
+        status = self.port.read(2)
+        return status
 
     @property
     def kval_hold(self):
@@ -100,6 +128,64 @@ class Stepper:
         self.write_register(self.REGISTER_KVAL_RUN, value=value, n_bits=7, n_bytes=1)
         self._kval_run = value
 
+    def set_stall_threshold_ma(self, current_ma):
+        """
+        set the stall threshold in mA
+        """
+        # 0000000 is 31.25 mA and 1111111 is 4000 mA
+        value = current_ma / 4000
+        assert 0 <= value <= 1
+        self.stall_threshold = value
+        self.write_register(self.REGISTER_STALL_TH, value=self.stall_threshold, n_bits=7, n_bytes=1)
+
+    def detect_stall(self, verbose=False):
+        status_register = self.read_register(self.REGISTER_STATUS, n_bytes=2)
+        status_byte_high = status_register[0]  # First byte for bits 8-15
+
+        step_loss_a = not (status_byte_high >> 5) & 0b1  # Bit 13
+        step_loss_b = not (status_byte_high >> 6) & 0b1  # Bit 14
+        if verbose:
+            if step_loss_a:
+                print("Stall detected on bridge A")
+            elif step_loss_b:
+                print("Stall detected on bridge B")
+            else:
+                print("No stall detected")
+        return step_loss_a or step_loss_b
+
+    def print_register_meanings(self):
+        status_register = self.read_register(self.REGISTER_STATUS, n_bytes=2)
+        status_byte_high = status_register[0]  # First byte for bits 8-15
+        status_byte_low = status_register[1]  # Second byte for bits 0-7
+
+        meanings = {
+            0: ("HiZ", "True" if (status_byte_low >> 0) & 0b1 else "False"),
+            1: ("BUSY", "True" if (status_byte_low >> 1) & 0b1 else "False"),
+            2: ("SW_F", "Closed" if (status_byte_low >> 2) & 0b1 else "Open"),
+            3: ("SW_EVN", "True" if (status_byte_low >> 3) & 0b1 else "False"),
+            4: ("DIR", "Clockwise" if (status_byte_low >> 4) & 0b1 else "Counter-clockwise"),
+            5: ("MOT_STATUS", "Active" if (status_byte_low >> 5) & 0b1 else "Inactive"),
+            6: ("NOTPERF_CMD", "True" if (status_byte_low >> 6) & 0b1 else "False"),
+            7: ("WRONG_CMD", "True" if (status_byte_low >> 7) & 0b1 else "False"),
+            8: ("UVLO", "False" if (status_byte_high >> 0) & 0b1 else "True"),
+            9: ("TH_WRN", "False" if (status_byte_high >> 1) & 0b1 else "True"),
+            10: ("TH_SD", "False" if (status_byte_high >> 2) & 0b1 else "True"),
+            11: ("OCD", "False" if (status_byte_high >> 3) & 0b1 else "True"),
+            12: ("STEP_LOSS_A", "False" if (status_byte_high >> 5) & 0b1 else "True"),
+            13: ("STEP_LOSS_B", "False" if (status_byte_high >> 6) & 0b1 else "True"),
+            14: ("SCK_MOD", "True" if (status_byte_high >> 7) & 0b1 else "False"),
+        }
+
+        print("STATUS REGISTER MEANINGS:")
+        print("-" * 30)
+
+        for bit in range(16):
+            if bit in meanings:
+                bit_name, bit_value = meanings[bit]
+                print(f"{bit_name}: {bit_value}")
+
+        print("-" * 30)
+
     def reset_speeds(self):
         self.write_register(
             self.REGISTER_FS_SPD, value=self.full_step_speed, n_bits=10, n_bytes=2
@@ -119,6 +205,7 @@ class Stepper:
         self.set_max_speed(rot_per_sec=self.max_speed_rps)
         self.set_acceleration(value=self.acceleration)
         self.set_deceleration(value=self.deceleration)
+
 
     def connect(self):
         self.port = self.device.spi.get_port(cs=self.cs, freq=1e4, mode=3)
@@ -154,6 +241,7 @@ class Stepper:
             set_param = reg | 0b00000000
             self.port.write([set_param])  # do not use write_to_port here - lock is already acquired
             bytes_to_write = split_bytes(value, n_bits, n_bytes)
+            # print("Writing to register %s: %s" % (reg, bytes_to_write))
             for b in bytes_to_write:
                 self.port.write([b])
                 time.sleep(0.001)
@@ -320,14 +408,6 @@ class Stepper:
         """
         self.write_to_port([0b10111000])
         # self.port.write([0b10111000])
-
-    def hard_hiz(self):
-        # self.port.write([0b10101000])  # Hard HiZ
-        self.write_to_port([0b10101000])
-
-    def soft_hiz(self):
-        # self.port.write([0b10100000])  # soft HiZ
-        self.write_to_port([0b10100000])
 
     def reset(self):
         # self.port.write([0b11000000])
