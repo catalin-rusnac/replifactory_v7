@@ -13,6 +13,7 @@ from pyftdi.usbtools import UsbTools
 from .adc import Photodiodes
 from .eeprom import EEPROM
 from .lasers import Lasers
+from .led import RGBLedController
 from .od_sensor import OdSensor
 from .pump import Pump
 from .pwm import PwmController
@@ -37,8 +38,10 @@ class BaseDevice:
     PORT_THERMOMETER_VIALS = 0x49  # ADT 75  #0x4C?
     PORT_THERMOMETER_VIALS_v4 = 0x4C  # device version 4
     PORT_THERMOMETER_BOARD = 0x48  # ADT 75
-    PORT_PWM = 0x70  # PCA9685
-    PORT_EEPROM = 0x53
+    PORT_PWM = 0x70  # PCA9685 motors
+    PORT_RGB_PWM1 = 0x5C # PCA9685 LEDs 1-5
+    PORT_RGB_PWM2 = 0x5D # PCA9685 LEDs 6-7
+    PORT_EEPROM = 0x53  # deprecated
 
     def __init__(self, ftdi_address="ftdi://ftdi:2232h", connect=False, directory=None):
         t0 = time.time()
@@ -80,6 +83,7 @@ class BaseDevice:
         self.stirrers = Stirrers(device=self)
         self.photodiodes = Photodiodes(device=self)
         self.lasers = Lasers(device=self)
+        self.rgb_leds = RGBLedController(device=self)
         self.od_sensors = {v: OdSensor(device=self, vial_number=v) for v in range(1, 8)}
         self.pump1 = Pump(device=self, cs=0)
         self.pump2 = Pump(device=self, cs=1)
@@ -138,6 +142,7 @@ class BaseDevice:
         self.stirrers.connect()
         self.photodiodes.connect()
         self.lasers.connect()
+        self.rgb_leds.connect()
         self.thermometers.connect()
         self.pump1.connect()
         self.pump2.connect()
@@ -253,6 +258,7 @@ class BaseDevice:
     def hello(self):
         self.pwm_controller.play_turn_on_sound()
         self.lasers.blink()
+        self.rgb_leds.blink_hello()
         print("Said hello from device")
 
     def update_cultures(self):

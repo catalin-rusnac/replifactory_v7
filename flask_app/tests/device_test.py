@@ -6,6 +6,7 @@ import time
 
 dev = BaseDevice()
 dev.connect()
+dev.hello()
 dev.stirrers._set_duty_cycle(1, 0.6)
 time.sleep(3)
 
