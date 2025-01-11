@@ -241,6 +241,18 @@ def force_connect_device():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
+# route set led color for vials 1-7 in rgb values for a given vial
+# rgb values are between 0 and 1
+@device_routes.route('/set-led-color', methods=['POST'])
+def set_led_color():
+    data = request.get_json()
+    vial = data.get('vial')
+    red = data.get('red')
+    green = data.get('green')
+    blue = data.get('blue')
+    current_app.device.rgb_leds.set_led(vial, red, green, blue)
+    return jsonify({'success': True,
+                    'device_states': current_app.device.device_data})
 
 @device_routes.route('/reset-eeprom-memory', methods=['POST'])
 def reset_eeprom_memory():

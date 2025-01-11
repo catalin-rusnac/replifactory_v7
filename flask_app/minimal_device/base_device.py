@@ -38,7 +38,7 @@ class BaseDevice:
     PORT_THERMOMETER_VIALS = 0x49  # ADT 75  #0x4C?
     PORT_THERMOMETER_VIALS_v4 = 0x4C  # device version 4
     PORT_THERMOMETER_BOARD = 0x48  # ADT 75
-    PORT_PWM = 0x70  # PCA9685 motors
+    PORT_PWM = 0x5A  # PCA9685 motors
     PORT_RGB_PWM1 = 0x5C # PCA9685 LEDs 1-5
     PORT_RGB_PWM2 = 0x5D # PCA9685 LEDs 6-7
     PORT_EEPROM = 0x53  # deprecated

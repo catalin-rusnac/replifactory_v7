@@ -59,8 +59,8 @@ class Lasers:
         self.multiplexer_port.write_to(3, [0b11111111])
 
     def blink(self):
-        for i in range(7):
+        for i in range(3):
             self.switch_all_on()
-            time.sleep(0.04)
+            time.sleep(0.08)
             self.switch_all_off()
             time.sleep(0.04)

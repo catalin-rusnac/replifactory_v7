@@ -82,8 +82,8 @@ class RGBLedController:
         """Set the PWM duty cycle for a specific pin on a given port."""
         msb, lsb = divmod(round(4095 * duty_cycle), 0x100)
         with self.lock:
-            port.write_to(0x06 + pin * 4, [0x00])  # ON low byte
-            port.write_to(0x07 + pin * 4, [0x00])  # ON high byte
+            # port.write_to(0x06 + pin * 4, [0x00])  # ON low byte
+            # port.write_to(0x07 + pin * 4, [0x00])  # ON high byte
             port.write_to(0x08 + pin * 4, [lsb])   # OFF low byte
             port.write_to(0x09 + pin * 4, [msb])   # OFF high byte
 
@@ -106,29 +106,19 @@ class RGBLedController:
     def blink_hello(self):
         """Blink green LEDs."""
         self.set_all_leds(1, 0, 0) # red
-        time.sleep(0.5)
-        self.set_all_leds(0, 0, 0) # off
-        time.sleep(0.5)
         self.set_all_leds(0, 1, 0) # green
-        time.sleep(0.5)
-        self.set_all_leds(0, 0, 0) # off
-        time.sleep(0.5)
         self.set_all_leds(0, 0, 1) # blue
-        time.sleep(0.5)
-        self.set_all_leds(0, 0, 0) # off
-        time.sleep(0.5)
         self.set_all_leds(1, 1, 1) # white
-        time.sleep(0.5)
+        time.sleep(0.2)
         self.set_all_leds(0, 0, 0) # off
-
-        time.sleep(0.5)
+        time.sleep(0.2)
 
     def turn_off_all(self):
         """Turn off all LEDs."""
         self.set_all_leds(0, 0, 0)
 
 # Usage example:
-# device = YourDeviceObject()
+# device = BaseDevice()
 # rgb_controller = RGBLedController(device)
 # rgb_controller.set_led(1, 1, 0, 0)  # Set LED 1 to red
 # rgb_controller.set_led(6, 0, 1, 0)  # Set LED 6 to green
