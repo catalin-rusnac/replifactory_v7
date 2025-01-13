@@ -1,9 +1,20 @@
-const express = require('express');
-const cors = require('cors');
-const ngrok = require('ngrok');
-const { createProxyMiddleware } = require('http-proxy-middleware');
-const path = require('path');
+import express from 'express';
+import cors from 'cors';
+import ngrok from 'ngrok';
+import { createProxyMiddleware } from 'http-proxy-middleware';
+import path from 'path';
+import fs from 'fs';
+import os from 'os';
+import util from 'util';
+import { exec } from 'child_process';
+import { spawn } from 'child_process';
+import { fileURLToPath } from 'url';
 
+const execAsync = util.promisify(exec);
+
+// __dirname workaround for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const expressPort = 3000;
@@ -28,7 +39,6 @@ app.use('/api', (req, res, next) => {
 // Added console log after adding the middleware
 console.log('Middleware added to app');
 
-
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../../dist')));
 console.log(path.join(__dirname, '../../dist'));
@@ -43,12 +53,7 @@ app.use((req, res, next) => {
   next();
 });
 
-const fs = require('fs');
-
-const os = require('os');
 const ngrokConfigPath = getNgrokConfigPath();
-const util = require('util');
-const execAsync = util.promisify(require('child_process').exec);
 
 function getNgrokConfigPath() {
   switch (os.platform()) {
@@ -67,55 +72,48 @@ let authtoken = null;
 let ngrokUrl = null;
 let sshUrl = null;
 
-const { spawn } = require('child_process');
-
-
 async function startNgrok() {
   console.log('Starting ngrok tunnel setup...');
-  //if not running
-    if (!ngrokUrl) {
-      ngrokUrl = await ngrok.connect({
-        addr: expressPort,
-      });
-        const pythonScriptPath = path.join(__dirname, 'url_into_sheet.py');
-        const pythonScript = spawn('python', [pythonScriptPath]);
-      pythonScript.stdout.on('data', (data) => {
-      console.log(`Python script output: ${data}`);
-        });
+  if (!ngrokUrl) {
+    ngrokUrl = await ngrok.connect({
+      addr: expressPort,
+    });
 
-      console.log(`ngrok tunnel started: ${ngrokUrl}`);
-    }
-    else {
-      console.log('ngrok tunnel already running at:', ngrokUrl);
-    }
+    const pythonScriptPath = path.join(__dirname, 'url_into_sheet.py');
+    const pythonScript = spawn('python', [pythonScriptPath]);
+
+    pythonScript.stdout.on('data', (data) => {
+      console.log(`Python script output: ${data}`);
+    });
+
+    console.log(`ngrok tunnel started: ${ngrokUrl}`);
+  } else {
+    console.log('ngrok tunnel already running at:', ngrokUrl);
+  }
 }
 
 async function checkNgrokStatus() {
+  if (fs.existsSync(ngrokConfigPath)) {
+    const ngrokConfig = fs.readFileSync(ngrokConfigPath, 'utf8');
 
+    const authtokenRegex = /authtoken:\s(.+)/;
+    const authtokenMatch = ngrokConfig.match(authtokenRegex);
 
-// Check if ngrok.yml file exists
-if (fs.existsSync(ngrokConfigPath)) {
-  // Read the ngrok.yml file
-  const ngrokConfig = fs.readFileSync(ngrokConfigPath, 'utf8');
-
-  // Extract the authtoken value from ngrokConfig using regular expression
-  const authtokenRegex = /authtoken:\s(.+)/;
-  const authtokenMatch = ngrokConfig.match(authtokenRegex);
-
-  if (authtokenMatch && authtokenMatch[1]) {
-    authtoken = authtokenMatch[1];
-    console.log(`ngrok authtoken found.`);
-    startNgrok().catch(error => { // Catch the error here
-      console.error('Failed to start ngrok:', error);
-    });
+    if (authtokenMatch && authtokenMatch[1]) {
+      authtoken = authtokenMatch[1];
+      console.log('ngrok authtoken found.');
+      try {
+        await startNgrok();
+      } catch (error) {
+        console.error('Failed to start ngrok:', error);
+      }
+    }
   }
-}
 }
 
 async function initializeNgrok() {
   try {
     await checkNgrokStatus();
-    // Check ngrok status every 5 minutes
     setInterval(checkNgrokStatus, 60 * 1000);
     console.log('Ngrok initialization complete.');
   } catch (error) {
@@ -123,7 +121,6 @@ async function initializeNgrok() {
   }
 }
 
-//
 initializeNgrok().catch(error => {
   console.error('Failed to initialize ngrok:', error);
 });
@@ -131,7 +128,7 @@ initializeNgrok().catch(error => {
 app.post('/tunnels/set-ngrok-authtoken', async (req, res) => {
   const { authtoken } = req.body;
   try {
-    console.log('Setting ngrok authtoken...')
+    console.log('Setting ngrok authtoken...');
     await execAsync(`ngrok config add-authtoken ${authtoken}`);
     console.log('ngrok authtoken set successfully.');
     await startNgrok();
@@ -141,7 +138,6 @@ app.post('/tunnels/set-ngrok-authtoken', async (req, res) => {
     res.status(500).json({ error: 'Failed to set ngrok authtoken' });
   }
 });
-
 
 app.get('/tunnels/start-ssh', async (req, res) => {
   try {
@@ -175,13 +171,10 @@ app.get('/tunnels/stop-ssh', async (req, res) => {
   }
 });
 
-
-
 app.get('/tunnels/get-ngrok-url', (req, res) => {
-  console.log('Getting ngrok url:',req.path);
+  console.log('Getting ngrok url:', req.path);
   res.json({ ngrokUrl: ngrokUrl });
 });
-
 
 app.listen(expressPort, () => {
   console.log(`Express app listening on port ${expressPort}`);
