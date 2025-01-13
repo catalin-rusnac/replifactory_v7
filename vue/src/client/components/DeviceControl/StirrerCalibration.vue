@@ -258,18 +258,19 @@ export default {
   padding-top: 20px;
   /*align-items: ; bottom */
   align-items: flex-end;
-  /*height: 300px;*/
+  //height: 100px;
   border: 1px solid #e3e3e3; /* Sets the color of the border */
   border-radius: 10px; /* Adjust as needed to create the level of roundness you desire */
 }
 
 .slider {
-  -webkit-appearance: slider-vertical;
-  height: 100%;
+  height: 10%;
   margin: 0 3px;
   width: 10px;
   pointer-events: none;
   opacity: 0.4;
+  writing-mode: vertical-lr;
+  direction: rtl;
 }
 
 .active {
@@ -277,7 +278,6 @@ export default {
   pointer-events: all;
   color: #fff; /* And this to the text color you want for active buttons */
 }
-
 
 .button {
   background-color: transparent;

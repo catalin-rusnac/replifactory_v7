@@ -2,34 +2,27 @@
   <div class="experiment-parameters">
     <div class="stock-parameters">
       <template v-for="(value, key) in currentExperiment.parameters" :key="key">
-<!--        if key not cultures or growth_parameters-->
-        <CFormFloating class="stock-parameter-field" v-if="key !== 'cultures' && key !== 'growth_parameters'">
-          <CFormInput
-            :class="{ 'active': currentExperiment.status !== 'running' }"
-            :model-value="value"
-            @update:model-value="v => currentExperiment.parameters[key] = v"
-            :id="`floatingInput_${key}`"
-            :floating-label="`${key}`"
-            :placeholder="`Enter ${key}`"
-            :readonly="currentExperiment.status === 'running'"
-            @change="handleInputChange(key, $event.target.value)"
-          />
-        </CFormFloating>
+        <v-text-field
+          v-if="key !== 'cultures' && key !== 'growth_parameters'"
+          class="stock-parameter-field"
+          :label="`${key}`"
+          v-model="this.currentExperiment.parameters[key]"
+          :readonly="currentExperiment.status === 'running'"
+          @update:modelValue="handleInputChange(key, $event)"
+        ></v-text-field>
       </template>
+<!--      TODO: arrange pump order-->
     </div>
-
   </div>
 </template>
 
 <script>
 import { mapActions, mapState } from "vuex";
-import { CFormFloating, CFormInput } from "@coreui/vue";
-// import TableComponent from "../PredictionTab/TableComponent.vue";
+import { VTextField } from "vuetify/components";
 
 export default {
   components: {
-    CFormFloating,
-    CFormInput,
+    VTextField,
   },
   computed: {
     ...mapState('experiment', ['currentExperiment']),
@@ -37,11 +30,13 @@ export default {
   methods: {
     ...mapActions('experiment', ['updateExperimentParameters']),
     async handleInputChange(key, value) {
+      // Update the parameter in the local state
+      this.currentExperiment.parameters[key] = value;
+
+      // Send updated parameters to the Vuex store or backend
       await this.updateExperimentParameters({
         experimentId: this.currentExperiment.id,
-        parameters: {
-          ...this.currentExperiment.parameters, [key]: value,
-        },
+        parameters: this.currentExperiment.parameters,
       });
     },
   },
@@ -52,29 +47,26 @@ export default {
 .experiment-parameters {
   display: flex;
   flex-direction: column;
-  max-width: 100%;
-  margin-left: 1rem;
+  width: 100%;
 }
 
-.stock-parameters, .culture-parameters {
+.stock-parameters {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
+  flex-wrap: wrap; /* Allow wrapping if screen width is too small */
+  gap: 10px; /* Space between the fields */
+  justify-content: space-between; /* Distribute fields evenly */
+  margin-top: 20px; /* Add space above the parameter fields */
 }
 
 .stock-parameter-field {
-  flex: 0 1 220px;
-  max-width: 320px;
-  margin: 10px;
+  flex: 1 1 350px; /* Set flexible basis and width */
+  max-width: 350px; /* Prevent fields from growing beyond 350px */
+  margin: 0; /* Remove margin; spacing is handled by gap */
 }
 
 @media (max-width: 768px) {
   .stock-parameters {
-    flex-wrap: wrap;
-  }
-  .stock-parameter-field {
-    flex: 1 1 100%;
+    justify-content: center; /* Center fields on smaller screens */
   }
 }
 </style>

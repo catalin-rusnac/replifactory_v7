@@ -1,83 +1,97 @@
 <template>
-  <div id="app">
-    <ul class="nav nav-tabs" id="myTab">
-      <li class="nav-item" v-for="tab in tabs" :key="tab">
-        <a class="nav-link" :class="{ active: currentTab === tab }" href="#" @click="currentTab = tab">{{ tab }}</a>
-      </li>
-    </ul>
+  <v-app :dark="true">
+    <v-container>
+      <!-- Navigation Drawer -->
+      <v-navigation-drawer v-model="drawer" expand-on-hover rail>
+<!--        <v-list-item v-if="drawer" title="Replifactory" subtitle="Experimental Evolution System" />-->
+        <v-divider />
+        <v-list density="compact" nav>
+          <v-list-item
+            v-for="tab in tabs"
+            :key="tab.name"
+            link
+            @click="selectTab(tab.name)"
+            :active="currentTab === tab.name"
+            :title="tab.name"
+            :prepend-icon="tab.icon"
+            :value="tab.name"
+          ></v-list-item>
+        </v-list>
+      </v-navigation-drawer>
 
-    <div class="tab-content">
-      <ExperimentTab v-if="currentTab === 'Experiment'"/>
-      <PredictionTab v-if="currentTab === 'Prediction'"/>
-      <DeviceControl v-if="currentTab === 'Device'" />
-      <NgrokTab v-if="currentTab === 'Remote'" />
-      <HelpTab v-if="currentTab === 'Help'" />
-      <StatusTab v-if="currentTab === 'Status'"/>
-      <LogsTab v-if="currentTab === 'Logs'"/>
-    </div>
-  </div>
+      <!-- Tab Content -->
+      <div class="tab-content">
+        <component :is="currentComponent" v-if="currentComponent" />
+      </div>
+    </v-container>
+  </v-app>
 </template>
 
 <script>
-import { mapState } from 'vuex';
+import { mapState } from "vuex";
+import { defineAsyncComponent } from "vue";
+import '@mdi/font/css/materialdesignicons.css';
 
-import DeviceControl from './components/DeviceControl/DeviceControl';
-// import HomeTab from '@/client/components/HomeTab/HomeTab';
-import ExperimentTab from "@/client/components/ExperimentTab/ExperimentTab";
-import NgrokTab from "@/client/components/Remote/NgrokTab";
-import HelpTab from "@/client/components/HelpTab/HelpTab";
-import StatusTab from "@/client/components/StatusTab/StatusTab";
-import LogsTab from "@/client/components/LogsTab/LogsTab";
-import PredictionTab from "@/client/components/PredictionTab/PredictionTab";
+// Define components dynamically
+const components = {
+  ExperimentTab: () => import("@/client/components/ExperimentTab/ExperimentTab.vue"),
+  PredictionTab: () => import("@/client/components/PredictionTab/PredictionTab.vue"),
+  DeviceControl: () => import("./components/DeviceControl/DeviceControl.vue"),
+  NgrokTab: () => import("@/client/components/Remote/NgrokTab.vue"),
+  HelpTab: () => import("@/client/components/HelpTab/HelpTab.vue"),
+  StatusTab: () => import("@/client/components/StatusTab/StatusTab.vue"),
+  LogsTab: () => import("@/client/components/LogsTab/LogsTab.vue"),
+};
 
 export default {
-  name: 'App',
-  computed: {
-  ...mapState(['hostname']),
-  },
-  async mounted() {
-    await this.$store.dispatch('fetchHostname');
-  document.title = this.hostname;
-},
-
-  components: {
-    ExperimentTab,
-    DeviceControl,
-    NgrokTab,
-    HelpTab,
-    StatusTab,
-    LogsTab,
-    PredictionTab
-  },
+  name: "App",
   data() {
     return {
-      currentTab: 'Experiment',
-      tabs: ['Experiment', 'Prediction', 'Device', 'Remote', 'Help', "Status", "Logs"]
+      drawer: true,
+      currentTab: "Experiment",
+      tabs: [
+        { name: "Experiment", component: "ExperimentTab", icon: "mdi-flask" },
+        { name: "Prediction", component: "PredictionTab", icon: "mdi-chart-bell-curve-cumulative" },
+        { name: "Device Control", component: "DeviceControl", icon: "mdi-robot-industrial" },
+        { name: "Ngrok", component: "NgrokTab", icon: "mdi-remote-desktop" },
+        { name: "Docs", component: "HelpTab", icon: "mdi-book-open-variant" },
+        { name: "Status", component: "StatusTab", icon: "mdi-monitor-eye" },
+        { name: "Logs", component: "LogsTab", icon: "mdi-file-document-alert-outline" },
+      ],
     };
   },
+  computed: {
+    ...mapState(["hostname"]),
+    currentComponent() {
+      const activeTab = this.tabs.find((tab) => tab.name === this.currentTab);
+      return activeTab ? activeTab.component : null;
+    },
+  },
+  async mounted() {
+    await this.$store.dispatch("fetchHostname");
+    document.title = this.hostname;
+  },
+  methods: {
+    selectTab(tabName) {
+      this.currentTab = tabName;
+    },
+  },
+  components: Object.fromEntries(
+    Object.entries(components).map(([key, value]) => [key, defineAsyncComponent(value)])
+  ),
 };
 </script>
 
-<style>
+<style scoped>
 #app {
-  font-family: 'Avenir', Helvetica, Arial, sans-serif;
+  font-family: "Avenir", Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: #2c3e50;
   margin: 0 auto;
-  justify-content: center;
-}
-
-.nav {
-  display: flex;
-  justify-content: center; /* Center the tabs horizontally */
-  align-items: center; /* Center the tabs vertically */
 }
 
 .tab-content {
-  max-width: 1600px;
-  justify-content: center;
-  align-items: center;
-  margin: 0 auto;
+  padding: 20px;
 }
 </style>

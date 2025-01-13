@@ -134,6 +134,7 @@ mutations: {
         state.ods = data.ods;
         state.odsignals = data.odsignals;
         state.temperatures = data.temperatures;
+        state.leds = data.leds;
     },
     toggleCalibrationMode(state) {
       state.calibrationModeEnabled = !state.calibrationModeEnabled;

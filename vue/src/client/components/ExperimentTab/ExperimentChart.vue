@@ -2,17 +2,17 @@
   <div id="CulturePlot">
     <div class="control-container">
       <div class="button-row">
-        <CButton class="plot-button" color="success" @click="plotAllData">Plot Data</CButton>
+        <v-btn class="plot-button" color="success" @click="plotAllData" title="Plot selected vials. alt-click to select single vial">Plot Data</v-btn>
         <div class="button-container">
           <div v-for="vial in vials" :key="vial" class="button-item">
-            <CButton
+            <v-btn
               :color="selectedVials[vial] ? 'primary' : 'secondary'"
               :style="{ 'background-color': selectedVials[vial] ? '#007bff' : 'transparent' }"
               @click="toggleVial(vial, $event)"
               :id="`vial-button-${vial}`"
             >
               {{ `Vial ${vial}` }}
-            </CButton>
+            </v-btn>
           </div>
         </div>
       </div>
@@ -26,12 +26,10 @@
 
 <script>
 import { mapActions, mapState } from 'vuex';
-import { CButton } from '@coreui/vue';
 import VialPlot from './VialPlot.vue';
 
 export default {
   components: {
-    CButton,
     VialPlot,
   },
   name: "ExperimentChart",
@@ -60,7 +58,7 @@ export default {
 
     async toggleVial(vial, event) {
       let updatedVials;
-      if (event.ctrlKey) {
+      if (event.altKey) {
         updatedVials = { [vial]: true };
       } else {
         updatedVials = { ...this.selectedVials, [vial]: !this.selectedVials[vial] };
@@ -101,7 +99,7 @@ export default {
 .plot-button {
   width: fit-content;
   min-width: 120px;
-  height: 60px;
+  margin: 10px;
 }
 
 .button-container {

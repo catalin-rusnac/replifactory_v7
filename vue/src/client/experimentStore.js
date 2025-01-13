@@ -3,8 +3,7 @@ import api from '@/api';
 export default {
   namespaced: true,
   state: {
-    audioContext: new (window.AudioContext || window.webkitAudioContext)(),
-
+    audioContext: null, // Delay initialization
     hostname: "replifactory_GUI",
     errorMessage: null,
     experiments: [],
@@ -19,6 +18,9 @@ export default {
     simulation_data: {1: null, 2: null, 3: null, 4: null, 5: null, 6: null, 7: null},
   },
   mutations: {
+    setAudioContext(state, audioContext) {
+      state.audioContext = audioContext;
+    },
     setSelectedVials(state, selectedVials) {
         state.selectedVials = selectedVials;
     },
@@ -92,13 +94,11 @@ export default {
     },
 
     async updateExperimentParameters({ commit, state }, {parameters }) {
-      console.log("updateExperimentParameters", state.currentExperiment.id, parameters);
       commit('setCurrentExperimentParameters', parameters);
       await api.put(`/experiments/current/parameters`, {parameters: state.currentExperiment.parameters});
     },
 
     async fetchCurrentExperiment({ commit }) {
-      console.log("fetchCurrentExperiment");
       const response = await api.get('/experiments/current');
       commit('setCurrentExperiment', response.data);
     },
@@ -107,12 +107,10 @@ export default {
         commit('setCurrentExperiment', response.data);
     },
     async startExperiment({ dispatch }) {
-      console.log("startExperiment");
       try {
         const response = await api.put(`/experiments/current/status`, { status: 'running' });
         if (response.data.message) {
           // Handle success response
-          console.log(response.data.message);
           dispatch('reloadExperimentParameters');
           dispatch('playStartingExperimentSound');
 

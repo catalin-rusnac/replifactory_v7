@@ -1,32 +1,32 @@
 <template>
-  <CToast v-if="errorMessage" :autohide="true" :fade="true" @hidden="clearErrorMessage">
-    <CToastHeader closeButton>
-      Error
-    </CToastHeader>
-    <CToastBody>
+  <v-container>
+    <v-snackbar v-model="errorMessage" timeout="4000">
       {{ errorMessage }}
-    </CToastBody>
-  </CToast>
+    </v-snackbar>
 
-  <div class="experiment-setup">
-    <div class="d-flex">
-      <CFormFloating class="flex-grow-1 mt-3">
-        <CFormSelect
+    <div class="experiment-setup">
+      <!-- First Line: Select Experiment and New Experiment Button -->
+      <div class="d-flex line-container">
+        <v-select
           v-model="currentExperimentId"
-          id="floatingSelect"
-          floatingLabel="Select Experiment"
-          aria-label="Floating label select example"
-          @change="handleExperimentSelected"
-        >
-          <option v-for="experiment in reversedExperiments" :key="experiment.id" :value="experiment.id">
-            {{ experiment.name }}
-          </option>
-        </CFormSelect>
-      </CFormFloating>
-      <CButton color="primary" @click="handleNewExperimentButton" class="mt-3 ml-3">+</CButton>
+          :items="reversedExperiments"
+          item-title="name"
+          item-value="id"
+          label="Select Experiment"
+          dense
+          outlined
+          class="flex-grow-1 mt-3 experiment-select"
+          :style="{ minWidth: '150px' }"
+          @update:modelValue="handleExperimentSelected"
+        ></v-select>
+<!--        make button same height as dropdown-->
+        <v-btn color="primary" @click="handleNewExperimentButton" class="mt-3" :style="{ height: '60px' }" title="New Experiment">+</v-btn>
+      </div>
 
-      <div class="button-container">
-        <CButton class="start-button"
+      <!-- Second Line: Start, Pause, Stop Buttons -->
+      <div class="d-flex line-container">
+        <v-btn
+          class="start-button"
           :class="{ 'active': currentExperiment.status === 'running' }"
           :style="{ 'background-color': currentExperiment.status === 'running' ? '#28a745' : 'transparent' }"
           @click="startExperiment()"
@@ -34,8 +34,9 @@
           title="Start the experiment loop - measure OD every minute and dilute the cultures as necessary, according to the parameters."
         >
           Start
-        </CButton>
-        <CButton class="start-button"
+        </v-btn>
+        <v-btn
+          class="start-button"
           :class="{ 'active': currentExperiment.status === 'paused' }"
           :style="{ 'background-color': currentExperiment.status === 'paused' ? '#ffc107' : 'transparent' }"
           @click="pauseExperiment()"
@@ -43,53 +44,47 @@
           color="warning"
         >
           Pause
-        </CButton>
-        <CButton class="start-button"
+        </v-btn>
+        <v-btn
+          class="start-button"
           :class="{ 'active': currentExperiment.status === 'stopped' }"
           :style="{ 'background-color': currentExperiment.status === 'stopped' ? '#dc3545' : 'transparent' }"
           @click="stopExperiment()"
           @dblclick="forceStopExperiment()"
-          color="danger"
+          color="error"
           title="Stop gracefully - wait for the current dilution to finish."
         >
           Stop
-        </CButton>
+        </v-btn>
+      </div>
+
+      <!-- Create New Experiment -->
+      <div v-if="showCreate" class="d-flex">
+        <v-text-field
+          v-model="newExperimentname"
+          label="New Experiment Name"
+          outlined
+          dense
+          class="flex-grow-1 mt-3"
+        ></v-text-field>
+        <v-btn color="success" @click="createAndSelectExperiment" class="ml-3 mt-3">Create Experiment</v-btn>
+      </div>
+
+      <!-- Experiment Parameters -->
+      <div v-if="currentExperiment">
+        <ExperimentParameters />
       </div>
     </div>
-
-    <div v-if="showCreate" class="d-flex">
-      <CFormFloating class="new-experiment" v-if="showCreate">
-        <CFormInput
-          :model-value="newExperimentname"
-          @update:model-value="v => newExperimentname = v"
-          id="floatingInput"
-          floatingLabel="New Experiment Name"
-        />
-      </CFormFloating>
-
-      <CButton color="success" @click="createAndSelectExperiment" class="ml-3 mt-3">Create Experiment</CButton>
-    </div>
-    <div v-if="currentExperiment">
-      <ExperimentParameters />
-    </div>
-  </div>
+  </v-container>
 </template>
 
 <script>
 import { mapActions, mapState } from "vuex";
-import { CButton, CFormFloating, CFormInput, CFormSelect, CToast, CToastBody, CToastHeader } from "@coreui/vue";
 import ExperimentParameters from "./ExperimentParameters.vue";
 
 export default {
   components: {
     ExperimentParameters,
-    CButton,
-    CFormFloating,
-    CFormInput,
-    CFormSelect,
-    CToast,
-    CToastBody,
-    CToastHeader,
   },
   data() {
     return {
@@ -106,15 +101,11 @@ export default {
   },
   methods: {
     ...mapActions('experiment', ['setCurrentExperimentAction', 'createExperiment', 'fetchExperiments', 'fetchCurrentExperiment', 'startExperiment', 'pauseExperiment', 'stopExperiment']),
-    async handleExperimentSelected(event) {
+    async handleExperimentSelected() {
       if (this.currentExperiment.status === 'running' || this.currentExperiment.status === 'paused') {
         await this.stopExperiment(this.currentExperiment.id);
       }
-      const selectedExperimentId = event.target.value;
-      if (selectedExperimentId !== this.currentExperimentId) {
-        this.currentExperimentId = selectedExperimentId;
-        await this.setCurrentExperimentAction(this.currentExperimentId);
-      }
+      await this.setCurrentExperimentAction(this.currentExperimentId);
     },
     async handleNewExperimentButton() {
       this.showCreate = !this.showCreate;
@@ -128,7 +119,7 @@ export default {
       } else {
         this.currentExperimentId = await this.createExperiment({ name: this.newExperimentname });
       }
-      await this.handleExperimentSelected({ target: { value: this.currentExperimentId } });
+      await this.handleExperimentSelected(this.currentExperimentId);
       this.showCreate = false;
       this.newExperimentname = '';
     },
@@ -145,12 +136,19 @@ export default {
 .experiment-setup {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   width: 100%;
 }
 
-.new-experiment {
-  flex: 1 1 100%;
+.line-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center; /* Center items if wrapping */
+  gap: 1rem; /* Space between items */
+}
+
+.experiment-select {
+  min-width: 150px;
 }
 
 .button-container {
@@ -160,20 +158,17 @@ export default {
   flex-grow: 1;
   margin-left: 1rem;
 }
+
 .start-button {
-  margin-top: 1rem;
-  margin-left: 1rem;
-  flex-grow: 1;
+  margin-top: 10px;
+  width: 220px;
   display: flex;
   align-items: center;
 }
 
 @media (max-width: 768px) {
-  .stock-parameters {
-    flex-wrap: wrap;
-  }
-  .stock-parameter-field {
-    flex: 1 1 100%;
+  .line-container {
+    flex-direction: column; /* Stack items vertically on smaller screens */
   }
 }
 </style>

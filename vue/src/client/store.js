@@ -1,8 +1,6 @@
-import Vue from 'vue';
 import Vuex from 'vuex';
 import device from './deviceStore.js';
 import experiment from './experimentStore.js';
-Vue.use(Vuex);
 
 import api from '@/api.js';
 export default new Vuex.Store({

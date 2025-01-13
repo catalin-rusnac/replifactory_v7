@@ -21,36 +21,37 @@
     </div>
 
     <div id="SimulationPlot">
-      <div class="controls-container">
-        <CButton color="info" @click="plotSelectedVial" class="control-button">Plot Predicted Experiment</CButton>
-        <select v-model="selectedVial" class="form-select control-dropdown">
-          <option v-for="vial in vials" :key="vial" :value="vial">
-            Vial {{ vial }}
-          </option>
-        </select>
-      </div>
+    <div class="controls-container">
+      <v-btn color="info" class="control-button" height="60px" @click="plotSelectedVial" style="align-self: flex-start;">Plot Predicted Experiment</v-btn>
+      <v-select
+        v-model="selectedVial"
+        :items="vials"
+        class="control-dropdown"
+        label="Vial"
+        width="70px"
+        style="align-self: flex-start;"
+      ></v-select>
+    </div>
       <VialPlot v-if="selectedVial" :vial="selectedVial" :data="simulation_data[selectedVial]" />
     </div>
-
   </div>
   <div v-else class="no-experiment-selected">
     <p>No experiment selected</p>
   </div>
 </template>
 
+
 <script>
 import { mapActions, mapState } from 'vuex';
 import TableComponent from "@/client/components/PredictionTab/TableComponent.vue";
 import GrowthParameters from "./GrowthParameters.vue";
 import VialPlot from "@/client/components/ExperimentTab/VialPlot.vue";
-import { CButton } from '@coreui/vue';
 
 export default {
   components: {
     GrowthParameters,
     TableComponent,
     VialPlot,
-    CButton,
   },
   data() {
     return {
@@ -116,13 +117,11 @@ export default {
     async plotSelectedVial() {
       if (!this.currentExperiment || !this.selectedVial) {
         return;
-      }{
-        await this.fetchSimulationPlot(this.selectedVial);
       }
+      await this.fetchSimulationPlot(this.selectedVial);
     },
-
   },
-}
+};
 </script>
 
 <style scoped>
@@ -153,10 +152,6 @@ export default {
   height: 100%;
 }
 
-.form-select {
-  width: 100px;
-}
-
 .container-wrapper {
   display: flex;
   justify-content: center;
@@ -167,16 +162,15 @@ export default {
 
 .tables-container {
   display: flex;
-  justify-content: center; /* Centers the split horizontally */
-  align-items: flex-start; /* Aligns tables at the top */
-  gap: 20px; /* Adds a 20px gap between the tables */
-  max-width: 100%; /* Prevents the tables from stretching too far apart */
-  flex-wrap: wrap; /* Allows tables to wrap if needed */
-  min-width: 24px; /* Adjust this to your table's minimum width */
+  justify-content: center;
+  align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
 }
 
-.control-parameters, .growth-parameters {
-  flex: 1; /* Allows tables to grow and shrink as needed */
-  min-width: 724px; /* Adjust this to your table's minimum width */
+.control-parameters,
+.growth-parameters {
+  flex: 1;
+  min-width: 724px;
 }
 </style>

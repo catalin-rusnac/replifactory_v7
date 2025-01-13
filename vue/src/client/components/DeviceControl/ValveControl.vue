@@ -99,14 +99,13 @@ export default {
   text-align: center;
   margin: 10px;
   box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.2);
-  /*border: 2px solid red;*/
+  border: 2px solid red;
   border-radius: 10px;
-  color: black;
 }
 
 .btn-danger, .active{
   background-color: transparent;
-  color: #960000;
+  color: #950909;
 }
 
 .btn-success, .active{

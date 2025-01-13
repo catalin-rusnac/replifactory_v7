@@ -7,9 +7,9 @@
 
 
 <script>
-import StirrerCalibration from "@/client/components/DeviceControl/StirrerCalibration";
+import StirrerCalibration from "@/client/components/DeviceControl/StirrerCalibration.vue";
 
-export default{
+export default {
   name: 'StirrerControl',
   components: {
     StirrerCalibration,
@@ -44,8 +44,8 @@ export default{
   background: #d3d3d3;
   outline: none;
   opacity: 0.7;
-  writing-mode: bt-lr;
-  -webkit-appearance: slider-vertical;
+  writing-mode: vertical-lr;
+  direction: rtl;
 }
 
 .stirrer-spinner {
@@ -61,5 +61,4 @@ export default{
   --cui-spinner-animation-speed: 2s;
   vertical-align: middle;
 }
-
 </style>
