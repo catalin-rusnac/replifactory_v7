@@ -361,5 +361,26 @@ mutations: {
           });
       });
     },
+    setLedColor({commit}, payload) {
+        const { vial, red, green, blue } = payload;
+        console.log("Setting LED color", {vial, red, green, blue});
+        return new Promise((resolve, reject) => {
+            api.post('/set-led-color', { vial:vial, red:red, green:green, blue:blue })
+                .then(response => {
+                    if (response.data.success) {
+                        commit('setAllDeviceStates', response.data.device_states);
+                        resolve();
+                    } else {
+                        console.error('Error setting LED color:', response.data.message);
+                        reject();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error setting LED color:', error);
+                    reject(error);
+                });
+        });
+    },
+
   },
 };
