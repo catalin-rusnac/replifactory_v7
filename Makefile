@@ -19,8 +19,7 @@ install-uv:
 	fi
 
 setup-uv:
-	cd ~/replifactory_v7
-	if [ ! -f "flask_app/.uvconfig" ]; then \
+	if [ ! -f "flask_app/.venv" ]; then \
 	  echo "Initializing UV in flask_app..."; \
 	  uv init flask_app; \
 	else \
@@ -40,6 +39,7 @@ install-pm2:
 		echo "Node.js and npm already installed. No changes made."; \
 	fi
 	npm install pm2 -g; \
+	cd vue && npm install -y
 
 setup-pm2:
 	pm2 start ecosystem.config.js
