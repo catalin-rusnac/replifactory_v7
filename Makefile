@@ -21,8 +21,8 @@ install-uv:
 setup-uv:
 	cd ~/replifactory_v7
 	uv init flask_app
-	cd flask_app/
-	uv add waitress flask pyftdi yaml pyyaml numpy scipy matplotlib flask_cors flask_sqlalchemy flask_migrate pandas schedule plotly
+	cd flask_app && uv add waitress flask pyftdi yaml pyyaml numpy scipy matplotlib flask_cors flask_sqlalchemy flask_migrate pandas schedule plotly
+
 
 install-pm2:
 	@if ! command -v npm > /dev/null; then \
