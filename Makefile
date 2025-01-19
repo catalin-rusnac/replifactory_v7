@@ -10,10 +10,12 @@ install-git:
 	fi
 
 install-uv:
-	if ! dpkg -s uv > /dev/null; then \
+	if ! command -v uv > /dev/null; then \
+		echo "Installing uv..."; \
 		curl -LsSf https://astral.sh/uv/install.sh | sh; \
 		source $HOME/.local/bin/env \
-	fi
+	else \
+		echo "uv already installed. No changes made."; \
 
 setup-uv:
 	cd ~/replifactory_v7
