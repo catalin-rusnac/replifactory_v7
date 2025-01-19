@@ -26,7 +26,7 @@ setup-uv:
 	else \
 	  echo "UV already initialized in flask_app."; \
 	fi
-	cd flask_app && uv add waitress flask pyftdi yaml pyyaml numpy scipy matplotlib flask_cors flask_sqlalchemy flask_migrate pandas schedule plotly
+	cd flask_app && uv add waitress flask pyftdi pyyaml numpy scipy matplotlib flask_cors flask_sqlalchemy flask_migrate pandas schedule plotly
 
 
 install-pm2:
