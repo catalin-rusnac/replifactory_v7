@@ -22,7 +22,7 @@ setup-uv:
 	cd ~/replifactory_v7
 	if [ ! -f "flask_app/.uvconfig" ]; then \
 	  echo "Initializing UV in flask_app..."; \
-	  uv init flask_app \
+	  uv init flask_app; \
 	else \
 	  echo "UV already initialized in flask_app."; \
 	fi
