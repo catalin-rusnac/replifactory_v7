@@ -1,32 +1,49 @@
 #cd; git clone http://github.com/catalin-rusnac/replifactory_v7; cd replifactory_v7; make install
+
 include /etc/environment
-install: check_env_variables install_apt_dependencies node-pi updatepath pip ngrok dwservice_install
-	#cd vue && npm install -y; # not needed with built files
-	cd flask_app && pip install -r requirements.txt;
-	make services-ctl
+
+install: install-uv setup-uv install-pm2 setup-pm2 vps
+
+install-git:
+	if ! dpkg -s git > /dev/null; then \
+		sudo apt-get install git -y; \
+	fi
+
+install-uv:
+	if ! dpkg -s uv > /dev/null; then \
+		curl -LsSf https://astral.sh/uv/install.sh | sh; \
+		source $HOME/.local/bin/env
+	fi
+
+setup-uv:
+	cd ~/replifactory_v7
+	uv init flask_app
+	cd flask_app/
+	uv add waitress flask pyftdi yaml pyyaml numpy scipy matplotlib flask_cors flask_sqlalchemy flask_migrate pandas schedule plotly
+
+install-pm2:
+	@if ! command -v npm > /dev/null; then \
+		echo "Installing Node.js and npm for Raspberry Pi..."; \
+		curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash \
+		nvm install 22 \
+		node -v; \
+		npm -v; \
+	else \
+		echo "Node.js and npm already installed. No changes made."; \
+	fi
+	npm install pm2 -g; \
+
+setup-pm2:
+	pm2 start ecosystem.config.js
+	pm2 save
+	pm2 startup
+	pm2 status
 
 windows-install:
 	cd vue && npm install -y
 	cd flask_app && pip install -r requirements.txt
 
-run: run-flask run-express
-
-run-flask:
-	python flask_app/server.py &
-
-develop-flask:
-	python flask_app/server.py develop &
-
-run-express:
-	node vue/src/server/express_server.js &
-
-run-vue:
-	cd vue && npm run serve
-
-build:
-	cd vue && npm run build
-
-ngrok:
+install-ngrok:
 	@echo "Checking for ngrok..."
 	@if ! command -v ngrok > /dev/null; then \
 		echo "Installing ngrok..."; \
@@ -52,33 +69,10 @@ swap:
 	fi
 
 
-node-pi:
-	@if ! command -v node > /dev/null; then \
-		echo "Installing Node.js and npm for Raspberry Pi..."; \
-		curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -; \
-		sudo apt-get install -y nodejs; \
-		echo "Node.js and npm installed successfully"; \
-	else \
-		echo "Node.js and npm already installed. No changes made."; \
-	fi
-
-pip:
-	@echo "Checking for pip..."
-	@if ! command -v pip > /dev/null; then \
-  		echo "Installing distutils..."; \
-	    sudo apt-get install python3-distutils -y; \
-		echo "Installing pip..."; \
-		curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py; \
-		sudo python3 get-pip.py; \
-		rm get-pip.py; \
-	fi
-
 copy_to_www:
 	@echo "Copying contents of vue/dist/ to /var/www/html..."
 	@sudo cp -r vue/dist/* /var/www/html
 	@echo "Copied contents of vue/dist/ to /var/www/html."
-
-APT_DEPENDENCIES = python3-distutils python3-scipy python3-numpy python3-pandas libatlas-base-dev python3-dev gfortran libopenblas-dev autossh
 
 install_apt_dependencies: swap
 	@echo "Checking for apt dependencies..."
@@ -104,38 +98,6 @@ kill-express:
 
 kill-flask:
 	sudo nohup fuser -k 5000/tcp &
-
-directories:
-	@chmod 777 ./
-	@if [ ! -d "logs" ]; then \
-		echo "Creating logs directory..."; \
-		mkdir logs; \
-		chmod 777 logs; \
-	fi
-	@if [ ! -d "db" ]; then \
-		echo "Creating db directory..."; \
-		mkdir db; \
-		chmod 777 db; \
-	fi
-
-services-ctl: directories stunnel
-	@echo "Checking for flask and vue services..."
-	@if ! cmp services/flask/flask.service /etc/systemd/system/flask.service >/dev/null 2>&1; then \
-		sudo cp services/flask/flask.service /etc/systemd/system/flask.service; \
-		echo "Copied services/flask/flask.service to /etc/systemd/system/flask.service"; \
-	fi
-	if ! cmp services/vue/vue.service /etc/systemd/system/vue.service >/dev/null 2>&1; then \
-		sudo cp services/vue/vue.service /etc/systemd/system/vue.service; \
-		echo "Copied services/vue/vue.service to /etc/systemd/system/vue.service"; \
-	fi
-	@echo "Reloading systemctl daemon..."
-	sudo systemctl daemon-reload
-	@echo "Enabling flask and vue services..."
-	sudo systemctl enable flask.service
-	sudo systemctl enable vue.service
-	@echo "Starting flask and vue services..."
-	sudo systemctl start flask.service
-	sudo systemctl start vue.service
 
 update-full:
 	git pull
@@ -178,6 +140,10 @@ wifi_add_network:
 	sudo scripts/add_network.sh
 
 vps:
+	#install autossh if not already installed
+	if ! dpkg -s autossh > /dev/null; then \
+		sudo apt-get install autossh -y; \
+	fi
 	if systemctl is-active --quiet autossh.service; then \
 		sudo systemctl stop autossh.service; \
 	fi
