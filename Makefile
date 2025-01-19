@@ -16,6 +16,7 @@ install-uv:
 		source $HOME/.local/bin/env \
 	else \
 		echo "uv already installed. No changes made."; \
+	fi
 
 setup-uv:
 	cd ~/replifactory_v7
