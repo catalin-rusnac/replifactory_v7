@@ -21,10 +21,10 @@ install-uv:
 setup-uv:
 	cd ~/replifactory_v7
 	if [ ! -f "flask_app/.uvconfig" ]; then \
-	  echo "Initializing UV in flask_app..." \
+	  echo "Initializing UV in flask_app..."; \
 	  uv init flask_app \
 	else \
-	  echo "UV already initialized in flask_app." \
+	  echo "UV already initialized in flask_app."; \
 	fi
 	cd flask_app && uv add waitress flask pyftdi yaml pyyaml numpy scipy matplotlib flask_cors flask_sqlalchemy flask_migrate pandas schedule plotly
 
