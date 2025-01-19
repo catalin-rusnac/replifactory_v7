@@ -25,8 +25,8 @@ setup-uv:
 	else \
 	  echo "UV already initialized in flask_app."; \
 	fi
-	cd flask_app && uv add waitress flask pyftdi pyyaml numpy scipy matplotlib flask_cors flask_sqlalchemy flask_migrate pandas schedule plotly
-
+	cd flask_app && uv add -r requirements.txt
+	# waitress flask pyftdi pyyaml numpy scipy matplotlib flask_cors flask_sqlalchemy flask_migrate pandas schedule plotly
 
 install-pm2:
 	@if ! command -v npm > /dev/null; then \
@@ -45,6 +45,7 @@ setup-pm2:
 	pm2 start ecosystem.config.js
 	pm2 save
 	pm2 startup
+	sudo env PATH=$PATH:/home/pi/.nvm/versions/node/v22.13.0/bin /home/pi/.nvm/versions/node/v22.13.0/lib/node_modules/pm2/bin/pm2 startup systemd -u pi --hp /home/pi
 	pm2 status
 
 windows-install:
