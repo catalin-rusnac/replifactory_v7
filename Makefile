@@ -23,13 +23,13 @@ setup-uv:
 	  echo "Initializing UV in flask_app..."; \
 	  uv init flask_app; \
 	fi
+	cd flask_app && uv add -r requirements.txt
 	if ! grep -q "include-system-site-packages = true" flask_app/.venv/pyvenv.cfg; then \
 	  echo "Setting 'include-system-site-packages = true' in pyvenv.cfg..."; \
 	  sed -i 's/include-system-site-packages = false/include-system-site-packages = true/' flask_app/.venv/pyvenv.cfg || echo "include-system-site-packages = true" >> flask_app/.venv/pyvenv.cfg; \
 	else \
 	  echo "'include-system-site-packages' is already set to true."; \
 	fi
-	cd flask_app && uv add -r requirements.txt
 
 install-pm2:
 	@if ! command -v npm > /dev/null; then \
