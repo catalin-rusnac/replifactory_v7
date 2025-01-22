@@ -17,8 +17,20 @@ def capture_image():
     try:
         return capture_image_pi()
     except:
-        return capture_image_cv2()
+        try:
+            return capture_image_picamzero()
+        except:
+            return capture_image_cv2()
 
+@service_routes.route("/capture_picamzero")
+def capture_image_picamzero():
+    from picamzero import Camera
+    stream = io.BytesIO()
+    camera = Camera()
+    camera.capture(stream, format='jpeg')
+    camera.close()
+    stream.seek(0)
+    return send_file(stream, mimetype='image/jpeg', as_attachment=False)
 
 @service_routes.route("/capture_cv2")
 def capture_image_cv2():
