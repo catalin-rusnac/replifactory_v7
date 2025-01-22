@@ -21,8 +21,9 @@ install-uv:
 setup-uv:
 	if [ ! -d "flask_app/.venv" ]; then \
 	  echo "Initializing UV in flask_app..."; \
-	  uv init flask_app; \
+	  uv init flask_app || { echo "Project already initialized. Skipping..."; }; \
 	fi
+	echo "Installing Python dependencies in flask_app..."
 	cd flask_app && uv add -r requirements.txt
 	if ! grep -q "include-system-site-packages = true" flask_app/.venv/pyvenv.cfg; then \
 	  echo "Setting 'include-system-site-packages = true' in pyvenv.cfg..."; \
