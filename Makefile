@@ -19,34 +19,54 @@ install-uv:
 	fi
 
 setup-uv:
-	if [ ! -f "flask_app/.venv" ]; then \
+	if [ ! -d "flask_app/.venv" ]; then \
 	  echo "Initializing UV in flask_app..."; \
 	  uv init flask_app; \
+	fi
+	if ! grep -q "include-system-site-packages = true" flask_app/.venv/pyvenv.cfg; then \
+	  echo "Setting 'include-system-site-packages = true' in pyvenv.cfg..."; \
+	  sed -i 's/include-system-site-packages = false/include-system-site-packages = true/' flask_app/.venv/pyvenv.cfg || echo "include-system-site-packages = true" >> flask_app/.venv/pyvenv.cfg; \
 	else \
-	  echo "UV already initialized in flask_app."; \
+	  echo "'include-system-site-packages' is already set to true."; \
 	fi
 	cd flask_app && uv add -r requirements.txt
-	# waitress flask pyftdi pyyaml numpy scipy matplotlib flask_cors flask_sqlalchemy flask_migrate pandas schedule plotly
 
 install-pm2:
 	@if ! command -v npm > /dev/null; then \
 		echo "Installing Node.js and npm for Raspberry Pi..."; \
 		curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash \
+		export NVM_DIR="$HOME/.nvm" \
+		[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"; \
 		nvm install 22 \
-		node -v; \
-		npm -v; \
+		echo "Node.js version: $$(node -v)"; \
+		echo "npm version: $$(npm -v)"; \
 	else \
 		echo "Node.js and npm already installed. No changes made."; \
 	fi
-	npm install pm2 -g; \
-	cd vue && npm install -y
+	if ! command -v pm2 > /dev/null; then \
+		echo "Installing pm2 globally..."; \
+		npm install pm2 -g; \
+	else \
+		echo "pm2 is already installed."; \
+	fi; \
+	if [ -d vue ]; then \
+		echo "Installing npm dependencies for the 'vue' directory..."; \
+		cd vue && npm install; \
+	else \
+		echo "'vue' directory not found. Skipping npm install."; \
+	fi
 
 setup-pm2:
-	pm2 start ecosystem.config.js
-	pm2 save
-	#pm2 startup
-	sudo env PATH=$PATH:/home/pi/.nvm/versions/node/v22.13.0/bin /home/pi/.nvm/versions/node/v22.13.0/lib/node_modules/pm2/bin/pm2 startup systemd -u pi --hp /home/pi
-	pm2 status
+	@echo "Starting PM2 with ecosystem.config.js..."
+	pm2 start ecosystem.config.js || { echo "Failed to start PM2 with ecosystem.config.js"; exit 1; }
+	@echo "Saving PM2 process list..."
+	pm2 save || { echo "Failed to save PM2 process list"; exit 1; }
+	@echo "Setting up PM2 to start on boot..."
+	pm2 startup || { echo "Failed to set up PM2 startup script"; exit 1; }
+	sudo env PATH=$$PATH:/home/pi/.nvm/versions/node/v22.13.0/bin \
+		/home/pi/.nvm/versions/node/v22.13.0/lib/node_modules/pm2/bin/pm2 startup systemd -u pi --hp /home/pi || { echo "Failed to configure PM2 systemd startup"; exit 1; }
+	@echo "Checking PM2 process status..."
+	pm2 status || { echo "Failed to retrieve PM2 status"; exit 1; }
 
 windows-install:
 	cd vue && npm install -y
