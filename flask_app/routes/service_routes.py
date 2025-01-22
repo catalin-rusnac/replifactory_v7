@@ -63,16 +63,15 @@ def capture_image_hq():
 
 @service_routes.route("/picapture")
 def capture_image_pi():
-    from picamera import PiCamera
-    stream = io.BytesIO()
-    camera = PiCamera()
-    camera.start_preview()
-    camera.capture(stream, format='jpeg')
-    camera.stop_preview()
+    from picamera2 import Picamera2
+    picam2 = Picamera2()
+    config = picam2.create_still_configuration()
+    picam2.configure(config)
 
-    stream.seek(0)
-    camera.close()
-    return send_file(stream, mimetype='image/jpeg', as_attachment=False)
+    picam2.start()
+    picam2.capture_file("img.jpg")
+    picam2.stop()
+    return send_file("img.jpg", mimetype='image/jpeg', as_attachment=False)
 
 
 from flask import abort
