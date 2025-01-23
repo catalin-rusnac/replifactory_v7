@@ -1,4 +1,5 @@
-#cd; git clone http://github.com/catalin-rusnac/replifactory_v7; cd replifactory_v7; make install
+# sudo apt-get install git
+# git clone http://github.com/catalin-rusnac/replifactory_v7; cd replifactory_v7; make install
 
 include /etc/environment
 
@@ -13,7 +14,7 @@ install-uv:
 	if ! command -v uv > /dev/null; then \
 		echo "Installing uv..."; \
 		curl -LsSf https://astral.sh/uv/install.sh | sh; \
-		source $HOME/.local/bin/env \
+		source "$HOME/.local/bin/env" \
 	else \
 		echo "uv already installed. No changes made."; \
 	fi
