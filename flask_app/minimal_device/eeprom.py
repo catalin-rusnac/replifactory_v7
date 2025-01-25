@@ -53,6 +53,8 @@ class EEPROM:
             self.connect()
         self.using_filewriter = False
         self.filename = "db/device_data.yaml"
+        if  not os.path.exists("db"):
+            self.filename = "../db/device_data.yaml"
         if not os.path.exists(self.filename):
             with open(self.filename, 'w') as file:
                 yaml.dump(default_device_data, file)
