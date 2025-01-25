@@ -3,10 +3,10 @@
 
 include /etc/environment
 
-install:
-	sudo apt-get update
-	sudo apt-get install libcap-dev python3-dev pip
-	sudo apt install python3-picamera2 --no-install-recommends
+
+install: add-path
+	sudo apt-get update -Y
+	sudo apt-get install libcap-dev python3-dev pip -Y
 
 	make install-uv setup-uv install-pm2 install-vue setup-pm2
 
@@ -45,9 +45,11 @@ install-pm2:
 	@if ! command -v npm > /dev/null; then \
 		echo "Installing Node.js and npm for Raspberry Pi..."; \
 		curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash; \
-		export NVM_DIR="$HOME/.nvm"; \
-		[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"; \
-		!nvm install 22; \
+		export NVM_DIR="$$HOME/.nvm"; \
+		[ -s "$$NVM_DIR/nvm.sh" ] && \. "$$NVM_DIR/nvm.sh"; \
+		echo "NVM_DIR: $$(echo $$NVM_DIR)"; \
+		echo "nvm version: $$(nvm --version)"; \
+		nvm install 22; \
 		echo "Node.js version: $$(node -v)"; \
 		echo "npm version: $$(npm -v)"; \
 	else \
@@ -160,7 +162,7 @@ push:
 
 
 dwservice_install:
-	cd services
+	cd services; \
 	if [ ! -f dwagent.sh ]; then \
 		wget https://www.dwservice.net/download/dwagent.sh; \
 	fi
