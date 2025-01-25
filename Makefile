@@ -3,7 +3,12 @@
 
 include /etc/environment
 
-install: install-uv setup-uv install-pm2 setup-pm2 vps
+install:
+	sudo apt-get update
+	sudo apt-get install libcap-dev python3-dev pip
+	sudo apt install python3-picamera2 --no-install-recommends
+
+	make install-uv setup-uv install-pm2 install-vue setup-pm2
 
 install-git:
 	if ! dpkg -s git > /dev/null; then \
@@ -14,6 +19,7 @@ install-uv:
 	if ! command -v uv > /dev/null; then \
 		echo "Installing uv..."; \
 		curl -LsSf https://astral.sh/uv/install.sh | sh; \
+		source \$HOME/.local/bin/env \
 	else \
 		echo "uv already installed. No changes made."; \
 	fi
@@ -23,8 +29,8 @@ setup-uv:
 	  echo "Initializing UV in flask_app..."; \
 	  uv init flask_app || { echo "Project already initialized. Skipping..."; }; \
 	fi
-	echo "Installing Python dependencies in flask_app..."
-	cd flask_app && uv add -r requirements.txt
+	echo "Installing Python dependencies in flask_app...";
+	cd flask_app && uv add -r requirements.txt;
 	if ! grep -q "include-system-site-packages = true" flask_app/.venv/pyvenv.cfg; then \
 	  echo "Setting 'include-system-site-packages = true' in pyvenv.cfg..."; \
 	  sed -i 's/include-system-site-packages = false/include-system-site-packages = true/' flask_app/.venv/pyvenv.cfg || echo "include-system-site-packages = true" >> flask_app/.venv/pyvenv.cfg; \
@@ -32,13 +38,16 @@ setup-uv:
 	  echo "'include-system-site-packages' is already set to true."; \
 	fi
 
+install-vue:
+	cd vue && npm install -y
+
 install-pm2:
 	@if ! command -v npm > /dev/null; then \
 		echo "Installing Node.js and npm for Raspberry Pi..."; \
-		curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash \
-		export NVM_DIR="$HOME/.nvm" \
+		curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash; \
+		export NVM_DIR="$HOME/.nvm"; \
 		[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"; \
-		nvm install 22 \
+		!nvm install 22; \
 		echo "Node.js version: $$(node -v)"; \
 		echo "npm version: $$(npm -v)"; \
 	else \
