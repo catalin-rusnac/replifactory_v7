@@ -4,7 +4,7 @@
 include /etc/environment
 
 
-install: add-path
+install:
 	sudo apt-get update -Y
 	sudo apt-get install libcap-dev python3-dev pip -Y
 
