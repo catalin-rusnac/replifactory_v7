@@ -5,8 +5,8 @@ include /etc/environment
 
 
 install:
-	sudo apt-get update -Y
-	sudo apt-get install libcap-dev python3-dev pip -Y
+	sudo apt-get update
+	sudo apt-get install libcap-dev python3-dev pip
 
 	make install-uv setup-uv install-pm2 install-vue setup-pm2
 
