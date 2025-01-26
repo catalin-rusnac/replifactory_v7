@@ -176,6 +176,11 @@ wifi_new_config:
 	sudo chmod 600 /etc/wpa_supplicant/wpa_supplicant.conf
 	sudo systemctl restart dhcpcd
 
+add_wifi_network_nm:
+#add wifi network when using NetworkManager and set it to autoconnect
+	sudo nmcli connection add type wifi con-name "labwifi" ssid "labwifissid" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "labwifipsk" connection.autoconnect yes
+
+
 wifi_add_network:
 	chmod 755 scripts/add_network.sh
 	sudo scripts/add_network.sh
