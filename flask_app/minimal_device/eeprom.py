@@ -51,9 +51,9 @@ class EEPROM:
         self.writer = self.EepromWriter(self)
         if self.device.is_connected():
             self.connect()
-        self.using_filewriter = False
+        self.using_filewriter = True
         self.filename = "db/device_data.yaml"
-        if  not os.path.exists("db"):
+        if not os.path.exists("db"):
             self.filename = "../db/device_data.yaml"
         if not os.path.exists(self.filename):
             with open(self.filename, 'w') as file:
