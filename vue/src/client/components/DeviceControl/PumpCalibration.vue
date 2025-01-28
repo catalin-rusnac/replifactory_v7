@@ -19,7 +19,7 @@
           </td>
           <td>
             <button @click="toggleButtonState(index)" :class="{ 'stop-button': isStopButton[index] }">
-              <span v-if="!isStopButton[index]">Pump</span>
+              <span v-if="!isStopButton[index]">Start</span>
               <span v-else>Stop</span>
             </button>
           </td>
@@ -133,7 +133,7 @@ export default {
         alert('At least one valve must be open to start the pump');
         return;
       }
-      this.$set(this.isStopButton, index, !this.isStopButton[index]);
+      this.isStopButton[index] = !this.isStopButton[index];
       if (this.isStopButton[index]) {
         this.promptForMl(this.rows[index]);
       } else {
@@ -141,7 +141,7 @@ export default {
       }
     },
     resetButton(row) {
-      this.$set(this.isStopButton, row, false);
+      this.isStopButton[row] = false;
     },
     onTotalMlInput(row) {
       if (row.total_ml) {
@@ -151,6 +151,7 @@ export default {
           partIndex: this.pumpId,
           newCalibration: this.pumps.calibration[this.pumpId]
         });
+        this.isStopButton[row] = false;
       }
     },
     promptForMl(row) {
