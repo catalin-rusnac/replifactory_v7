@@ -62,7 +62,7 @@ class Stirrers:
             accelerate_duty_cycle = self.device.device_data["stirrers"]["calibration"][vial]["high"] * 2
             accelerate_duty_cycle = min(accelerate_duty_cycle, 1)
             self._set_duty_cycle(vial, accelerate_duty_cycle)
-            time.sleep(0.1)
+            time.sleep(0.05)
 
         self._set_duty_cycle(vial=vial, duty_cycle=duty_cycle)
 
