@@ -84,7 +84,7 @@ export default {
     get_info() {
       api.get('/status')
         .then(response => {
-          this.status_text = response.data.replace(/\n/g, "<br />");
+          this.status_text = `<pre>${JSON.stringify(response.data, null, 2)}</pre>`;
         })
         .catch(error => {
           console.error(error);
