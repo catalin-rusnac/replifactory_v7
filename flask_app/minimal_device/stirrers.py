@@ -50,7 +50,7 @@ class Stirrers:
         led_number = self.led_numbers[vial]
         return self.pwm_controller.get_duty_cycle(led_number=led_number)
 
-    def set_speed(self, vial, speed, accelerate=True):
+    def set_speed(self, vial, speed, accelerate=False):
         assert speed in ["stopped", "low", "high"]  # stopped, slow, fast
         self.check_calibration()
         if speed == "stopped":
@@ -62,7 +62,7 @@ class Stirrers:
             accelerate_duty_cycle = self.device.device_data["stirrers"]["calibration"][vial]["high"] * 1.5
             accelerate_duty_cycle = min(accelerate_duty_cycle, 1)
             self._set_duty_cycle(vial, accelerate_duty_cycle)
-            time.sleep(0.05)
+            time.sleep(0.01)
 
         self._set_duty_cycle(vial=vial, duty_cycle=duty_cycle)
 
