@@ -70,7 +70,7 @@ class Stirrers:
         for vial in range(1, 8):
             self._set_duty_cycle(vial, duty_cycle=0)
 
-    def set_speed_all(self, speed, accelerate=True):
+    def set_speed_all(self, speed, accelerate=False):
         assert speed in ["stopped", "low", "high"]
         for vial in range(1, 8):
             if speed == "stopped":
