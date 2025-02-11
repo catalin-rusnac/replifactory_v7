@@ -66,7 +66,7 @@ def capture_image_pi():
     from picamera2 import Picamera2
     picam2 = Picamera2()
     try:
-        config = picam2.create_still_configuration({"size": (1920, 1080)})
+        config = picam2.create_still_configuration()
         picam2.configure(config)
         picam2.start()
         picam2.capture_file("img.jpg")
