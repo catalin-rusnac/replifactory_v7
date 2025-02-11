@@ -26,7 +26,7 @@
           <input :value="odValue" @change="updateODCalibrationKeyAction({oldOD: odValue, newOD: $event.target.value})" type="number" step="0.1" />
         </td>
         <td>
-          <button @click="measureODCalibrationAction({odValue:odValue})">Measure</button>
+          <button @click="measureODCalibrationAction({odValue:odValue})">Remeasure</button>
         </td>
         <td v-for="vial in vials" :key="vial">
           <input class="calibration-signal" @change="updateODCalibrationValueAction({od: odValue, odsIndex:vial, newValue:$event.target.value})" v-model="ods.calibration[vial][odValue]" type="number" style="opacity: 60%" />
@@ -37,10 +37,12 @@
       </tr>
       <tr>
         <td>
-          <input v-model="newRowValue" type="number" step="0.1" />
+<!--          make this larger font and highlighted for better visibility-->
+          <input v-model="newRowValue" type="number" step="0.1" style="font-size: 10px; background-color: rgba(69,140,88,0.25);
+          text-align: center; width: 50px; height: 34px; border-radius: 4px; border: 2px solid rgb(94,163,123);"/>
         </td>
         <td>
-          <button class="button button-new" @click="measureODCalibrationAction({odValue: newRowValue})">Measure new probe</button>
+          <button class="button button-new" title="Add calibration probe with new OD value and measure signal in all 7 vials" @click="measureODCalibrationAction({odValue: newRowValue})">Measure new probe</button>
         </td>
       </tr>
     </tbody>
@@ -173,24 +175,30 @@ button {
   text-decoration: none;
   display: inline-block;
   font-size: 16px;
+  width: 100px;
   cursor: pointer;
-  border-radius: 12px;
+  border-radius: 5px;
   transition-duration: 0.4s;
   opacity: 60%;
 }
 
 .button-delete {
   background-color: #f26b6b;
+  border-radius: 5px;
+  width: 95px;
 }
 .button-delete:disabled {
   cursor: not-allowed;
   background-color: #f26b6b;
   opacity: 30%;
+
 }
 
 .button-new {
   background-color: #04b241;
   opacity: 80%;
+  width: 190px;
+  border-radius: 5px;
   margin: 15px 0px;
   padding: 5px 5px;
 }
@@ -225,7 +233,7 @@ button:hover {
 .od-output-value {
   font-size: 14px;
   font-weight: bold;
-  color: rgba(103, 76, 76, 0.54);
+  color: rgb(189, 46, 46);
   margin-top: 5px;
   padding: 0;
 }

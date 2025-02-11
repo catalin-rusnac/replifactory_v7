@@ -5,6 +5,7 @@ import numpy as np
 
 class Stirrers:
     led_numbers = {stirrer: 7 - stirrer for stirrer in [1, 2, 3, 4, 5, 6, 7]}
+    cooling_fan_led_number = 7
 
     def __init__(self, device):
         self.freq=1e5
@@ -45,6 +46,10 @@ class Stirrers:
         assert 0 <= duty_cycle <= 1
         led_number = self.led_numbers[vial]
         self.pwm_controller.set_duty_cycle(led_number=led_number, duty_cycle=duty_cycle)
+
+    def set_cooling_fan_duty_cycle(self, duty_cycle):
+        assert 0 <= duty_cycle <= 1
+        self.pwm_controller.set_duty_cycle(led_number=self.cooling_fan_led_number, duty_cycle=1-duty_cycle)
 
     def get_stirrer_duty_cycle(self, vial):
         led_number = self.led_numbers[vial]
@@ -98,7 +103,7 @@ class Stirrers:
             estimated_rpm = self.rpms[vial_number]
         if estimated_rpm is None:
             duty_cycle = self.get_stirrer_duty_cycle(vial_number)  # ftdi lock is checked here
-            estimated_rpm = 2000 * duty_cycle
+            estimated_rpm = 10000 * duty_cycle
         if estimated_rpm < 10:
             return 0
         ms_per_rotation = 60 / estimated_rpm * 1000
@@ -155,11 +160,11 @@ class Stirrers:
             rpm = 60 * self.freq / np.median(periods) / 4
         return rpm
 
-    def measure_rpm(self, vial_number=7):
+    def measure_rpm(self, vial_number=7, estimated_rpm=None):
         # if file db/skip_stirrer_speed_measurement exists, return 0
         if os.path.exists("db/skip_stirrer_speed_measurement"):
             return 0
-        rpm = self._measure_rpm_no_lock(vial_number)
+        rpm = self._measure_rpm_no_lock(vial_number, estimated_rpm=estimated_rpm)
         return rpm
 
     def measure_all_rpms(self, vials_to_measure=(1, 2, 3, 4, 5, 6, 7)):
@@ -172,21 +177,166 @@ class Stirrers:
         return results
 
     def get_calibration_curve(self, vial, n_points=10, time_sleep=2):
-        min_duty_cycle = self.device.device_data["stirrers"]["calibration"][vial]["low"]
-        max_duty_cycle = self.device.device_data["stirrers"]["calibration"][vial]["high"]
-        rpm_dc = {}
-        #accelerate to max duty cycle
+        """
+        Generate a calibration curve by mapping duty cycles to measured RPM for a given stirrer vial.
+
+        This function first accelerates the stirrer to its maximum duty cycle, then iterates
+        from the maximum down to the minimum duty cycle, measuring the RPM at each step.
+        An estimated RPM for the next duty cycle is also calculated for informational purposes.
+
+        Parameters:
+            vial (str/int): The identifier for the stirrer vial.
+            n_points (int): Number of measurement points between min and max duty cycles.
+            time_sleep (float): Time (in seconds) to wait after setting a duty cycle before measuring RPM.
+
+        Returns:
+            dict: A dictionary mapping each duty cycle (float) to its measured RPM (float).
+        """
+        # Retrieve minimum and maximum duty cycle values from device calibration data.
+        calibration_data = self.device.device_data["stirrers"]["calibration"][vial]
+        min_duty_cycle = calibration_data["low"]
+        max_duty_cycle = calibration_data["high"]
+
+        # Dictionary to store RPM measurements keyed by duty cycle.
+        rpm_by_duty = {}
+
+        # Accelerate the stirrer to the maximum duty cycle to ensure full speed.
         self._set_duty_cycle(vial, max_duty_cycle)
         time.sleep(3)
-        # start measuring from max duty cycle to min duty cycle
-        estimated_rpm = 3000
-        duty_cycles_measured = np.linspace(min_duty_cycle, max_duty_cycle, n_points)[::-1]
-        for i in range(len(duty_cycles_measured)):
-            duty_cycle = duty_cycles_measured[i]
-            if duty_cycle > 0:
-                self._set_duty_cycle(vial, duty_cycle)
-                time.sleep(time_sleep)
-                rpm = self.measure_rpm(vial, estimated_rpm=estimated_rpm)
-                rpm_dc[duty_cycle] = rpm
-                estimated_rpm = rpm*duty_cycles_measured[i+1]/duty_cycles_measured[i] if i < len(duty_cycles_measured)-1 else rpm
-        return rpm_dc
+
+        # Generate an array of duty cycles from maximum to minimum.
+        duty_cycles = np.linspace(min_duty_cycle, max_duty_cycle, n_points)[::-1]
+
+        print("\nStarting stirrer calibration measurements:")
+        print("-" * 50)
+        for i, duty_cycle in enumerate(duty_cycles):
+            # Skip any invalid or zero duty cycles.
+            if duty_cycle <= 0:
+                continue
+
+            # Set the current duty cycle and wait for stabilization.
+            self._set_duty_cycle(vial, duty_cycle)
+            time.sleep(time_sleep)
+
+            # Measure the RPM at this duty cycle.
+            rpm = self.measure_rpm(vial)
+            rpm_by_duty[duty_cycle] = rpm
+
+            # Calculate an estimated RPM for the next duty cycle (if available).
+            if i < len(duty_cycles) - 1:
+                next_duty = duty_cycles[i + 1]
+                estimated_rpm = rpm * next_duty / duty_cycle
+            else:
+                estimated_rpm = rpm
+
+            # Display the measurement results in a nicely formatted output.
+            # print(
+            #     f"Duty Cycle: {duty_cycle:6.4f} | Measured RPM: {rpm:8.2f} | Estimated Next RPM: {estimated_rpm:8.2f}")
+
+        print("-" * 50)
+        print("Calibration complete.\n")
+        return rpm_by_duty
+
+    def get_all_calibration_curves(self, n_points=4, n_repeats=3):
+        """
+        Generate calibration curves for all stirrers by mapping duty cycles to measured RPM.
+
+        Procedure:
+          1. Upward sweep:
+             - For each stirrer, start at 0.26 duty cycle.
+             - Increase linearly to min(1, calibration_data["high"] * 1.2).
+             - At each step, take several RPM measurements.
+          2. Pause:
+             - Stop all stirrers (set duty cycle to 0) and wait for 5 seconds.
+          3. Downward sweep:
+             - For each stirrer, start at 0.24 duty cycle.
+             - Decrease linearly to calibration_data["low"] * 0.8.
+             - At each step, take several RPM measurements.
+          4. Plot:
+             - For each stirrer, average the RPM values at each duty cycle.
+             - Plot the calibration data sorted by duty cycle.
+        """
+        curves = {vial: {} for vial in range(1, 8)}
+
+        # For each vial, calculate the duty cycle sweep values for the upward and downward sweeps.
+        up_sweeps = {}
+        down_sweeps = {}
+        for vial in range(1, 8):
+            calib = self.device.device_data["stirrers"]["calibration"][vial]
+            low_duty = calib["low"]
+            high_duty = calib["high"]
+            # Upward sweep: from 0.26 up to min(1, high_duty*1.2)
+            up_end = min(1, high_duty * 1.02)
+            up_sweeps[vial] = np.linspace(0.26, up_end, n_points)
+            # Downward sweep: from 0.24 down to low_duty*0.8 (np.linspace will produce descending values if 0.24 > low_duty*0.8)
+            down_end = low_duty * 0.5
+            down_sweeps[vial] = np.linspace(0.24, down_end, n_points)
+
+        # === Upward Sweep ===
+        # print("Starting upward sweep calibration...")
+        for point in range(n_points):
+            # Set the duty cycle for each vial to the current upward value.
+            for vial in range(1, 8):
+                duty = up_sweeps[vial][point]
+                self._set_duty_cycle(vial, duty)
+            time.sleep(5)
+            # Take multiple RPM measurements at this duty cycle.
+            for _ in range(n_repeats):
+                for vial in range(1, 8):
+                    duty = up_sweeps[vial][point]
+                    rpm = self.measure_rpm(vial)
+                    duty = float(f"{duty:.3f}")
+                    rpm = float(f"{rpm:.2f}")
+                    curves[vial].setdefault(duty, []).append(rpm)
+                    print(f"Vial: {vial}, Upward Duty Cycle: {duty}, RPM: {rpm}")
+                time.sleep(2)
+
+        # === Pause: Stop stirrers at 0 duty cycle for 5 seconds ===
+        # print("Pausing: Setting stirrers to 0 duty cycle for 5 seconds...")
+        for vial in range(1, 8):
+            self._set_duty_cycle(vial, 0)
+        time.sleep(5)
+
+        # === Downward Sweep ===
+        # print("Starting downward sweep calibration...")
+        # set
+        for point in range(n_points):
+            # Set the duty cycle for each vial to the current downward value.
+            for vial in range(1, 8):
+                duty = down_sweeps[vial][point]
+                self._set_duty_cycle(vial, duty)
+            time.sleep(5)
+            # Take multiple RPM measurements at this duty cycle.
+            for _ in range(n_repeats):
+                for vial in range(1, 8):
+                    duty = down_sweeps[vial][point]
+                    rpm = self.measure_rpm(vial)
+                    curves[vial].setdefault(duty, []).append(rpm)
+                    # print(f"Vial: {vial}, Downward Duty Cycle: {duty:.3f}, RPM: {rpm:.2f}")
+                time.sleep(2)
+
+        # Optionally, turn off the stirrers at the end.
+        for vial in range(1, 8):
+            self._set_duty_cycle(vial, 0)
+        # save to file
+        self.device.device_data["stirrers"]["speed_profiles"] = curves
+        self.device.eeprom.save_config_to_eeprom()
+        return curves
+
+    @staticmethod
+    def plot_stirrer_calibration_curves(data):
+        import plotly.graph_objects as go
+        fig = go.Figure()
+        for stirrer in data:
+            d = data[stirrer]
+            x = list(d.keys())
+            x = sorted(x)
+            y = [np.mean(d[k]) for k in x]
+            yerr = [np.std(d[k]) for k in x]
+            fig.add_trace(go.Scatter(x=x, y=y, mode='markers+lines', name=f'Stirrer {stirrer}',
+                                     error_y=dict(type='data', array=yerr)))
+        fig.update_layout(title='Stirrer calibration curves', xaxis_title='Duty cycle', yaxis_title='RPM')
+        fig.show()
+
+
+

@@ -10,6 +10,17 @@ from minimal_device.base_device import BaseDevice
 device_routes = Blueprint('device_routes', __name__)
 
 
+@device_routes.route('/run-ods-test', methods=['GET'])
+def ods_test():
+    max_signals = current_app.device.od_sensors[1].measure_optical_signal_max() # measures all sensors
+    return jsonify({'success': True, 'max_signals': max_signals})
+
+@device_routes.route('/run-stirrer-test', methods=['GET'])
+def stirrer_test():
+    dev = current_app.device
+    data = dev.stirrers.get_all_calibration_curves()
+    return jsonify(data)
+
 @device_routes.route('/set-<string:devicePart>-state', methods=['POST'])
 def set_device_state(devicePart):
     part_index = request.json['partIndex']
@@ -43,8 +54,6 @@ def set_device_state(devicePart):
             if current_app.device.pumps[part_index].is_pumping():
                 current_app.device.pumps[part_index].stop()
                 print("Actively stopped pump", part_index)
-        # volume = request.json['input']
-        # current_app.device.pumps[part_index].pump(volume)
 
     elif devicePart == 'stirrers':
         time.sleep(0.01)
@@ -105,7 +114,6 @@ def get_stirrer_speed():
     return send_file(img, mimetype='image/png',as_attachment=False)
 
 
-@device_routes.route('/get-stirrer-calibration-curve/<int:vial_number>', defaults={'n_points': 10, 'time_sleep': 2}, methods=['GET'])
 @device_routes.route('/get-stirrer-calibration-curve/<int:vial_number>/<int:n_points>/<int:time_sleep>', methods=['GET'])
 def get_stirrer_calibration_curve(vial_number, n_points, time_sleep):
     from flask import send_file

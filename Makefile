@@ -1,13 +1,21 @@
 # sudo apt-get install git
 # git clone http://github.com/catalin-rusnac/replifactory_v7; cd replifactory_v7; make install
+SHELL = /bin/bash
 
 include /etc/environment
 
 
 install:
 	sudo apt-get update
-	sudo apt-get install libcap-dev python3-dev pip
-
+	sudo apt-get install libcap-dev python3-dev python3-libcamera python3-kms++
+	@echo "Checking if $HOME/.local/bin is in PATH..."
+	@if ! echo $$PATH | grep -q "$$HOME/.local/bin"; then \
+		echo "Adding $HOME/.local/bin to PATH..."; \
+		echo "export PATH=\$$PATH:$$HOME/.local/bin" >> ~/.bashrc; \
+		. ~/.bashrc; \
+	else \
+		echo "$HOME/.local/bin is already in PATH. No changes made."; \
+	fi
 	make install-uv setup-uv install-pm2 install-vue setup-pm2
 
 install-git:
@@ -178,7 +186,7 @@ wifi_new_config:
 
 add_wifi_network_nm:
 #add wifi network when using NetworkManager and set it to autoconnect
-	sudo nmcli connection add type wifi con-name "labwifi" ssid "labwifissid" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "labwifipsk" connection.autoconnect yes
+	sudo nmcli connection add type wifi con-name "5th_floor" ssid "MolBio66" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "Molbio2014#" connection.autoconnect yes
 
 
 wifi_add_network:
@@ -296,3 +304,10 @@ update_and_restart_experiment:
 
 update-autofix:
 	@sudo nohup make wifi_add_network &
+
+sudo nmcli connection modify "preconfigured" connection.autoconnect-priority 11
+sudo nmcli connection modify "ABI" connection.autoconnect-priority 9
+sudo nmcli connection modify "5th_floor_real_ip" connection.autoconnect-priority 7
+sudo nmcli connection modify "5th_floor" connection.autoconnect-priority 1
+sudo nmcli connection modify "wifi" connection.autoconnect-priority 1
+sudo nmcli connection modify "wifi-1" connection.autoconnect-priority 1

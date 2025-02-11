@@ -92,7 +92,7 @@ export default {
   /*margin-top: 10px;*/
 }
 
-.btn-danger, .btn-success, .btn-warning{
+.btn-danger, .btn-success{
   font-size: 20px;
   padding: 10px;
   width: 90px;
@@ -103,15 +103,31 @@ export default {
   border-radius: 10px;
 }
 
-.btn-danger, .active{
-  background-color: transparent;
-  color: #950909;
+.btn-warning {
+  font-size: 20px;
+  padding: 10px;
+  width: 90px;
+  text-align: center;
+  margin: 10px;
+  background-color: #ffde17 !important;
+  color: black;
+  border-radius: 10px;
+
 }
 
-.btn-success, .active{
-  /*background-color: transparent;*/
+
+.btn-danger {
+  background-color: red;
   color: white;
+  border-color: red;
 }
+
+.btn-success {
+  background-color: green;
+  color: white;
+  border-color: green;
+}
+
 
 .btn-danger, .btn-success, .btn-warning:hover {
   cursor: pointer;

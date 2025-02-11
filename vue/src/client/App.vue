@@ -41,6 +41,7 @@ const components = {
   HelpTab: () => import("@/client/components/HelpTab/HelpTab.vue"),
   StatusTab: () => import("@/client/components/StatusTab/StatusTab.vue"),
   LogsTab: () => import("@/client/components/LogsTab/LogsTab.vue"),
+  SelfTest: () => import("@/client/components/DeviceControl/SelfTest/SelfTest.vue"),
 };
 
 export default {
@@ -53,6 +54,7 @@ export default {
         { name: "Experiment", component: "ExperimentTab", icon: "mdi-flask" },
         { name: "Prediction", component: "PredictionTab", icon: "mdi-chart-bell-curve-cumulative" },
         { name: "Device Control", component: "DeviceControl", icon: "mdi-robot-industrial" },
+        { name: "Device Test", component: "SelfTest", icon: "mdi-robot" },
         { name: "Ngrok", component: "NgrokTab", icon: "mdi-remote-desktop" },
         { name: "Docs", component: "HelpTab", icon: "mdi-book-open-variant" },
         { name: "Status", component: "StatusTab", icon: "mdi-monitor-eye" },

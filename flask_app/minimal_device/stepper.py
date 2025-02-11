@@ -128,6 +128,24 @@ class Stepper:
         self.write_register(self.REGISTER_KVAL_RUN, value=value, n_bits=7, n_bytes=1)
         self._kval_run = value
 
+    def set_ocd_threshold_ma(self, current_ma):
+        """
+        set the overcurrent detection threshold in mA
+        """
+        # 0000 is 375 mA and 1111 is 6000 mA
+        value = current_ma / 6000
+        assert 0 <= value <= 1
+        self.write_register(self.REGISTER_OCD_TH, value=value, n_bits=4, n_bytes=1)
+
+    def detect_ocd(self):
+        """
+        returns True if overcurrent detection is triggered
+        """
+        status_register = self.read_register(self.REGISTER_STATUS, n_bytes=2)
+        status_byte_high = status_register[0]  # First byte for bits 8-15
+        ocd = not (status_byte_high >> 4) & 0b1  # Bit 12
+        return ocd
+
     def set_stall_threshold_ma(self, current_ma):
         """
         set the stall threshold in mA
@@ -152,6 +170,18 @@ class Stepper:
             else:
                 print("No stall detected")
         return step_loss_a or step_loss_b
+
+    def detect_stall_and_ocd(self, verbose=False):
+        status_register = self.read_register(self.REGISTER_STATUS, n_bytes=2)
+        status_byte_high = status_register[0]
+        status_byte_low = status_register[1]
+
+        step_loss_a = not (status_byte_high >> 5) & 0b1  # Bit 13
+        step_loss_b = not (status_byte_high >> 6) & 0b1  # Bit 14
+        ocd = not (status_byte_high >> 4) & 0b1  # Bit 12
+
+        return [step_loss_a, step_loss_b, ocd]
+
 
     def print_register_meanings(self):
         status_register = self.read_register(self.REGISTER_STATUS, n_bytes=2)
@@ -219,19 +249,22 @@ class Stepper:
         self.write_register(self.REGISTER_DEC, value=value, n_bits=12, n_bytes=2)
 
     def set_min_speed(self, rot_per_sec=0.1):
-        # steps_per_sec = integer * 2**-24/250e-9   # page 43 in L6470H datasheet
-        correction_factor = 1.322
-        rot_per_sec = rot_per_sec * correction_factor
-        steps_per_sec = rot_per_sec * 2**22 / 25600
-        integer = steps_per_sec * 250e-9 / 2**-24
-        self.write_register(self.REGISTER_MIN_SPEED, value=integer / 2**12, n_bits=12, n_bytes=2)
+
+        steps_per_sec = 200 * rot_per_sec
+        tick = 250e-9  # 250 ns
+        speed_integer = int(steps_per_sec * tick * 2 ** 24)
+        SPEED_REGISTER = speed_integer * 2 ** -12
+
+        self.write_register(self.REGISTER_MIN_SPEED, value=SPEED_REGISTER, n_bits=12, n_bytes=2)
 
     def set_max_speed(self, rot_per_sec=4.0):
-        correction_factor = 1.322
-        rot_per_sec = rot_per_sec * correction_factor
-        steps_per_sec = rot_per_sec * 2**22 / 25600  # page 43 in L6470H datasheet
-        integer = steps_per_sec * 250e-9 / 2**-18
-        self.write_register(self.REGISTER_MAX_SPEED, value=integer / 2**10, n_bits=10, n_bytes=2)
+
+        steps_per_sec = 200 * rot_per_sec
+        tick = 250e-9  # 250 ns
+        speed_integer = int(steps_per_sec * tick * 2 ** 18)
+        MAX_SPEED_REGISTER = speed_integer * 2 ** -10
+
+        self.write_register(self.REGISTER_MAX_SPEED, value=MAX_SPEED_REGISTER, n_bits=10, n_bytes=2)
 
     def write_register(self, reg, value, n_bits, n_bytes):
         lock_acquired = self.device.lock_ftdi.acquire(timeout=15)
@@ -319,7 +352,7 @@ class Stepper:
         microsteps = int.from_bytes(self.read_register(self.REGISTER_ABS_POS), "big")
         return microsteps
 
-    def run(self, speed=0.001):
+    def run(self, speed=1):
         """
         run indefinitely at constant speed
         """
@@ -330,10 +363,15 @@ class Stepper:
             direction_bit = 0b1
         else:
             direction_bit = 0b0
-        speed = abs(speed)
-        # steps_per_sec = speed*2e-28/250e-9
+
+        rotation_per_sec = speed
+        steps_per_sec = 200 * rotation_per_sec
+        tick = 250e-9  # 250 ns
+        speed_integer = int(steps_per_sec * tick * 2 ** 28)
+        SPEED_REGISTER = speed_integer * 2 ** -20
+
         run_header_byte = 0b01010000 | direction_bit
-        write_bytes = split_bytes(speed, 20, 3)
+        write_bytes = split_bytes(SPEED_REGISTER, 20, 3)
         lock_acquired = self.device.lock_ftdi.acquire(timeout=15)
         if not lock_acquired:
             raise Exception("Could not acquire lock for running stepper %d at time %s" % (self.cs, time.ctime()))

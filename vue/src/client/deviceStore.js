@@ -3,6 +3,7 @@ import api from '@/api.js';
 export default {
   namespaced: true,
   state: {
+    isFetchingCalibration: false,
     calibrationModeEnabled: false,
     valves: {states: {1: "open", 2: "open", 3: "open", 4: "open", 5: "open", 6: "open", 7: "open"}},
 
@@ -117,6 +118,9 @@ export default {
   },
 
 mutations: {
+    setIsFetchingCalibration(state, status) {
+      state.isFetchingCalibration = status;
+    },
     setPartCalibration(state, { devicePart, partIndex, newCalibration, coefs}) {
       state[devicePart].calibration[partIndex] = newCalibration;
      if (coefs) {
@@ -177,6 +181,39 @@ mutations: {
   },
 
   actions: {
+    async fetchODCalibrationData({ commit, dispatch }) {
+        commit('setIsFetchingCalibration', true);
+        try {
+            const response = await api.get('/run-ods-test');
+            //   once the response is received, get dispatch the get all device data action
+            if (response.data) {
+                dispatch('getAllDeviceData').then(() => {
+                    commit('setIsFetchingCalibration', false);
+                });
+            }
+        } catch (error) {
+        commit('setIsFetchingCalibration', false);
+        console.error('Error fetching OD calibration data:', error);
+        throw error;
+        }
+    },
+
+    async fetchStirrerCalibrationData({ commit, dispatch }) {
+        commit('setIsFetchingCalibration', true);
+        try {
+            const response = await api.get('/run-stirrer-test');
+            //   once the response is received, get dispatch the get all device data action
+            if (response.data) {
+                dispatch('getAllDeviceData').then(() => {
+                    commit('setIsFetchingCalibration', false);
+                });
+            }
+        } catch (error) {
+        commit('setIsFetchingCalibration', false);
+        console.error('Error fetching stirrer calibration data:', error);
+        throw error;
+        }
+    },
     setAllStirrersStateAction({ dispatch, state }, newState) {
         Object.keys(state.stirrers.states).forEach(stirrerIndex => {
           // Parse the stirrerIndex to an integer before passing to setPartStateAction
@@ -322,6 +359,7 @@ mutations: {
                 });
         });
     },
+
     getAllDeviceData({ commit }) {
         return new Promise((resolve, reject) => {
             api.get('/get-all-device-data')

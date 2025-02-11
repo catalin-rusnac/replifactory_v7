@@ -210,6 +210,105 @@ class OdSensor:
         plt.legend()
         plt.show()
 
+    def measure_optical_signals(self):
+        red_intensities = {vial: {i: None for i in np.linspace(0, 1, 11)} for vial in range(1, 8)}
+        green_intensities = {vial: {i: None for i in np.linspace(0, 1, 11)} for vial in range(1, 8)}
+        blue_intensities = {vial: {i: None for i in np.linspace(0, 1, 11)} for vial in range(1, 8)}
+        laser_intensity = {vial: None for vial in range(1, 8)}
+        self.device.rgb_leds.set_flicker_frequency(1024)
+        for vial in range(1, 8):
+            self.device.photodiodes.switch_to_vial(vial)
+            for red in np.linspace(0, 1, 11):
+                self.device.rgb_leds.set_led(led_number=vial, red=red, green=0, blue=0)
+                red_intensities[vial][red] = [self.device.photodiodes.measure()[0] for _ in range(10)]
+                self.device.rgb_leds.set_led(led_number=vial, red=0, green=0, blue=0)
+            for green in np.linspace(0, 1, 11):
+                self.device.rgb_leds.set_led(led_number=vial, red=0, green=green, blue=0)
+                green_intensities[vial][green] = [self.device.photodiodes.measure()[0] for _ in range(10)]
+                self.device.rgb_leds.set_led(led_number=vial, red=0, green=0, blue=0)
+            for blue in np.linspace(0, 1, 11):
+                self.device.rgb_leds.set_led(led_number=vial, red=0, green=0, blue=blue)
+                blue_intensities[vial][blue] = [self.device.photodiodes.measure()[0] for _ in range(10)]
+                self.device.rgb_leds.set_led(led_number=vial, red=0, green=0, blue=0)
+            self.device.lasers.switch_on(vial=vial)
+            laser_intensity[vial] = [self.device.photodiodes.measure()[0] for _ in range(10)]
+            self.device.lasers.switch_off(vial=vial)
+        return red_intensities, green_intensities, blue_intensities, laser_intensity
+
+    def measure_optical_signal_max(self):
+        """
+        Measure the maximum signal for each LED color and laser.
+        returns dictionary with vial number as key and maximum signal as value for each color and laser
+        :return: red_max_signal, green_max_signal, blue_max_signal, laser_signal
+
+        """
+        red_max_signal = {v: None for v in range(1, 8)}
+        green_max_signal = {v: None for v in range(1, 8)}
+        blue_max_signal = {v: None for v in range(1, 8)}
+        laser_signal = {v: None for v in range(1, 8)}
+        for vial in range(1, 8):
+            self.device.photodiodes.switch_to_vial(vial)
+            self.device.rgb_leds.set_led(led_number=vial, red=1, green=0, blue=0)
+            red_max_signal[vial] = self.device.photodiodes.measure()[0]
+            self.device.rgb_leds.set_led(led_number=vial, red=0, green=1, blue=0)
+            green_max_signal[vial] = self.device.photodiodes.measure()[0]
+            self.device.rgb_leds.set_led(led_number=vial, red=0, green=0, blue=1)
+            blue_max_signal[vial] = self.device.photodiodes.measure()[0]
+            self.device.rgb_leds.set_led(led_number=vial, red=0, green=0, blue=0)
+            self.device.lasers.switch_on(vial=vial)
+            laser_signal[vial] = self.device.photodiodes.measure()[0]
+            self.device.lasers.switch_off(vial=vial)
+        self.device.device_data["ods"]["max_signal"] = {
+            "red": red_max_signal,
+            "green": green_max_signal,
+            "blue": blue_max_signal,
+            "laser": laser_signal,
+        }
+        return red_max_signal, green_max_signal, blue_max_signal, laser_signal
+
+    def plot_optical_signals(vial, red_intensities, green_intensities, blue_intensities, laser_intensity):
+        import plotly.graph_objects as go
+        fig = go.Figure()
+        """
+        Plot the optical signals for a given vial.
+        :param vial: Vial number
+        :param red_intensities: Dictionary of red LED intensities {duty_cycle: [measurements], ...}
+        :param green_intensities: Dictionary of green LED intensities {duty_cycle: [measurements], ...}
+        :param blue_intensities: Dictionary of blue LED intensities {duty_cycle: [measurements], ...}
+        :param laser_intensity: List of laser intensities [measurements]
+        """
+        x = list(red_intensities.keys())
+        x = sorted(x)
+        y = [np.mean(red_intensities[k]) for k in x]
+        yerr = [np.std(red_intensities[k]) for k in x]
+        fig.add_trace(go.Scatter(x=x, y=y, mode='markers+lines', name=f'Red LED', marker=dict(color='red'),
+                                 error_y=dict(type='data', array=yerr), line=dict(dash='solid')))
+
+        x = list(green_intensities.keys())
+        x = sorted(x)
+        y = [np.mean(green_intensities[k]) for k in x]
+        yerr = [np.std(green_intensities[k]) for k in x]
+        # use interrupted dashes for the green LED
+        fig.add_trace(go.Scatter(x=x, y=y, mode='markers+lines', name=f'Green LED', marker=dict(color='green'),
+                                 error_y=dict(type='data', array=yerr), line=dict(dash='dash')))
+        x = list(blue_intensities.keys())
+        x = sorted(x)
+        y = [np.mean(blue_intensities[k]) for k in x]
+        yerr = [np.std(blue_intensities[k]) for k in x]
+        fig.add_trace(go.Scatter(x=x, y=y, mode='markers+lines', name=f'Blue LED', marker=dict(color='blue'),
+                                 error_y=dict(type='data', array=yerr), line=dict(dash='dot')))
+
+        # use thicker line for the laser
+        laser_intensity = np.mean(laser_intensity)
+        fig.add_trace(go.Scatter(x=[0, 1], y=[laser_intensity, laser_intensity], mode='lines',
+                                 name=f'650nm Laser', marker=dict(color='red'), line=dict(width=4, dash='solid')))
+        #     make sure the laser intensity fits the y axis
+        #     fig.update_layout(yaxis_range=[0, 1.1*max(laser_intensity)])
+
+        fig.update_layout(title="Optical Signals vial %d" % vial, xaxis_title='Intensity', yaxis_title='Signal')
+        fig.show()
+        return fig
+
 class bcolors:
     HEADER = "\033[95m"
     OKBLUE = "\033[94m"

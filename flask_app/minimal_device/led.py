@@ -7,7 +7,7 @@ import pyftdi.i2c
 class RGBLedController:
     """Controller for RGB LEDs using PCA9685 on two I2C addresses."""
 
-    def __init__(self, device, frequency=50):
+    def __init__(self, device, frequency=1000):
         """
         Initialize the RGB LED controller.
         :param device: Device object with an I2C interface
@@ -43,6 +43,15 @@ class RGBLedController:
         """Initialize a PCA9685 controller."""
         self._set_frequency(port, self.frequency)
         self._set_all_leds(port, 0, 0, 0)  # Turn off all LEDs initially
+
+    def set_flicker_frequency(self, frequency):
+        # min and max value from pca9685 datasheet: 24Hz to 1526Hz
+        if frequency < 24 or frequency > 1526:
+            raise ValueError("Frequency must be between 24 and 1526 Hz")
+        """Set the PWM frequency for flickering effect."""
+        self.frequency = frequency
+        self._set_frequency(self.port_rgb_pwm1, frequency)
+        self._set_frequency(self.port_rgb_pwm2, frequency)
 
     def _set_frequency(self, port, frequency):
         """Set the PWM frequency on a specific PCA9685 port."""
