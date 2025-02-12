@@ -304,10 +304,3 @@ update_and_restart_experiment:
 
 update-autofix:
 	@sudo nohup make wifi_add_network &
-
-sudo nmcli connection modify "preconfigured" connection.autoconnect-priority 11
-sudo nmcli connection modify "ABI" connection.autoconnect-priority 9
-sudo nmcli connection modify "5th_floor_real_ip" connection.autoconnect-priority 7
-sudo nmcli connection modify "5th_floor" connection.autoconnect-priority 1
-sudo nmcli connection modify "wifi" connection.autoconnect-priority 1
-sudo nmcli connection modify "wifi-1" connection.autoconnect-priority 1
