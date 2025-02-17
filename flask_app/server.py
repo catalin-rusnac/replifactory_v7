@@ -43,7 +43,7 @@ def create_app():
 
     with app.app_context():
         db.create_all()
-        # connect_device()  # connect to device on startup
+        connect_device()  # connect to device on startup
     CORS(app)
 
     @app.route('/shutdown')

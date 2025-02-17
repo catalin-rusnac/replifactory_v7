@@ -16,6 +16,10 @@ class Valves:
     def connect(self):
         self.sync_is_open_to_pwm()
 
+    def set_valves_to_memory_positions(self):
+        self.sync_pwm_to_is_open()
+        self.sync_is_open_to_pwm()
+
     def sync_is_open_to_pwm(self):
         for v in range(1, 8):
             status = self.get_is_open(v)
@@ -25,6 +29,16 @@ class Valves:
                 self.is_open[v] = False
             else:
                 self.is_open[v] = None
+
+    def sync_pwm_to_is_open(self):
+        for v in range(1, 8):
+            status = self.get_is_open(v)
+            if status is True:
+                self.open(v)
+            elif status is False:
+                self.close(v)
+            else:
+                self.open(v)
 
     def get_fully_open_valves(self):
         return [v for v in range(1, 8) if self.get_is_open(v) == 1]
