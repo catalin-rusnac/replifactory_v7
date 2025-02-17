@@ -17,8 +17,8 @@ class Valves:
         self.sync_is_open_to_pwm()
 
     def set_valves_to_memory_positions(self):
-        self.sync_pwm_to_is_open()
         self.sync_is_open_to_pwm()
+        self.sync_pwm_to_is_open()
 
     def sync_is_open_to_pwm(self):
         for v in range(1, 8):
