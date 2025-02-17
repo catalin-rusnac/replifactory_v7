@@ -14,13 +14,13 @@ class Valves:
         self.is_open = {1: None, 2: None, 3: None, 4: None, 5: None, 6: None, 7: None}
 
     def connect(self):
-        self.sync_is_open_to_pwm()
+        self.set_valves_to_memory_positions()
 
     def set_valves_to_memory_positions(self):
         self.sync_is_open_to_pwm()
-        self.sync_pwm_to_is_open()
 
     def sync_is_open_to_pwm(self):
+        # creates is_open dict from pwm controller
         for v in range(1, 8):
             status = self.get_is_open(v)
             if status == 1:
@@ -31,6 +31,7 @@ class Valves:
                 self.is_open[v] = None
 
     def sync_pwm_to_is_open(self):
+        # sets pwm controller to is_open dict
         for v in range(1, 8):
             status = self.is_open[v]
             if status is True:
@@ -81,12 +82,11 @@ class Valves:
             self.pwm_controller.lock.release()
 
     def open(self, valve):
-        if valve not in self.get_fully_open_valves():
-            self.set_duty_cycle(valve=valve, duty_cycle=self.DUTY_CYCLE_OPEN)
-            time.sleep(self.VALVE_OPEN_TIME)
-            self.is_open[valve] = True
-            self.device.device_data["valves"]['states'][valve] = "open"
-            self.device.eeprom.save_config_to_eeprom()
+        self.set_duty_cycle(valve=valve, duty_cycle=self.DUTY_CYCLE_OPEN)
+        time.sleep(self.VALVE_OPEN_TIME)
+        self.is_open[valve] = True
+        self.device.device_data["valves"]['states'][valve] = "open"
+        self.device.eeprom.save_config_to_eeprom()
 
     def get_percent_open_pwm(self, valve):
         if self.pwm_controller.is_sleeping():
@@ -99,17 +99,16 @@ class Valves:
         percent_open = 1 - percent_closed
         return percent_open
 
-    def close(self, valve, force=False):
-        if self.is_open[valve] is not False:
-            open_valves = [v for v in range(1, 8) if self.is_open[v]]
-            remaining_open_valves = [v for v in open_valves if v != valve]
-            if len(remaining_open_valves) < 1:
-                assert (not self.device.is_pumping()), "can't close last valve while pumping"
-            self.set_duty_cycle(valve=valve, duty_cycle=self.DUTY_CYCLE_CLOSED)
-            time.sleep(self.VALVE_CLOSE_TIME)
-            self.is_open[valve] = False
-            self.device.device_data["valves"]['states'][valve] = "closed"
-            self.device.eeprom.save_config_to_eeprom()
+    def close(self, valve):
+        open_valves = [v for v in range(1, 8) if self.is_open[v]]
+        remaining_open_valves = [v for v in open_valves if v != valve]
+        if len(remaining_open_valves) < 1:
+            assert (not self.device.is_pumping()), "can't close last valve while pumping"
+        self.set_duty_cycle(valve=valve, duty_cycle=self.DUTY_CYCLE_CLOSED)
+        time.sleep(self.VALVE_CLOSE_TIME)
+        self.is_open[valve] = False
+        self.device.device_data["valves"]['states'][valve] = "closed"
+        self.device.eeprom.save_config_to_eeprom()
 
     def open_all(self):
         open_valves = self.get_fully_open_valves()
