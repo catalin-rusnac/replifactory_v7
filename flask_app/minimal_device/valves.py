@@ -15,15 +15,10 @@ class Valves:
 
     def connect(self):
         for valve in range(1, 8):
-            try:
-                self.is_open[valve] = self.device.device_data["valves"]["states"][valve] == "open"
-            except:
-                self.is_open[valve] = None
-        self.set_valves_to_memory_positions()
-
-    def set_valves_to_memory_positions(self):
-        # self.sync_is_open_to_pwm()
-        self.sync_pwm_to_is_open()
+            if self.device.device_data["valves"]["states"][valve] == "open":
+                self.open(valve)
+            elif self.device.device_data["valves"]["states"][valve] == "closed":
+                self.close(valve)
 
     def sync_is_open_to_pwm(self):
         # creates is_open dict from pwm controller

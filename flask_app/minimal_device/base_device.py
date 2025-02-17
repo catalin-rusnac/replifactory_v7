@@ -259,7 +259,7 @@ class BaseDevice:
         self.pwm_controller.play_turn_on_sound()
         self.lasers.blink()
         self.rgb_leds.blink_hello()
-        self.valves.set_valves_to_memory_positions()
+        self.valves.connect()
         print("Said hello from device")
 
     def update_cultures(self):
