@@ -14,6 +14,11 @@ class Valves:
         self.is_open = {1: None, 2: None, 3: None, 4: None, 5: None, 6: None, 7: None}
 
     def connect(self):
+        for valve in range(1, 8):
+            try:
+                self.is_open[valve] = self.device.device_data["valves"]["states"][valve] == "open"
+            except:
+                self.is_open[valve] = None
         self.set_valves_to_memory_positions()
 
     def set_valves_to_memory_positions(self):
