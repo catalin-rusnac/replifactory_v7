@@ -18,6 +18,7 @@ class Valves:
 
     def set_valves_to_memory_positions(self):
         self.sync_is_open_to_pwm()
+        self.sync_pwm_to_is_open()
 
     def sync_is_open_to_pwm(self):
         # creates is_open dict from pwm controller
