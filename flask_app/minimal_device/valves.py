@@ -32,7 +32,7 @@ class Valves:
 
     def sync_pwm_to_is_open(self):
         for v in range(1, 8):
-            status = self.get_is_open(v)
+            status = self.is_open[v]
             if status is True:
                 self.open(v)
             elif status is False:
