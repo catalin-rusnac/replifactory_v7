@@ -14,11 +14,22 @@ class Valves:
         self.is_open = {1: None, 2: None, 3: None, 4: None, 5: None, 6: None, 7: None}
 
     def connect(self):
+        self.set_frequency_multiplier()
         for valve in range(1, 8):
             if self.device.device_data["valves"]["states"][valve] == "open":
                 self.open(valve)
             elif self.device.device_data["valves"]["states"][valve] == "closed":
                 self.close(valve)
+
+    def set_frequency_multiplier(self, frequency_multiplier=None):
+        if frequency_multiplier is None:
+            if "frequency_multiplier" not in self.device.device_data:
+                self.device.device_data["frequency_multiplier"] = 1
+        else:
+            self.device.device_data["frequency_multiplier"] = frequency_multiplier
+        frequency = 50 * self.device.device_data["frequency_multiplier"]
+        self.pwm_controller.set_frequency(frequency)
+        self.device.eeprom.save_config_to_eeprom()
 
     def sync_is_open_to_pwm(self):
         # creates is_open dict from pwm controller

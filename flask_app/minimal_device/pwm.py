@@ -1,7 +1,7 @@
 import threading
 import time
 import traceback
-
+import math
 import pyftdi.i2c
 
 
@@ -60,7 +60,7 @@ class PwmController:
         :param frequency:
         :return:
         """
-        pre_scale = round(25000000 / (4096 * frequency)) - 1
+        pre_scale = math.floor(25000000 / (4096 * frequency)) - 1
 
         ftdi_lock_acquired = self.device.lock_ftdi.acquire(timeout=15)
         if not ftdi_lock_acquired:

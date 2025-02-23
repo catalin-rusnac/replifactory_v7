@@ -63,6 +63,11 @@ def set_device_state(devicePart):
         current_app.device.eeprom.save_config_to_eeprom()
     return jsonify({'success': True, 'newState': new_state})
 
+@device_routes.route('/set-frequency-multiplier', methods=['POST'])
+def set_frequency_multiplier():
+    frequency_multiplier = request.json['frequencyMultiplier']
+    current_app.device.valves.set_frequency_multiplier(frequency_multiplier)
+    return jsonify({'success': True, 'frequencyMultiplier': frequency_multiplier})
 
 @device_routes.route('/stock_adjust?pump_index=<int:pump_index>?volume=<int:volume>', methods=['POST'])
 def adjust_stock_volume(pump_index, volume):
