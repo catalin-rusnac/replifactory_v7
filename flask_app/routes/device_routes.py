@@ -9,6 +9,34 @@ from minimal_device.device_data import default_device_data
 from minimal_device.base_device import BaseDevice
 device_routes = Blueprint('device_routes', __name__)
 
+# route to clear data and rerun tests
+@device_routes.route('/rerun-tests', methods=['GET'])
+def rerun_tests():
+    dev = current_app.device
+    dev.device_data["ods"]["max_signal"] = {}
+    dev.device_data["stirrers"]["speed_profiles"] = {}
+
+    dev.pump1.test_stepper_drivers(dev)
+    dev.pump1.visual_test_pumps(dev)
+
+    r,g,b,l = dev.od_sensors[1].measure_optical_signal_max()  # measures all sensors
+    dev.od_sensors[1].plot_optical_signals(r,g,b,l)
+
+    # set all leds to yellow for testing stirrers
+    [dev.rgb_leds.set_led(led_number=v, red=1, green=1, blue=0) for v in range(1, 8)]
+    dev.stirrers.get_all_calibration_curves()
+    dev.stirrers.plot_stirrer_calibration_curves(dev.device_data["stirrers"]["speed_profiles"])
+    [dev.rgb_leds.set_led(led_number=v, red=0, green=1, blue=0) for v in range(1, 8)]
+    from picamera2 import Picamera2
+    picam2 = Picamera2()
+    try:
+        config = picam2.create_still_configuration()
+        picam2.configure(config)
+        picam2.start()
+        picam2.capture_file("test_img.jpg")
+    finally:
+        picam2.stop()
+        picam2.close()
 
 @device_routes.route('/run-ods-test', methods=['GET'])
 def ods_test():

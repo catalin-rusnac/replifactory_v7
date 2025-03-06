@@ -1,5 +1,5 @@
 import math
-
+import time
 # import matplotlib.pyplot as plt
 # import numpy as np
 # import pandas as pd
@@ -60,6 +60,71 @@ class Pump(Stepper):
         self.pump_number = cs + 1
         # self.calibration_function = None
 
+    @staticmethod
+    def test_stepper_drivers(device):
+        drivers = {1: None, 2: None, 3: None, 4: None}
+        motors = {1: None, 2: None, 3: None, 4: None}
+        pumps = {1: device.pump1, 2: device.pump2, 3: device.pump3, 4: device.pump4}
+        for driver in [1, 2, 3, 4]:
+            p = pumps[driver]
+            try:
+                p.reset_speeds()
+                p.get_status_command()
+                p.detect_stall_and_ocd()
+                set_voltage = 3
+                supply_voltage = 12
+                p.set_stall_threshold_ma(250)  # 3V (high voltage) and 250mA (low threshold)
+                # should trigger stall detection only when a motor is connected
+                p.kval_run = set_voltage / supply_voltage
+                p.kval_acc = set_voltage / supply_voltage
+                p.kval_dec = set_voltage / supply_voltage
+                p.get_status_command()
+                p.move(0.1)
+            except Exception as e:
+                print(e)
+                drivers[driver] = False # no L6470H driver
+                print("Driver %d not found" % driver)
+            #     skip the rest of the loop
+                continue
+            drivers[driver] = True
+            print("Driver %d found" % driver)
+            time.sleep(1)
+            stall_a, stall_b, ocd = p.detect_stall_and_ocd()
+            p.reset_speeds()
+            if not stall_a and not stall_b:
+                motors[driver] = False
+                print("Motor %d not found" % driver)
+            else:
+                motors[driver] = True
+                print("Motor %d found" % driver)
+
+        device.device_data['stepper_drivers'] = drivers
+        device.device_data['stepper_motors'] = motors
+        device.eeprom.save_config_to_eeprom()
+
+    @staticmethod
+    def visual_test_pumps(device):
+        [device.rgb_leds.set_led(led_number=v, red=0, green=0, blue=0) for v in range(1, 8)]
+        device.valves.open(1)
+        # led 1 blue
+        device.rgb_leds.set_led(led_number=1, red=0, green=0, blue=1)
+        device.pumps[1].move(2)
+        time.sleep(2)
+        device.pumps[1].move(-2)
+        time.sleep(2)
+        device.rgb_leds.set_led(led_number=1, red=0, green=0, blue=0)
+        device.rgb_leds.set_led(led_number=4, red=0, green=0, blue=1)
+        device.pumps[2].move(2)
+        time.sleep(2)
+        device.pumps[2].move(-2)
+        time.sleep(2)
+        device.rgb_leds.set_led(led_number=4, red=0, green=0, blue=0)
+        device.rgb_leds.set_led(led_number=7, red=0, green=0, blue=1)
+        device.pumps[4].move(2)
+        time.sleep(2)
+        device.pumps[4].move(-2)
+        time.sleep(2)
+        device.rgb_leds.set_led(led_number=7, red=0, green=0, blue=0)
     # @property
     # def coefs(self):
     #     return self.device.calibration_coefs_pumps[self.pump_number]

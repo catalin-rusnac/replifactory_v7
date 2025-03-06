@@ -266,48 +266,69 @@ class OdSensor:
         }
         return red_max_signal, green_max_signal, blue_max_signal, laser_signal
 
-    def plot_optical_signals(vial, red_intensities, green_intensities, blue_intensities, laser_intensity):
+
+    @staticmethod
+    def plot_optical_signals(red_intensities, green_intensities, blue_intensities, laser_intensity):
+        """
+        Generate a bar chart for optical signals.
+
+        :param red_intensities: Dictionary of red LED intensities {vial: measurement}
+        :param green_intensities: Dictionary of green LED intensities {vial: measurement}
+        :param blue_intensities: Dictionary of blue LED intensities {vial: measurement}
+        :param laser_intensity: Dictionary with single intensity for the laser {vial: measurement}
+        """
         import plotly.graph_objects as go
         fig = go.Figure()
-        """
-        Plot the optical signals for a given vial.
-        :param vial: Vial number
-        :param red_intensities: Dictionary of red LED intensities {duty_cycle: [measurements], ...}
-        :param green_intensities: Dictionary of green LED intensities {duty_cycle: [measurements], ...}
-        :param blue_intensities: Dictionary of blue LED intensities {duty_cycle: [measurements], ...}
-        :param laser_intensity: List of laser intensities [measurements]
-        """
-        x = list(red_intensities.keys())
-        x = sorted(x)
-        y = [np.mean(red_intensities[k]) for k in x]
-        yerr = [np.std(red_intensities[k]) for k in x]
-        fig.add_trace(go.Scatter(x=x, y=y, mode='markers+lines', name=f'Red LED', marker=dict(color='red'),
-                                 error_y=dict(type='data', array=yerr), line=dict(dash='solid')))
 
-        x = list(green_intensities.keys())
-        x = sorted(x)
-        y = [np.mean(green_intensities[k]) for k in x]
-        yerr = [np.std(green_intensities[k]) for k in x]
-        # use interrupted dashes for the green LED
-        fig.add_trace(go.Scatter(x=x, y=y, mode='markers+lines', name=f'Green LED', marker=dict(color='green'),
-                                 error_y=dict(type='data', array=yerr), line=dict(dash='dash')))
-        x = list(blue_intensities.keys())
-        x = sorted(x)
-        y = [np.mean(blue_intensities[k]) for k in x]
-        yerr = [np.std(blue_intensities[k]) for k in x]
-        fig.add_trace(go.Scatter(x=x, y=y, mode='markers+lines', name=f'Blue LED', marker=dict(color='blue'),
-                                 error_y=dict(type='data', array=yerr), line=dict(dash='dot')))
+        colors = {
+            'red': 'rgba(255, 0, 0, 1)',
+            'green': 'rgba(0, 255, 0, 1)',
+            'blue': 'rgba(0, 0, 255, 1)',
+            'laser': 'rgba(139, 0, 0, 1)'  # Dark red for laser
+        }
+        fig.add_trace(go.Bar(
+            x=list(laser_intensity.keys()),
+            y=[np.mean(laser_intensity[k]) for k in laser_intensity.keys()],
+            name="Laser (nominal power)",
+            marker=dict(color=colors['laser']),
+        ))
 
-        # use thicker line for the laser
-        laser_intensity = np.mean(laser_intensity)
-        fig.add_trace(go.Scatter(x=[0, 1], y=[laser_intensity, laser_intensity], mode='lines',
-                                 name=f'650nm Laser', marker=dict(color='red'), line=dict(width=4, dash='solid')))
-        #     make sure the laser intensity fits the y axis
-        #     fig.update_layout(yaxis_range=[0, 1.1*max(laser_intensity)])
+        fig.add_trace(go.Bar(
+            x=list(red_intensities.keys()),
+            y=[np.mean(red_intensities[k]) for k in red_intensities.keys()],
+            name="Red LED (max power)",
+            marker=dict(color=colors['red']),
+        ))
 
-        fig.update_layout(title="Optical Signals vial %d" % vial, xaxis_title='Intensity', yaxis_title='Signal')
-        fig.show()
+        fig.add_trace(go.Bar(
+            x=list(green_intensities.keys()),
+            y=[np.mean(green_intensities[k]) for k in green_intensities.keys()],
+            name="Green LED (max power)",
+            marker=dict(color=colors['green']),
+        ))
+
+        fig.add_trace(go.Bar(
+            x=list(blue_intensities.keys()),
+            y=[np.mean(blue_intensities[k]) for k in blue_intensities.keys()],
+            name="Blue LED (max power)",
+            marker=dict(color=colors['blue']),
+        ))
+
+        current_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+        fig.update_layout(
+            title="Optical Signals at %s" % current_time,
+            xaxis_title="Vial",
+            yaxis_title="Signal [mV]",
+            barmode="group",  # Group bars together
+            bargap=0.2,  # Space between bars
+            bargroupgap=0.1)
+
+
+        # Save as an interactive HTML file
+        fig.write_html("optical_signals.html")
+
         return fig
+
 
 class bcolors:
     HEADER = "\033[95m"

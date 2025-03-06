@@ -335,8 +335,10 @@ class Stirrers:
             yerr = [np.std(d[k]) for k in x]
             fig.add_trace(go.Scatter(x=x, y=y, mode='markers+lines', name=f'Stirrer {stirrer}',
                                      error_y=dict(type='data', array=yerr)))
-        fig.update_layout(title='Stirrer calibration curves', xaxis_title='Duty cycle', yaxis_title='RPM')
-        fig.show()
+        current_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+        fig.update_layout(title='Stirrer calibration curves at {}'.format(current_time),
+                          xaxis_title='Duty Cycle', yaxis_title='RPM')
+        fig.write_html("stirrer_calibration_curves.html")
 
 
 
