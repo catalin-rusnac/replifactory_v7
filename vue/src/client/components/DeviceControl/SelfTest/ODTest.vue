@@ -1,18 +1,18 @@
+<!-- ODTest.vue -->
 <template>
   <div>
-
     <h2>
       Transmitted Light Intensity
-    <v-btn @click="runODTest" :disabled="isFetchingCalibration">
-      Remeasure (approx. 5 sec)
-    </v-btn>
+      <v-btn @click="runODTest" :disabled="isFetchingCalibration">
+        Remeasure (approx. 5 sec)
+      </v-btn>
     </h2>
     <canvas ref="chartCanvas"></canvas>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, defineExpose } from 'vue';
 import { useStore } from 'vuex';
 import Chart from 'chart.js/auto';
 
@@ -23,6 +23,9 @@ const maxODSignals = computed(() => store.state.device.ods.max_signal);
 const chartCanvas = ref(null);
 let chart = null;
 
+/**
+ * Create or update the Chart.js chart.
+ */
 function createChart(data) {
   const datasets = [];
   const colors = {
@@ -32,7 +35,7 @@ function createChart(data) {
     laser: 'rgba(139, 0, 0, 1)', // Dark red for laser
   };
 
-  // Define the order of the datasets and their labels
+  // Order & labels for each type of LED or laser
   const order = [
     { key: 'laser', label: 'Laser (nominal power)' },
     { key: 'red', label: 'Red LED (max power)' },
@@ -40,11 +43,11 @@ function createChart(data) {
     { key: 'blue', label: 'Blue LED (max power)' },
   ];
 
-  // Iterate over the data in the desired order
-  order.forEach(({key, label}) => {
+  // Build the datasets in the defined order
+  order.forEach(({ key, label }) => {
     if (data[key]) {
-      const dataPoints = Object.keys(data[key]).map(vial => ({
-        x: parseInt(vial),
+      const dataPoints = Object.keys(data[key]).map((vial) => ({
+        x: parseInt(vial, 10),
         y: data[key][vial],
       }));
 
@@ -84,7 +87,20 @@ function createChart(data) {
   }
 }
 
-const runODTest = async () => {
+/**
+ * Expose a method for the parent to grab the chart's Base64 snapshot
+ */
+function getChartImage() {
+  if (!chart) return '';
+  return chart.toBase64Image();
+}
+
+defineExpose({ getChartImage });
+
+/**
+ * Actions to run the OD test, fetch data, and update chart.
+ */
+async function runODTest() {
   console.log('Running OD test...');
   await store.dispatch('device/fetchODCalibrationData');
   console.log('OD test completed. Plotting data...');
@@ -92,10 +108,11 @@ const runODTest = async () => {
   if (maxODSignals.value) {
     createChart(maxODSignals.value);
   } else {
-    console.error("No OD signal data available.");
+    console.error('No OD signal data available.');
   }
-};
+}
 
+// Whenever maxODSignals changes, re-create the chart.
 watch(maxODSignals, (newData) => {
   if (newData) {
     createChart(newData);
