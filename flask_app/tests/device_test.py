@@ -8,96 +8,224 @@ import time
 dev = BaseDevice()
 dev.connect()
 #%%
-for i in range(10000):
-    dev.valves.open(1)
-    dev.valves.close(1)
-    # dev.valves.open(2)
-    # dev.valves.close(2)
+r,g,b,l = dev.od_sensors[1].measure_optical_signal_max()
 #%%
-dev.valves.set_valves_to_memory_positions()
+dev.od_sensors[1].plot_optical_signals(r,g,b,l)
+dev.stirrers.plot_stirrer_calibration_curves(dev.device_data["stirrers"]["speed_profiles"])
 #%%
-dev.valves.open(4)
+r, g, b, l = dev.od_sensors[1].measure_optical_signal_max()  # measures all sensors
+dev.od_sensors[1].plot_optical_signals(r, g, b, l)
+# set all leds to yellow for testing stirrers
+[dev.rgb_leds.set_led(led_number=v, red=1, green=1, blue=0) for v in range(1, 8)]
+dev.stirrers.get_all_calibration_curves()
+dev.stirrers.plot_stirrer_calibration_curves(dev.device_data["stirrers"]["speed_profiles"])
+[dev.rgb_leds.set_led(led_number=v, red=0, green=0, blue=0) for v in range(1, 8)]
+
 #%%
-dev.valves.close(4)
- #%%
-for p in [dev.pump1]:
-    p.soft_hiz()
+dev.pump3.reset_speeds()
+#%%
+dev.thermometers.measure_temperature()
+#%%
+dev.stirrers.plot_stirrer_calibration_curves(dev.device_data["stirrers"]["speed_profiles"])
 
 #%%
 
+def measure_rpms_and_plot():
+    speeds = device.stirrers.measure_all_rpms()
+    import matplotlib.pyplot as plt
+    plt.close()
+    plt.bar(speeds.keys(), speeds.values())
+    plt.ylim(0, max(max(speeds.values())*1.1, 5000))
+    plt.ylabel('RPM')
+    plt.xlabel('Vial')
+    import os
+    hostname = os.uname().nodename
+    plt.title('%s stirrer RPMs at %s'%(hostname, time.strftime("%Y%m%d-%H%M%S")))
+    plt.savefig("%s_stirrer_rpm.png")
+    plt.close()
+#%%
+def full_test_auto():
+
 
 #%%
+def quick_test():
+    measure_rpms_and_plot()
+    max_signals = dev.od_sensors[1].measure_optical_signal_max()  # measures all sensors
+    vial_temp,board_temp=dev.thermometers.measure_temperature()
+    output['max_signals'] = max_signals
+    output['vial_temp'] = vial_temp
+    output['board_temp'] = board_temp
+
+quick_test()
+#%%
+threshold_current = 300 # mA
+set_voltage = 1.8
+# iterate below to find the 50% stall threshold and collect data
+p.set_stall_threshold_ma(threshold_current)
+supply_voltage = 12
+p.kval_run = set_voltage/supply_voltage
+p.kval_acc = set_voltage/supply_voltage
+p.kval_dec = set_voltage/supply_voltage
+p.get_status_command()
+p.run(0.8)
+stalla = []
+stallb = []
+for i in range(100):
+    p.get_status_command()
+    stall_a, stall_b, ocd = p.detect_stall_and_ocd()
+    time.sleep(0.01)
+    stalla.append(stall_a)
+    stallb.append(stall_b)
+    avg_stall_prob = (stall_a + stall_b) / 2
+#%%
+def test_stepper_drivers(device):
+    drivers = {1: None, 2: None, 3: None, 4: None}
+    motors = {1: None, 2: None, 3: None, 4: None}
+    pumps = {1: device.pump1, 2: device.pump2, 3: device.pump3, 4: device.pump4}
+    for driver in [1, 2, 3, 4]:
+        p = pumps[driver]
+        try:
+            p.reset_speeds()
+        except AttributeError:
+            drivers[driver] = False
+            continue
+        set_voltage = 3
+        supply_voltage = 12
+        p.set_stall_threshold_ma(250) # 3V (high voltage) and 250mA (low threshold)
+        # should trigger stall detection only when a motor is connected
+        p.kval_run = set_voltage/supply_voltage
+        p.kval_acc = set_voltage/supply_voltage
+        p.kval_dec = set_voltage/supply_voltage
+        p.get_status_command()
+        p.move(0.1)
+        time.sleep(1)
+        stall_a, stall_b, ocd = p.detect_stall_and_ocd()
+        p.reset_speeds()
+        if not stall_a and not stall_b:
+            motors[driver] = False
+        else:
+            motors[driver] = True
+
+def detect_pump_presence(device):
+    p = device.pump3
+    try:
+        p.reset_speeds()
+    except AttributeError:
+        print("Pump driver not detected!")
+        return
+    set_voltage = 2
+    supply_voltage = 12
+    p.kval_run = set_voltage/supply_voltage
+    p.kval_acc = set_voltage/supply_voltage
+    p.kval_dec = set_voltage/supply_voltage
+    p.set_stall_threshold_ma(450)
+    p.set_ocd_threshold_ma(0)
+    p.get_status_command()
+    p.move(0.1)
+    time.sleep(1)
+    stall_a, stall_b, ocd = p.detect_stall_and_ocd()
+    p.reset_speeds()
+    if not stall_a and not stall_b:
+        print("Pump not detected!")
+    else:
+        print("Pump connection confirmed through stall detection.")
+detect_pump_presence(dev)
+#%%
+print(p.detect_stall_and_ocd())
+
+#%%
+p = dev.pump4
+p.reset_speeds()
+p.move(1)
+#%%
+import numpy as np
+import time
+import plotly.graph_objs as go
+
+
 def test_motor_control(device):
-    p = device.pump1
+    p = device.pump4
     p.stop()
     print(p.get_status_command())
 
-    import plotly.graph_objs as go
-
     supply_voltage = 12
-    current_range = np.arange(317.5*1, 317.5*1.8, 31.75) # mA
-    voltage_range = np.arange(1.4, 1.9, 0.1) # Volts
-    critical_current = 500
-    critical_voltage = 1.65
-    flow = "free-flow"
-    # flow = "blocked-flow"
-    test_speed_rps = 0.4  # rps
-    rot_seconds = 1/test_speed_rps
+    set_voltage = 2.2  # Fixed voltage
+    test_speed_rps = 1  # Adjusted speed
     wait_time = 0.1
+    min_iterations = 10
+    max_iterations = 20
+    tolerance = 0.05  # Acceptable deviation from 50% stall probability
 
-    for iteration in range(1):
-        fig = go.Figure()
-        fig.update_layout(
-            yaxis=dict(range=[100, 800], title="mA"),
-            xaxis=dict(range=[1.2, 4], title="voltage"),
-            title=f"{test_speed_rps} rps {flow}")
-        fig.update_layout(showlegend=False)
-        p.reset_speeds()
-        voltage = max(voltage_range)
-        p.kval_run = voltage / supply_voltage
-        p.kval_acc = voltage / supply_voltage
-        p.kval_dec = voltage / supply_voltage
-        p.set_ocd_threshold_ma(0)
-        p.run(speed=3)
-        time.sleep(2)
-        p.run(speed=test_speed_rps)
-        time.sleep(2)
-        assert p.max_speed_rps >= test_speed_rps
-        for i in range(10):
-            for current in current_range:
-                p.set_stall_threshold_ma(current)
-                for voltage in voltage_range:
-                    p.kval_run = voltage / supply_voltage
+    fig = go.Figure()
+    fig.update_layout(
+        yaxis=dict(title="Current Threshold (mA)"),
+        xaxis=dict(title="Voltage (V)"),
+        title=f"Stall Threshold Detection at {test_speed_rps} rps"
+    )
 
-                    p.run(speed=test_speed_rps)
-                    time.sleep(wait_time)
+    p.reset_speeds()
+    kval = set_voltage / supply_voltage
+    p.kval_run = kval
+    p.kval_acc = kval
+    p.kval_dec = kval
+    p.set_ocd_threshold_ma(0)
+    p.run(speed=test_speed_rps)
+    time.sleep(1)
 
-                    stall_a, stall_b, ocd = p.detect_stall_and_ocd()
-                    stall = stall_a or stall_b
-                    if not stall:
-                        print(f"Running at %.2f V, %d mA, \t\t%.2f W {ocd}"%(voltage, current, voltage*current/1000))
-                        fig.add_trace(go.Scatter(
-                            y=[current],
-                            x=[voltage],
-                            mode='markers',
-                            # opacity=0.5,
-                            opacity=0.1,
-                            marker=dict(color='green', size=20)))
-                    else:
-                        fig.add_trace(go.Scatter(
-                            y=[current],
-                            x=[voltage],
-                            mode='markers',
-                            opacity=0.3,
-                            marker=dict(color='red', size=20)
-                        ))
-                        print(f"Stalled at %.2f V, %d mA, %.2f W {ocd}"%(voltage, current, voltage*current/1000))
-                    p.get_status_command() # clear the stall flag
-        fig.update_traces()
-        p.soft_hiz()
-        test_time = time.strftime("%Y%m%d-%H%M%S")
-        # pio.write_html(fig, file=f'pump_data/Stall_Detect_{flow}_{wait_time}s_{iteration}rep_{test_time}.html')
-        fig.show()
+    current_threshold = 300  # Initial guess (mA)
+    step_size = 30  # Inverse stepping
+    stall_probabilities = []
+    thresholds = []
+
+    for i in range(max_iterations):
+        p.set_stall_threshold_ma(current_threshold)
+        stalla, stallb = [], []
+
+        for _ in range(100):
+            p.get_status_command()
+            stall_a, stall_b, _ = p.detect_stall_and_ocd()
+            time.sleep(0.01)
+            stalla.append(stall_a)
+            stallb.append(stall_b)
+
+        stall_a_prob = np.mean(stalla)
+        stall_b_prob = np.mean(stallb)
+        avg_stall_prob = (stall_a_prob + stall_b_prob) / 2
+
+        stall_probabilities.append(avg_stall_prob)
+        thresholds.append(current_threshold)
+
+        if abs(avg_stall_prob - 0.5) < tolerance and i >= min_iterations:
+            break  # Close enough to 50% after minimum iterations
+        elif avg_stall_prob < 0.5:
+            current_threshold -= step_size  # Increase current if stall rate is too low
+        else:
+            current_threshold += step_size  # Decrease current if stall rate is too high
+
+        print(
+            f"Voltage: {set_voltage}V, Current Threshold: {current_threshold}mA, Stall Probability: {avg_stall_prob:.2f}")
+
+    # Create a scatter plot with custom color scaling
+    fig.add_trace(go.Scatter(
+        x=[set_voltage] * len(thresholds),
+        y=thresholds,
+        mode='markers',
+        marker=dict(
+            size=10,
+            color=stall_probabilities,
+            colorscale=[
+                [0.0, 'green'],  # 0% stall probability -> green
+                [0.5, 'yellow'],  # 50% stall probability -> yellow
+                [1.0, 'red']  # 100% stall probability -> red
+            ],
+            cmin=0, cmax=1,
+            showscale=True  # Ensures the color scale is properly displayed
+        )
+    ))
+
+    p.get_status_command()  # Clear stall flag
+    p.soft_hiz()
+    fig.show()
 test_motor_control(dev)
 #%%import plotly.graph_objects as go
 fig = go.Figure()
@@ -181,3 +309,76 @@ data = {1: {np.float64(0.26): [np.float64(3631.9612590799034), np.float64(3740.6
 #%%
 dev.stirrers.plot_stirrer_calibration_curves(data)
 #%%
+#%%
+def test_motor_control(device):
+    p = device.pump4
+    p.stop()
+    print(p.get_status_command())
+
+    import plotly.graph_objs as go
+
+    supply_voltage = 12
+    current_range = np.arange(317.5*1, 317.5*1.8, 317.5*0.2) # mA
+    voltage_range = np.arange(1.5, 3.5, 0.2) # Volts
+    critical_current = 500
+    critical_voltage = 1.65
+    flow = "free-flow"
+    # flow = "blocked-flow"
+    test_speed_rps = 0.4  # rps
+    rot_seconds = 1/test_speed_rps
+    wait_time = 0.01
+
+    for iteration in range(1):
+        fig = go.Figure()
+        fig.update_layout(
+            yaxis=dict(range=[100, 800], title="mA"),
+            xaxis=dict(range=[1.2, 4], title="voltage"),
+            title=f"{test_speed_rps} rps {flow}")
+        fig.update_layout(showlegend=False)
+        p.reset_speeds()
+        voltage = max(voltage_range)
+        p.kval_run = voltage / supply_voltage
+        p.kval_acc = voltage / supply_voltage
+        p.kval_dec = voltage / supply_voltage
+        p.set_ocd_threshold_ma(0)
+        p.run(speed=3)
+        time.sleep(1)
+        p.run(speed=test_speed_rps)
+        time.sleep(1)
+        assert p.max_speed_rps >= test_speed_rps
+        for i in range(5):
+            for current in current_range:
+                p.set_stall_threshold_ma(current)
+                for voltage in voltage_range:
+                    p.kval_run = voltage / supply_voltage
+
+                    p.run(speed=test_speed_rps)
+                    time.sleep(wait_time)
+
+                    stall_a, stall_b, ocd = p.detect_stall_and_ocd()
+                    stall = stall_a or stall_b
+                    if not stall:
+                        print(f"Running at %.2f V, %d mA, \t\t%.2f W {ocd}"%(voltage, current, voltage*current/1000))
+                        fig.add_trace(go.Scatter(
+                            y=[current],
+                            x=[voltage],
+                            mode='markers',
+                            # opacity=0.5,
+                            opacity=0.1,
+                            marker=dict(color='green', size=20)))
+                    else:
+                        fig.add_trace(go.Scatter(
+                            y=[current],
+                            x=[voltage],
+                            mode='markers',
+                            opacity=0.3,
+                            marker=dict(color='red', size=20)
+                        ))
+                        print(f"Stalled at %.2f V, %d mA, %.2f W {ocd}"%(voltage, current, voltage*current/1000))
+                    p.get_status_command() # clear the stall flag
+        fig.update_traces()
+        p.soft_hiz()
+        test_time = time.strftime("%Y%m%d-%H%M%S")
+        # pio.write_html(fig, file=f'pump_data/Stall_Detect_{flow}_{wait_time}s_{iteration}rep_{test_time}.html')
+        fig.show()
+test_motor_control(dev)
