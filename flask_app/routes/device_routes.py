@@ -37,6 +37,7 @@ def rerun_tests():
     finally:
         picam2.stop()
         picam2.close()
+    return jsonify({'success': True})
 
 @device_routes.route('/run-ods-test', methods=['GET'])
 def ods_test():
