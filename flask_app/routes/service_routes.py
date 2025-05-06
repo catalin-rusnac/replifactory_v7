@@ -3,147 +3,16 @@ import socket
 import sys
 import time
 from datetime import datetime
-from flask import Blueprint, jsonify, send_file, current_app
+from flask import Blueprint, jsonify, send_file, current_app, Response
 import io
 import subprocess
 
 sys.path.insert(0, "../")
 
+# Import camera routes
+from .camera_routes import camera_routes
 
 service_routes = Blueprint('service_routes', __name__)
-
-
-@service_routes.route("/capture")
-def capture_image():
-    try:
-        return capture_image_pi()
-    except:
-        try:
-            return capture_image_picamzero()
-        except:
-            return capture_image_cv2()
-
-@service_routes.route("/capture_picamzero")
-def capture_image_picamzero():
-    from picamzero import Camera
-    stream = io.BytesIO()
-    camera = Camera()
-    camera.capture(stream, format='jpeg')
-    camera.close()
-    stream.seek(0)
-    return send_file(stream, mimetype='image/jpeg', as_attachment=False)
-
-@service_routes.route("/capture_cv2")
-def capture_image_cv2():
-    import cv2
-    cap = cv2.VideoCapture(0)
-    ret, frame = cap.read()
-    cap.release()
-    if not ret:
-        return jsonify({"error": "Failed to capture image"}), 500
-
-    _, img_encoded = cv2.imencode('.jpg', frame)
-    stream = io.BytesIO(img_encoded.tostring())
-    return send_file(stream, mimetype='image/jpeg', as_attachment=False)
-
-@service_routes.route("/capturehires")
-def capture_image_hq():
-    from picamera import PiCamera
-    stream = io.BytesIO()
-    camera = PiCamera()
-    camera.resolution = (2592, 1944)
-    camera.start_preview()
-    time.sleep(2)
-    camera.capture(stream, format='jpeg')
-    camera.stop_preview()
-
-    stream.seek(0)
-    camera.close()
-    return send_file(stream, mimetype='image/jpeg', as_attachment=False)
-
-
-@service_routes.route("/picapture")
-def capture_image_pi():
-    from picamera2 import Picamera2
-    picam2 = Picamera2()
-    try:
-        config = picam2.create_still_configuration()
-        picam2.configure(config)
-        picam2.start()
-        picam2.capture_file("img.jpg")
-    finally:
-        picam2.stop()
-        picam2.close()
-    return send_file("img.jpg", mimetype='image/jpeg', as_attachment=False)
-
-@service_routes.route('/video/<int:duration>', methods=['GET'])
-def capture_video(duration):
-    from picamera2 import Picamera2
-    from picamera2.encoders import H264Encoder
-    camera = None
-    try:
-        # Initialize the camera
-        camera = Picamera2()
-        
-        # Configure with full raw sensor size and 1920x1080 output
-        camera.configure(camera.create_video_configuration(
-            raw={"size": (2592, 1944)},  # Full sensor size
-            main={"size": (1920, 1080)}  # Output at 1920x1080
-        ))
-        
-        # Generate filenames
-        timestamp = datetime.now().strftime('%d_%m_%Y')
-        h264_filename = f"video_{timestamp}.h264"
-        mp4_filename = f"video_{timestamp}.mp4"
-        h264_path = os.path.join(current_app.root_path, h264_filename)
-        mp4_path = os.path.join(current_app.root_path, mp4_filename)
-        
-        # Create encoder and start recording
-        encoder = H264Encoder(bitrate=20000000)  # 20Mbps for high quality
-        camera.start_recording(encoder, h264_path)
-        
-        # Record for specified duration
-        time.sleep(duration)
-        
-        # Stop recording
-        camera.stop_recording()
-        
-        # Convert to MP4
-        subprocess.run(['ffmpeg', '-i', h264_path, '-c:v', 'copy', mp4_path], check=True)
-        os.remove(h264_path)  # Clean up H264 file
-        
-        # Send the MP4 file
-        return send_file(
-            mp4_path,
-            mimetype='video/mp4',
-            as_attachment=True,
-            download_name=mp4_filename
-        )
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-    finally:
-        if camera:
-            camera.stop()
-            camera.close()
-        # Clean up MP4 file
-        try:
-            if 'mp4_path' in locals():
-                os.remove(mp4_path)
-        except:
-            pass
-
-@service_routes.route("/video/stop", methods=['POST'])
-def stop_video():
-    from picamera2 import Picamera2
-    try:
-        picam2 = Picamera2()
-        picam2.stop_recording()
-        picam2.close()
-        return jsonify({'message': 'Recording stopped successfully'})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
 
 from flask import abort
 
@@ -176,12 +45,10 @@ def update_log():
     except FileNotFoundError:
         return jsonify({'error': 'Log file not found'}), 404
 
-
 @service_routes.route('/hostname', methods=['GET'])
 def get_hostname():
     hostname = socket.gethostname()
     return jsonify({'hostname': hostname})
-
 
 @service_routes.route('/download_db', methods=['GET'])
 def download_file():
@@ -203,7 +70,6 @@ def download_flask():
     rel_path = "../../logs/flask.log"
     abs_file_path = os.path.join(script_dir, rel_path)
     return send_file(abs_file_path, as_attachment=True)
-
 
 @service_routes.route('/log/<int:lines>/', methods=['GET'])
 def get_log_tail(lines=100):
@@ -230,27 +96,9 @@ def get_log_tail(lines=100):
                 d[file] = "Error reading file"
     return jsonify(d)
 
-
-# route to export csv of current experiment database
 @service_routes.route('/export_csv', methods=['GET'])
 def export_csv():
     return jsonify(current_app.experiment.model.to_dict()), 200
-
-    # get all experiments from database
-    experiments = db_session.query(Experiment).all()
-
-    # create dataframe from experiments
-    df = pd.DataFrame([exp.to_dict() for exp in experiments])
-
-    # convert dataframe to csv
-    csv = df.to_csv(index=False)
-
-    # create response object
-    response = Response(csv, mimetype='text/csv')
-    response.headers['Content-Disposition'] = 'attachment; filename=export.csv'
-
-    return response
-
 
 @service_routes.route('/exec/<string:command>', methods=['GET'])
 def execute_command(command):
@@ -264,7 +112,6 @@ def execute_command(command):
     except:
         return jsonify({'error': 'Failed to execute command: '+command}), 500
 
-
 @service_routes.route('/update_and_restart_experiment', methods=['PUT'])
 def update_and_restart_experiment():
     import subprocess
@@ -275,13 +122,3 @@ def update_and_restart_experiment():
     else:
         return jsonify({'error running '+command: result.stdout.decode('utf-8')}), 500
     return jsonify({'message': 'Update and restart initialized'})
-
-@service_routes.route('/camera/reset', methods=['POST'])
-def reset_camera():
-    try:
-        # Force camera cleanup
-        subprocess.run(['sudo', 'systemctl', 'restart', 'camera'], check=True)
-        time.sleep(2)  # Wait for camera to restart
-        return jsonify({'message': 'Camera reset successful'})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500

@@ -29,19 +29,27 @@
       </v-col>
 
       <v-col cols="3">
+        <!-- Live Stream Button -->
+        <v-btn color="error" @click="toggleStream">
+          <v-icon size="large">mdi-video-outline</v-icon> {{ isStreaming ? 'Stop Stream' : 'Live Stream' }}
+        </v-btn>
+      </v-col>
+
+      <v-col cols="3">
         <!-- Download Database Button -->
         <v-btn color="success" @click="download_db">
           <v-icon size="large">mdi-cloud-download</v-icon> Download Database
         </v-btn>
       </v-col>
-
-      <v-col cols="3">
-        <!-- Status Button -->
-        <v-btn color="primary" @click="get_info">
-          <v-icon size="large">mdi-information</v-icon> Status
-        </v-btn>
-      </v-col>
     </v-row>
+
+    <!-- Video Stream Display -->
+    <div class="mt-3" v-if="isStreaming">
+      <div class="mb-2">
+        <small>Live Stream</small>
+      </div>
+      <img :src="streamUrl" class="img-fluid" style="max-width: 100%; height: auto;" />
+    </div>
 
     <!-- Video Recording Progress -->
     <v-row v-if="isRecording" class="mt-3">
@@ -82,7 +90,7 @@
         @error="(e) => console.error('Video error:', e)"
         @loadeddata="() => console.log('Video loaded')"
       >
-        <source :src="video_url" type="video/h264">
+        <source :src="video_url" type="video/mp4">
         Your browser does not support the video tag.
       </video>
     </div>
@@ -123,7 +131,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onUnmounted } from 'vue';
 import api from '@/api';
 
 const status_text = ref('');
@@ -135,6 +143,22 @@ const isRecording = ref(false);
 const recordingProgress = ref(0);
 const recordingInterval = ref(null);
 const currentDuration = ref(0);
+const isStreaming = ref(false);
+const streamUrl = ref('');
+
+/**
+ * Toggle video stream
+ */
+function toggleStream() {
+  isStreaming.value = !isStreaming.value;
+  if (isStreaming.value) {
+    // Start stream
+    streamUrl.value = `${api.defaults.baseURL}/camera/stream`;
+  } else {
+    // Stop stream
+    streamUrl.value = '';
+  }
+}
 
 /**
  * Download database file
@@ -191,7 +215,7 @@ async function export_data(vial, filetype) {
  */
 async function capture_image() {
   try {
-    const response = await api.get('/capture', { responseType: 'arraybuffer' });
+    const response = await api.get('/camera/capture', { responseType: 'arraybuffer' });
     const base64 = btoa(
       new Uint8Array(response.data).reduce((data, byte) => data + String.fromCharCode(byte), '')
     );
@@ -208,9 +232,8 @@ function downloadVideo() {
   if (videoBlob.value) {
     const a = document.createElement('a');
     a.href = video_url.value;
-    // Force .h264 extension
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    a.download = `video_${timestamp}.h264`;
+    a.download = `video_${timestamp}.mp4`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -236,24 +259,17 @@ async function capture_video(duration) {
     }, 1000);
 
     console.log('Requesting video...');
-    const response = await api.get(`/video/${duration}`, { 
+    const response = await api.get(`/camera/video/${duration}`, { 
       responseType: 'blob'
     });
     console.log('Video response received:', response);
-    console.log('Response headers:', response.headers);
-    console.log('Response type:', response.type);
-    console.log('Response size:', response.data.size);
     
     // Store the blob
     videoBlob.value = response.data;
     
-    // Create video URL from blob with H264 MIME type
-    const blob = new Blob([response.data], { type: 'video/h264' });
-    console.log('Created blob:', blob);
-    console.log('Blob type:', blob.type);
-    console.log('Blob size:', blob.size);
+    // Create video URL from blob with MP4 MIME type
+    const blob = new Blob([response.data], { type: 'video/mp4' });
     video_url.value = URL.createObjectURL(blob);
-    console.log('Video URL created:', video_url.value);
     
     // Reset recording state
     isRecording.value = false;
@@ -269,6 +285,17 @@ async function capture_video(duration) {
     clearInterval(recordingInterval.value);
   }
 }
+
+// Clean up on component unmount
+onUnmounted(() => {
+  if (isStreaming.value) {
+    isStreaming.value = false;
+    streamUrl.value = '';
+  }
+  if (recordingInterval.value) {
+    clearInterval(recordingInterval.value);
+  }
+});
 </script>
 
 <style scoped>

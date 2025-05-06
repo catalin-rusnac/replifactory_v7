@@ -7,6 +7,9 @@ sys.path.append(os.path.dirname(os.path.realpath(__file__)))  # add dir to pytho
 from waitress import serve
 from flask import Flask, current_app
 from routes.device_routes import device_routes, connect_device
+from routes.experiment_routes import experiment_routes
+from routes.service_routes import service_routes
+from routes.camera_routes import camera_routes
 
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
@@ -16,8 +19,6 @@ import os
 import signal
 
 from experiment.database_models import db
-from routes.experiment_routes import experiment_routes
-from routes.service_routes import service_routes
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
 pid_file_path = os.path.join(base_dir, "data/flask_app.pid")
@@ -32,6 +33,7 @@ def create_app():
     app.register_blueprint(device_routes)
     app.register_blueprint(experiment_routes)
     app.register_blueprint(service_routes)
+    app.register_blueprint(camera_routes)
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     db_path = os.path.join(script_dir, '../db/replifactory.db')
