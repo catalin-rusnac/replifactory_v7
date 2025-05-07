@@ -5,14 +5,44 @@ from flask import Blueprint, jsonify, send_file, current_app, Response
 import io
 import subprocess
 import cv2
+import torch
+import site
 from picamera2 import Picamera2
 from picamera2.encoders import H264Encoder
+from repleye.vial_detection import detect_vial
+from repleye.volume_estimation.src import estimate
+from repleye.volume_estimation.src.model import VolumeEstimator
+from .vision import capture_and_process_image, process_frame
+import numpy as np
 
 camera_routes = Blueprint('camera_routes', __name__)
 
 # Global camera instances
 camera = None
 stream_camera = None
+
+# Load models
+site_packages = site.getsitepackages()[0]
+YOLO_WEIGHTS = os.path.join(site_packages, 'repleye', 'vial_detection', 'models', 'model_03_05_25.pt')
+VOLUME_WEIGHTS = os.path.join(site_packages, 'repleye', 'volume_estimation', 'models', 'model_2024_11_24.pth')
+
+try:
+    print(f"Loading YOLO model from: {YOLO_WEIGHTS}")
+    yolo_model = torch.hub.load('ultralytics/yolov5', 'custom', path=YOLO_WEIGHTS, force_reload=True)
+    print("YOLO model loaded successfully")
+except Exception as e:
+    print(f"Error loading YOLO model: {e}")
+    raise
+
+try:
+    print(f"Loading volume model from: {VOLUME_WEIGHTS}")
+    volume_model = VolumeEstimator()
+    volume_model.load_state_dict(torch.load(VOLUME_WEIGHTS))
+    volume_model.eval()
+    print("Volume model loaded successfully")
+except Exception as e:
+    print(f"Error loading volume model: {e}")
+    raise
 
 def init_camera():
     global camera
@@ -86,8 +116,20 @@ def stream():
         while True:
             frame = get_stream_frame()
             if frame is not None:
+                # Convert bytes to numpy array
+                nparr = np.frombuffer(frame, np.uint8)
+                frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                
+                # Process frame with segmentation
+                try:
+                    frame = process_frame(frame)
+                except Exception as e:
+                    print(f"Error processing frame: {e}")
+                
+                # Convert back to JPEG
+                _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 95])
                 yield (b'--frame\r\n'
-                       b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+                       b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
             time.sleep(0.1)  # Limit to ~10 FPS
             
     return Response(generate(),
@@ -227,4 +269,48 @@ def reset_camera():
         time.sleep(2)  # Wait for camera to restart
         return jsonify({'message': 'Camera reset successful'})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500 
+        return jsonify({'error': str(e)}), 500
+
+@camera_routes.route("/camera/segment", methods=['GET'])
+def segment_image():
+    try:
+        # Capture and process image using vision module
+        frame = capture_and_process_image()
+        
+        # Convert to JPEG
+        _, buffer = cv2.imencode('.jpg', frame)
+        stream = io.BytesIO(buffer.tobytes())
+        stream.seek(0)
+        
+        return send_file(stream, mimetype='image/jpeg', as_attachment=False)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@camera_routes.route('/camera/force_reset', methods=['POST'])
+def force_reset_camera():
+    global picam2, is_streaming
+    try:
+        # First try to stop any existing camera
+        cleanup_camera()
+        
+        # Stop camera service
+        subprocess.run(['sudo', 'systemctl', 'stop', 'camera'], check=False)
+        time.sleep(1)
+        
+        # Kill any remaining camera processes
+        subprocess.run(['sudo', 'pkill', '-f', 'camera'], check=False)
+        time.sleep(1)
+        
+        # Restart camera service
+        subprocess.run(['sudo', 'systemctl', 'restart', 'camera'], check=True)
+        time.sleep(2)
+        
+        # Try to initialize camera
+        if init_camera():
+            return jsonify({'message': 'Camera force reset successful'})
+        else:
+            return jsonify({'error': 'Camera initialization failed after reset'}), 500
+            
+    except Exception as e:
+        return jsonify({'error': f'Camera force reset failed: {str(e)}'}), 500 

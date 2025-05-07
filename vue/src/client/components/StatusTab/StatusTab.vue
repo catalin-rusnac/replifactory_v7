@@ -10,6 +10,13 @@
       </v-col>
 
       <v-col cols="3">
+        <!-- Segmentation Button -->
+        <v-btn color="success" @click="segment_image" :disabled="!camera_image">
+          <v-icon size="large">mdi-image-filter-center-focus</v-icon> Segment
+        </v-btn>
+      </v-col>
+
+      <v-col cols="3">
         <!-- Video Button with Duration Selection -->
         <v-menu>
           <template v-slot:activator="{ props }">
@@ -39,6 +46,15 @@
         <!-- Download Database Button -->
         <v-btn color="success" @click="download_db">
           <v-icon size="large">mdi-cloud-download</v-icon> Download Database
+        </v-btn>
+      </v-col>
+    </v-row>
+
+    <!-- Camera Reset Button -->
+    <v-row class="mt-2">
+      <v-col cols="12" class="text-center">
+        <v-btn color="error" @click="forceResetCamera" class="mt-2">
+          <v-icon size="large">mdi-camera-refresh</v-icon> Force Reset Camera
         </v-btn>
       </v-col>
     </v-row>
@@ -149,14 +165,20 @@ const streamUrl = ref('');
 /**
  * Toggle video stream
  */
-function toggleStream() {
-  isStreaming.value = !isStreaming.value;
+async function toggleStream() {
   if (isStreaming.value) {
-    // Start stream
-    streamUrl.value = `${api.defaults.baseURL}/camera/stream`;
-  } else {
     // Stop stream
+    try {
+      await api.post('/camera/stream/stop');
+    } catch (error) {
+      console.error('Error stopping stream:', error);
+    }
+    isStreaming.value = false;
     streamUrl.value = '';
+  } else {
+    // Start stream
+    isStreaming.value = true;
+    streamUrl.value = `${api.defaults.baseURL}/camera/stream`;
   }
 }
 
@@ -286,9 +308,45 @@ async function capture_video(duration) {
   }
 }
 
+/**
+ * Segment the current image to detect vials and estimate volumes
+ */
+async function segment_image() {
+  try {
+    const response = await api.get('/camera/segment', { responseType: 'arraybuffer' });
+    const base64 = btoa(
+      new Uint8Array(response.data).reduce((data, byte) => data + String.fromCharCode(byte), '')
+    );
+    camera_image.value = `data:image/jpeg;base64,${base64}`;
+  } catch (error) {
+    console.error('Error segmenting image:', error);
+  }
+}
+
+/**
+ * Force reset the camera
+ */
+async function forceResetCamera() {
+  try {
+    const response = await api.post('/camera/force_reset');
+    console.log('Camera reset response:', response.data);
+    // Show success message
+    alert('Camera reset successful');
+  } catch (error) {
+    console.error('Error resetting camera:', error);
+    // Show error message
+    alert('Failed to reset camera: ' + (error.response?.data?.error || error.message));
+  }
+}
+
 // Clean up on component unmount
-onUnmounted(() => {
+onUnmounted(async () => {
   if (isStreaming.value) {
+    try {
+      await api.post('/camera/stream/stop');
+    } catch (error) {
+      console.error('Error stopping stream on unmount:', error);
+    }
     isStreaming.value = false;
     streamUrl.value = '';
   }
