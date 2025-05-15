@@ -5,13 +5,13 @@ from flask import Blueprint, jsonify, send_file, current_app, Response
 import io
 import subprocess
 import cv2
-import torch
+# import torch
 import site
 from picamera2 import Picamera2
 from picamera2.encoders import H264Encoder
-from repleye.vial_detection import detect_vial
-from repleye.volume_estimation.src import estimate
-from repleye.volume_estimation.src.model import VolumeEstimator
+# from repleye.vial_detection import detect_vial
+# from repleye.volume_estimation.src import estimate
+# from repleye.volume_estimation.src.model import VolumeEstimator
 from .vision import capture_and_process_image, process_frame
 import numpy as np
 
@@ -26,6 +26,7 @@ site_packages = site.getsitepackages()[0]
 YOLO_WEIGHTS = os.path.join(site_packages, 'repleye', 'vial_detection', 'models', 'model_03_05_25.pt')
 VOLUME_WEIGHTS = os.path.join(site_packages, 'repleye', 'volume_estimation', 'models', 'model_2024_11_24.pth')
 
+'''
 try:
     print(f"Loading YOLO model from: {YOLO_WEIGHTS}")
     yolo_model = torch.hub.load('ultralytics/yolov5', 'custom', path=YOLO_WEIGHTS, force_reload=True)
@@ -43,6 +44,7 @@ try:
 except Exception as e:
     print(f"Error loading volume model: {e}")
     raise
+'''
 
 def init_camera():
     global camera
@@ -120,11 +122,11 @@ def stream():
                 nparr = np.frombuffer(frame, np.uint8)
                 frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
                 
-                # Process frame with segmentation
-                try:
-                    frame = process_frame(frame)
-                except Exception as e:
-                    print(f"Error processing frame: {e}")
+                # Process frame with segmentation - commented out since it uses PyTorch
+                # try:
+                #     frame = process_frame(frame)
+                # except Exception as e:
+                #     print(f"Error processing frame: {e}")
                 
                 # Convert back to JPEG
                 _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 95])
@@ -273,6 +275,8 @@ def reset_camera():
 
 @camera_routes.route("/camera/segment", methods=['GET'])
 def segment_image():
+    return jsonify({'error': 'Segmentation is currently disabled'})
+    '''
     try:
         # Capture and process image using vision module
         frame = capture_and_process_image()
@@ -286,6 +290,7 @@ def segment_image():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    '''
 
 @camera_routes.route('/camera/force_reset', methods=['POST'])
 def force_reset_camera():

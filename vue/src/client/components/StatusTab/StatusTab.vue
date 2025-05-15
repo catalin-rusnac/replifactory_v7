@@ -2,21 +2,14 @@
   <div>
     <!-- Button Row -->
     <v-row class="mt-3">
-      <v-col cols="3">
+      <v-col cols="4">
         <!-- Camera Button -->
         <v-btn color="info" @click="capture_image">
           <v-icon size="large">mdi-camera</v-icon> Photo
         </v-btn>
       </v-col>
 
-      <v-col cols="3">
-        <!-- Segmentation Button -->
-        <v-btn color="success" @click="segment_image" :disabled="!camera_image">
-          <v-icon size="large">mdi-image-filter-center-focus</v-icon> Segment
-        </v-btn>
-      </v-col>
-
-      <v-col cols="3">
+      <v-col cols="4">
         <!-- Video Button with Duration Selection -->
         <v-menu>
           <template v-slot:activator="{ props }">
@@ -35,14 +28,7 @@
         </v-menu>
       </v-col>
 
-      <v-col cols="3">
-        <!-- Live Stream Button -->
-        <v-btn color="error" @click="toggleStream">
-          <v-icon size="large">mdi-video-outline</v-icon> {{ isStreaming ? 'Stop Stream' : 'Live Stream' }}
-        </v-btn>
-      </v-col>
-
-      <v-col cols="3">
+      <v-col cols="4">
         <!-- Download Database Button -->
         <v-btn color="success" @click="download_db">
           <v-icon size="large">mdi-cloud-download</v-icon> Download Database
@@ -58,14 +44,6 @@
         </v-btn>
       </v-col>
     </v-row>
-
-    <!-- Video Stream Display -->
-    <div class="mt-3" v-if="isStreaming">
-      <div class="mb-2">
-        <small>Live Stream</small>
-      </div>
-      <img :src="streamUrl" class="img-fluid" style="max-width: 100%; height: auto;" />
-    </div>
 
     <!-- Video Recording Progress -->
     <v-row v-if="isRecording" class="mt-3">
@@ -159,28 +137,6 @@ const isRecording = ref(false);
 const recordingProgress = ref(0);
 const recordingInterval = ref(null);
 const currentDuration = ref(0);
-const isStreaming = ref(false);
-const streamUrl = ref('');
-
-/**
- * Toggle video stream
- */
-async function toggleStream() {
-  if (isStreaming.value) {
-    // Stop stream
-    try {
-      await api.post('/camera/stream/stop');
-    } catch (error) {
-      console.error('Error stopping stream:', error);
-    }
-    isStreaming.value = false;
-    streamUrl.value = '';
-  } else {
-    // Start stream
-    isStreaming.value = true;
-    streamUrl.value = `${api.defaults.baseURL}/camera/stream`;
-  }
-}
 
 /**
  * Download database file
@@ -309,21 +265,6 @@ async function capture_video(duration) {
 }
 
 /**
- * Segment the current image to detect vials and estimate volumes
- */
-async function segment_image() {
-  try {
-    const response = await api.get('/camera/segment', { responseType: 'arraybuffer' });
-    const base64 = btoa(
-      new Uint8Array(response.data).reduce((data, byte) => data + String.fromCharCode(byte), '')
-    );
-    camera_image.value = `data:image/jpeg;base64,${base64}`;
-  } catch (error) {
-    console.error('Error segmenting image:', error);
-  }
-}
-
-/**
  * Force reset the camera
  */
 async function forceResetCamera() {
@@ -340,16 +281,7 @@ async function forceResetCamera() {
 }
 
 // Clean up on component unmount
-onUnmounted(async () => {
-  if (isStreaming.value) {
-    try {
-      await api.post('/camera/stream/stop');
-    } catch (error) {
-      console.error('Error stopping stream on unmount:', error);
-    }
-    isStreaming.value = false;
-    streamUrl.value = '';
-  }
+onUnmounted(() => {
   if (recordingInterval.value) {
     clearInterval(recordingInterval.value);
   }

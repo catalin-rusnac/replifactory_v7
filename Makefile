@@ -235,7 +235,6 @@ secrets:
 	#ssh-keygen -t rsa -b 4096 -C "pi@$HOSTNAME" -f ~/.ssh/id_rsa -N ""; cat ~/.ssh/id_rsa.pub
 	#ssh-copy-id -i ~/.ssh/id_rsa.pub replifactory-device@$(VPS_IP)   << do this manually, then ssh into the vps and add the public key to the authorized_keys file
 	#make vps
-
 	echo $HOSTNAME > .env
 
 migrate:
