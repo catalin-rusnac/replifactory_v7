@@ -4,11 +4,11 @@ from datetime import datetime
 from flask import Blueprint, jsonify, send_file, current_app, Response
 import io
 import subprocess
-import cv2
+# import cv2
 # import torch
 import site
 from picamera2 import Picamera2
-from picamera2.encoders import H264Encoder
+# from picamera2.encoders import H264Encoder
 # from repleye.vial_detection import detect_vial
 # from repleye.volume_estimation.src import estimate
 # from repleye.volume_estimation.src.model import VolumeEstimator
