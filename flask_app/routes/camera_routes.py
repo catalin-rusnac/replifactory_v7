@@ -7,7 +7,6 @@ import subprocess
 # import cv2
 # import torch
 import site
-from picamera2 import Picamera2
 # from picamera2.encoders import H264Encoder
 # from repleye.vial_detection import detect_vial
 # from repleye.volume_estimation.src import estimate
@@ -47,6 +46,7 @@ except Exception as e:
 '''
 
 def init_camera():
+    from picamera2 import Picamera2
     global camera
     if camera is None:
         try:
@@ -62,6 +62,7 @@ def init_camera():
     return True
 
 def init_stream_camera():
+    from picamera2 import Picamera2
     global stream_camera
     if stream_camera is None:
         try:
@@ -200,6 +201,7 @@ def capture_image_pi():
 
 @camera_routes.route('/camera/video/<int:duration>', methods=['GET'])
 def capture_video(duration):
+    from picamera2 import Picamera2
     camera = None
     try:
         # Initialize the camera
@@ -255,6 +257,7 @@ def capture_video(duration):
 
 @camera_routes.route("/camera/video/stop", methods=['POST'])
 def stop_video():
+    from picamera2 import Picamera2
     try:
         picam2 = Picamera2()
         picam2.stop_recording()

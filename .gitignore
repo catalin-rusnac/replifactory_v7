@@ -2,6 +2,7 @@
 /env/
 /data/
 /.idea/
+/dev/
 
 /flask_app/minimal_device/__pycache__/
 /flask_app/data/

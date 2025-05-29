@@ -1,6 +1,7 @@
 import os
 import threading
 import time
+from datetime import datetime
 import traceback
 
 import pyftdi.i2c
@@ -337,6 +338,14 @@ class BaseDevice:
         """
         config_path = os.path.join(self.directory, "device_config.yaml")
         save_object(self, filepath=config_path)
+
+    def save_timestamped_device_config(self):
+        """
+        saves calibration data to self.directory/device_config_{timestamp}.yaml
+        """
+        timestamp_iso = datetime.now().isoformat()
+        timestamped_config_path = os.path.join(self.directory, f"device_config_{timestamp_iso}.yaml")
+        save_object(self, filepath=timestamped_config_path)
 
     def load_dev_config(self):
         """
