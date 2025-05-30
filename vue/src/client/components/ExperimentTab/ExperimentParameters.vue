@@ -6,7 +6,7 @@
           v-if="key !== 'cultures' && key !== 'growth_parameters'"
           class="stock-parameter-field"
           :label="`${key}`"
-          v-model="this.currentExperiment.parameters[key]"
+          v-model="currentExperiment.parameters[key]"
           :readonly="currentExperiment.status === 'running'"
           @update:modelValue="handleInputChange(key, $event)"
         ></v-text-field>
@@ -16,31 +16,20 @@
   </div>
 </template>
 
-<script>
-import { mapActions, mapState } from "vuex";
-import { VTextField } from "vuetify/components";
+<script setup>
+import { computed } from 'vue'
+import { useExperimentStore } from '@/client/stores/experiment'
 
-export default {
-  components: {
-    VTextField,
-  },
-  computed: {
-    ...mapState('experiment', ['currentExperiment']),
-  },
-  methods: {
-    ...mapActions('experiment', ['updateExperimentParameters']),
-    async handleInputChange(key, value) {
-      // Update the parameter in the local state
-      this.currentExperiment.parameters[key] = value;
+const experimentStore = useExperimentStore()
+const currentExperiment = computed(() => experimentStore.currentExperiment || {})
 
-      // Send updated parameters to the Vuex store or backend
-      await this.updateExperimentParameters({
-        experimentId: this.currentExperiment.id,
-        parameters: this.currentExperiment.parameters,
-      });
-    },
-  },
-};
+async function handleInputChange(key, value) {
+  // Update the parameter in the local state
+  currentExperiment.value.parameters[key] = value
+
+  // Optionally, send updated parameters to the backend here
+  // e.g., await experimentStore.updateExperimentParameters({ ... })
+}
 </script>
 
 <style scoped>

@@ -63,13 +63,10 @@ export default {
       }
     },
     async updateFullTable(data) {
-      console.log('Updating full table:', data);
       try {
         // Replace this with the actual call to your backend
         await this.updateData(data);
-        console.log('Full table update successful');
       } catch (error) {
-        console.error('Full table update failed:', error);
       }
     }
   }

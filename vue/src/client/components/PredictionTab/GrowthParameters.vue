@@ -12,75 +12,63 @@
   </div>
 </template>
 
-<script>
-import { mapActions, mapState } from "vuex";
+<script setup>
+import { computed, defineEmits } from 'vue';
+import { useExperimentStore } from '@/client/stores/experiment';
 import TableComponent from "../PredictionTab/TableComponent.vue";
 
-export default {
-  components: {
-    TableComponent,
-  },
-  computed: {
-    ...mapState('experiment', ['currentExperiment']),
-  },
-  methods: {
-    ...mapActions('experiment', ['updateExperimentParameters']),
-    async handleInputChange(key, value) {
-      await this.updateExperimentParameters({
-        experimentId: this.currentExperiment.id,
-        parameters: {
-          ...this.currentExperiment.parameters, [key]: value,
-        },
-      });
-    },
-    fetchCulturesData() {
-      const cultures = this.currentExperiment.parameters.growth_parameters;
-      const keys = Object.keys(cultures[1]);
-      const customOrder = [
-        'initial_population',
-        'doubling_time_mins',
-        'carrying_capacity',
-        'mu_min',
-        'ic50_initial',
-        'ic10_ic50_ratio',
-        'dose_effective_slope_width_mins',
-        'time_lag_drug_effect_mins',
-        'adaptation_rate_max',
-        'adaptation_rate_ic10_ic50_ratio',
-        'drug_concentration',
-        'effective_dose'
-      ];
+const experimentStore = useExperimentStore();
+const currentExperiment = computed(() => experimentStore.currentExperiment || {});
+const emit = defineEmits(['parameters-updated']);
 
-      // Function to sort keys based on custom order and alphabetically
-      const sortKeys = (keys) => {
-        const customOrderSet = new Set(customOrder);
-        const customOrderedKeys = customOrder.filter(key => keys.includes(key));
-        const remainingKeys = keys.filter(key => !customOrderSet.has(key)).sort();
-        return [...customOrderedKeys, ...remainingKeys];
-      };
+function fetchCulturesData() {
+  const cultures = currentExperiment.value.parameters.growth_parameters;
+  if (!cultures) return { data: [], keys: [] };
+  const keys = Object.keys(cultures[1] || {});
+  const customOrder = [
+    'initial_population',
+    'doubling_time_mins',
+    'carrying_capacity',
+    'mu_min',
+    'ic50_initial',
+    'ic10_ic50_ratio',
+    'dose_effective_slope_width_mins',
+    'time_lag_drug_effect_mins',
+    'adaptation_rate_max',
+    'adaptation_rate_ic10_ic50_ratio',
+    'drug_concentration',
+    'effective_dose'
+  ];
 
-      const sortedKeys = sortKeys(keys);
-      const sortedData = sortedKeys.map(key => Object.keys(cultures).map(vial => cultures[vial][key]));
+  const sortKeys = (keys) => {
+    const customOrderSet = new Set(customOrder);
+    const customOrderedKeys = customOrder.filter(key => keys.includes(key));
+    const remainingKeys = keys.filter(key => !customOrderSet.has(key)).sort();
+    return [...customOrderedKeys, ...remainingKeys];
+  };
 
-      return { data: sortedData, keys: sortedKeys };
-    },
-    async updateCulturesData(data) {
-      const sortedKeys = this.fetchCulturesData().keys;
-      const columnNames = Object.keys(this.currentExperiment.parameters.growth_parameters);
+  const sortedKeys = sortKeys(keys);
+  const sortedData = sortedKeys.map(key => Object.keys(cultures).map(vial => cultures[vial][key]));
 
-      for (let v = 0; v < columnNames.length; v++) {
-        for (let r = 0; r < sortedKeys.length; r++) {
-          this.currentExperiment.parameters.growth_parameters[columnNames[v]][sortedKeys[r]] = data[r][v];
-        }
-      }
+  return { data: sortedData, keys: sortedKeys };
+}
 
-      await this.updateExperimentParameters({
-        experimentId: this.currentExperiment.id,
-        parameters: this.currentExperiment.parameters,
-      });
-    },
-  },
-};
+async function updateCulturesData(data) {
+  const { keys: sortedKeys } = fetchCulturesData();
+  const columnNames = Object.keys(currentExperiment.value.parameters.growth_parameters);
+
+  // Reconstruct the growth_parameters object
+  const newGrowthParameters = {};
+  for (let v = 0; v < columnNames.length; v++) {
+    newGrowthParameters[columnNames[v]] = {};
+    for (let r = 0; r < sortedKeys.length; r++) {
+      newGrowthParameters[columnNames[v]][sortedKeys[r]] = data[r][v];
+    }
+  }
+
+  await experimentStore.updateCurrentGrowthParameters(newGrowthParameters);
+  emit('parameters-updated', 'Growth parameters updated');
+}
 </script>
 
 <style scoped>

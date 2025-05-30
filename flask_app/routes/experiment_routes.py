@@ -125,12 +125,10 @@ def update_experiment_parameters():
 
 @experiment_routes.route('/experiments/current/growth_parameters', methods=['PUT'])
 def update_experiment_growth_parameters():
+    print("update_experiment_growth_parameters. json:")
+    print(request.json)
+
     new_parameters = request.json['parameters']
-    if current_app.experiment.model.status == 'running':
-        print("Not updating volume parameters of current experiment")
-        for k in new_parameters.keys():
-            if k != 'cultures':
-                new_parameters[k] = current_app.experiment.growth_parameters[k]
     current_app.experiment.growth_parameters = new_parameters
     # print("new_parameters", new_parameters)
     for c in current_app.experiment.cultures.values():

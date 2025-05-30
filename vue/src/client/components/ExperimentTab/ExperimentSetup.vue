@@ -19,7 +19,6 @@
           :style="{ minWidth: '150px' }"
           @update:modelValue="handleExperimentSelected"
         ></v-select>
-<!--        make button same height as dropdown-->
         <v-btn color="primary" @click="handleNewExperimentButton" class="mt-3" :style="{ height: '60px' }" title="New Experiment">+</v-btn>
       </div>
 
@@ -29,7 +28,7 @@
           class="start-button"
           :class="{ 'active': currentExperiment.status === 'running' }"
           :style="{ 'background-color': currentExperiment.status === 'running' ? '#28a745' : 'transparent' }"
-          @click="startExperiment()"
+          @click="startExperiment"
           color="success"
           title="Start the experiment loop - measure OD every minute and dilute the cultures as necessary, according to the parameters."
         >
@@ -39,7 +38,7 @@
           class="start-button"
           :class="{ 'active': currentExperiment.status === 'paused' }"
           :style="{ 'background-color': currentExperiment.status === 'paused' ? '#ffc107' : 'transparent' }"
-          @click="pauseExperiment()"
+          @click="pauseExperiment"
           title="Pause the dilutions, but keep measuring the OD every minute."
           color="warning"
         >
@@ -49,8 +48,8 @@
           class="start-button"
           :class="{ 'active': currentExperiment.status === 'stopped' }"
           :style="{ 'background-color': currentExperiment.status === 'stopped' ? '#dc3545' : 'transparent' }"
-          @click="stopExperiment()"
-          @dblclick="forceStopExperiment()"
+          @click="stopExperiment"
+          @dblclick="forceStopExperiment"
           color="error"
           title="Stop gracefully - wait for the current dilution to finish."
         >
@@ -78,58 +77,67 @@
   </v-container>
 </template>
 
-<script>
-import { mapActions, mapState } from "vuex";
-import ExperimentParameters from "./ExperimentParameters.vue";
+<script setup>
+import { ref, computed, onMounted } from 'vue';
+import { useExperimentStore } from '@/client/stores/experiment';
+import ExperimentParameters from './ExperimentParameters.vue';
 
-export default {
-  components: {
-    ExperimentParameters,
-  },
-  data() {
-    return {
-      newExperimentname: null,
-      showCreate: false,
-      currentExperimentId: null,
-    };
-  },
-  computed: {
-    ...mapState('experiment', ['experiments', 'currentExperiment', 'errorMessage']),
-    reversedExperiments() {
-      return [...this.experiments].reverse();
-    },
-  },
-  methods: {
-    ...mapActions('experiment', ['setCurrentExperimentAction', 'createExperiment', 'fetchExperiments', 'fetchCurrentExperiment', 'startExperiment', 'pauseExperiment', 'stopExperiment']),
-    async handleExperimentSelected() {
-      if (this.currentExperiment.status === 'running' || this.currentExperiment.status === 'paused') {
-        await this.stopExperiment(this.currentExperiment.id);
-      }
-      await this.setCurrentExperimentAction(this.currentExperimentId);
-    },
-    async handleNewExperimentButton() {
-      this.showCreate = !this.showCreate;
-      if (this.currentExperiment.status === 'running' || this.currentExperiment.status === 'paused') {
-        await this.stopExperiment(this.currentExperiment.id);
-      }
-    },
-    async createAndSelectExperiment() {
-      if (this.currentExperiment) {
-        this.currentExperimentId = await this.createExperiment({ name: this.newExperimentname, parameters: this.currentExperiment.parameters });
-      } else {
-        this.currentExperimentId = await this.createExperiment({ name: this.newExperimentname });
-      }
-      await this.handleExperimentSelected(this.currentExperimentId);
-      this.showCreate = false;
-      this.newExperimentname = '';
-    },
-  },
-  async created() {
-    await this.fetchExperiments();
-    await this.fetchCurrentExperiment();
-    this.currentExperimentId = this.currentExperiment.id;
-  },
-};
+const experimentStore = useExperimentStore();
+
+const newExperimentname = ref('');
+const showCreate = ref(false);
+const currentExperimentId = ref(null);
+
+const experiments = computed(() => experimentStore.experiments);
+const currentExperiment = computed(() => experimentStore.currentExperiment || {});
+const errorMessage = computed(() => experimentStore.errorMessage);
+const reversedExperiments = computed(() => [...experiments.value].reverse());
+
+async function handleExperimentSelected() {
+  if (currentExperiment.value.status === 'running' || currentExperiment.value.status === 'paused') {
+    await experimentStore.stopExperiment();
+  }
+  await experimentStore.selectExperiment(currentExperimentId.value);
+}
+
+async function handleNewExperimentButton() {
+  showCreate.value = !showCreate.value;
+  if (currentExperiment.value.status === 'running' || currentExperiment.value.status === 'paused') {
+    await experimentStore.stopExperiment();
+  }
+}
+
+async function createAndSelectExperiment() {
+  if (currentExperiment.value) {
+    currentExperimentId.value = await experimentStore.createExperiment({ name: newExperimentname.value, parameters: currentExperiment.value.parameters });
+  } else {
+    currentExperimentId.value = await experimentStore.createExperiment({ name: newExperimentname.value });
+  }
+  await handleExperimentSelected();
+  showCreate.value = false;
+  newExperimentname.value = '';
+}
+
+async function startExperiment() {
+  await experimentStore.startExperiment();
+}
+async function pauseExperiment() {
+  await experimentStore.pauseExperiment();
+}
+async function stopExperiment() {
+  await experimentStore.stopExperiment();
+}
+function forceStopExperiment() {
+  // Optionally implement force stop logic
+}
+
+onMounted(async () => {
+  await experimentStore.fetchExperiments();
+  await experimentStore.fetchCurrentExperiment();
+  if (experimentStore.currentExperiment) {
+    currentExperimentId.value = experimentStore.currentExperiment.id;
+  }
+});
 </script>
 
 <style scoped>

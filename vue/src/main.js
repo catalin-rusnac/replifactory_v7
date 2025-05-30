@@ -1,5 +1,6 @@
 import { createApp } from 'vue';
 import App from './client/App.vue';
+import { createPinia } from 'pinia';
 import store from './client/store';
 
 // Vuetify
@@ -34,5 +35,6 @@ const app = createApp(App);
 // });
 
 app.use(vuetify)
+   .use(createPinia())
    .use(store)
    .mount('#app');
