@@ -48,15 +48,15 @@ def create_experiment(data: ExperimentCreate, db: Session = Depends(get_db)):
 @router.put("/experiments/select", response_model=SelectExperimentOut)
 def select_experiment(
     data: SelectExperimentIn,
-    db: Session = Depends(get_db),
-    manager: ExperimentManager = Depends(get_experiment_manager)
+    db: Session = Depends(get_db)
 ):
-    experiment = db.query(ExperimentModel).get(data.experiment_id)
-    if not experiment:
+    manager = ExperimentManager.get_instance()
+    experiment_model = db.query(ExperimentModel).get(data.experiment_id)
+    if not experiment_model:
         raise HTTPException(status_code=404, detail="Experiment not found")
     already_selected = manager.get_current_experiment_id() == data.experiment_id
     if not already_selected:
-        manager.set_current_experiment(data.experiment_id)
+        manager.set_current_experiment(experiment_model)
     return SelectExperimentOut(success=True, selected_experiment_id=data.experiment_id)
 
 @router.get("/experiments", response_model=List[ExperimentOut])
@@ -89,10 +89,10 @@ def set_current_experiment(
     db: Session = Depends(get_db),
     manager: ExperimentManager = Depends(get_experiment_manager)
 ):
-    experiment = db.query(ExperimentModel).get(data.experiment_id)
-    if experiment is None:
+    experiment_model = db.query(ExperimentModel).get(data.experiment_id)
+    if experiment_model is None:
         raise HTTPException(status_code=404, detail="Experiment not found")
-    manager.set_current_experiment(data.experiment_id)
+    manager.set_current_experiment(experiment_model)
     return
 
 @router.get("/experiment/current", response_model=Optional[ExperimentOut])
@@ -195,4 +195,21 @@ def update_current_experiment_growth_parameters(
     db.commit()
     db.refresh(experiment)
     return {"message": "Growth parameters updated", "growth_parameters": experiment.parameters["growth_parameters"]}
+
+@router.get("/plot/{vial}/simulation")
+def get_culture_predicted_plot(
+    vial: int,
+    db: Session = Depends(get_db),
+    manager: ExperimentManager = Depends(get_experiment_manager)
+):
+    experiment = manager.get_current_experiment(db)
+    if experiment is None:
+        raise HTTPException(status_code=404, detail="No current experiment set")
+    try:
+        fig = experiment.cultures[vial].plot_predicted()
+        fig_json = fig.to_json()
+        return fig_json
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=500, detail=str(e))
 

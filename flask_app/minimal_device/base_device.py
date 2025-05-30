@@ -19,7 +19,6 @@ from .od_sensor import OdSensor
 from .pump import Pump
 from .pwm import PwmController
 from .stirrers import Stirrers
-from .test_hardware import Testing
 from .thermometers import Thermometers
 from .valves import Valves
 from .workers import QueueWorker
@@ -109,7 +108,6 @@ class BaseDevice:
                 self.save()
         if connect:
             self.connect()
-        self.testing = Testing(self)
 
     def connect_i2c_spi(self, ftdi_address="ftdi://ftdi:2232h", retries=5):
         # acquire lock_pumps to prevent concurrent attempts to connect
