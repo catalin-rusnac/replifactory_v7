@@ -13,13 +13,14 @@
 </template>
 
 <script setup>
-import { computed, defineEmits } from 'vue';
+import { computed } from 'vue';
 import { useExperimentStore } from '@/client/stores/experiment';
 import TableComponent from "../PredictionTab/TableComponent.vue";
+import { toast } from 'vue3-toastify';
+import 'vue3-toastify/dist/index.css';
 
 const experimentStore = useExperimentStore();
 const currentExperiment = computed(() => experimentStore.currentExperiment || {});
-const emit = defineEmits(['parameters-updated']);
 
 function fetchCulturesData() {
   const cultures = currentExperiment.value.parameters.growth_parameters;
@@ -66,8 +67,14 @@ async function updateCulturesData(data) {
     }
   }
 
-  await experimentStore.updateCurrentGrowthParameters(newGrowthParameters);
-  emit('parameters-updated', 'Growth parameters updated');
+  if (experimentStore.updateCurrentGrowthParameters) {
+    try {
+      await experimentStore.updateCurrentGrowthParameters(newGrowthParameters);
+      toast('Growth parameters updated', { type: 'success' });
+    } catch (error) {
+      toast('Failed to update growth parameters', { type: 'error' });
+    }
+  }
 }
 </script>
 
