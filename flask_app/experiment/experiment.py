@@ -14,7 +14,7 @@ from experiment.database_models import ExperimentModel
 from .ModelBasedCulture.culture_growth_model import culture_growth_model_default_parameters
 from .ModelBasedCulture.morbidostat_updater import morbidostat_updater_default_parameters
 from .culture import Culture
-from flask import current_app
+from .db import SessionLocal
 
 
 class ExperimentWorker:
@@ -80,13 +80,11 @@ class QueueWorker:
                 print("Worker %s resumed" % self.name)
             self.is_performing_operation = True
             try:
-                with self.experiment.app.app_context():
-                    try:
-                        operation()
-                    except Exception as e:
-                        # print full traceback
-                        traceback.print_exc()
-                        print("Exception in worker %s: %s" % (self.name, e))
+                operation()
+            except Exception as e:
+                # print full traceback
+                traceback.print_exc()
+                print("Exception in worker %s: %s" % (self.name, e))
             finally:
                 self.is_performing_operation = False
 
@@ -122,17 +120,19 @@ class Experiment:
         cls._instance = super(Experiment, cls).__new__(cls)
         return cls._instance
 
-    def __init__(self, device, experiment_model, db):
-        self.app = current_app._get_current_object()
-        self.db = db
-        self.model = experiment_model  # Store the database model object
+    def __init__(self, device, experiment_id):
         self.device = device
-        self._status = self.model.status
+        # Use a short-lived session to fetch the experiment model
+        with SessionLocal() as session:
+            experiment_model = session.get(ExperimentModel, experiment_id)
+            if experiment_model is None:
+                raise ValueError(f"Experiment with id {experiment_id} not found")
+            self.model = experiment_model  # Store the database model object
+            self._status = self.model.status
         self.schedule = schedule.Scheduler()
         self.locks = {i: threading.Lock() for i in range(1, 8)}
         self.experiment_worker = None
-        self.cultures = {i: Culture(self, i, db) for i in range(1, 8)}
-        self.db.session.commit()
+        self.cultures = {i: Culture(self, i) for i in range(1, 8)}
 
     @property
     def parameters(self):
@@ -140,11 +140,12 @@ class Experiment:
 
     @parameters.setter
     def parameters(self, new_parameters):
-        with self.app.app_context():
-            # Make a deep copy of the parameters, modify it, and assign it back
-            id = self.model.id
-            experiment_model = self.db.session.get(ExperimentModel, id)
-
+        id = self.model.id
+        # Use a short-lived session to update parameters in the DB
+        with SessionLocal() as session:
+            experiment_model = session.get(ExperimentModel, id)
+            if experiment_model is None:
+                raise ValueError(f"Experiment with id {id} not found")
             # modify to float
             for v, culture_parameters in new_parameters["cultures"].items():
                 for key, value in new_parameters["cultures"][v].items():
@@ -159,10 +160,10 @@ class Experiment:
                             if type(value) not in [int, float]:
                                 value = float(value)
                                 new_parameters["growth_parameters"][v][key] = value
-            # print("New parameters", new_parameters)
             experiment_model.parameters = new_parameters
-            self.model.parameters = new_parameters
-            self.db.session.commit()
+            session.commit()
+        # Also update the in-memory model
+        self.model.parameters = new_parameters
 
     @property
     def status(self):
@@ -171,9 +172,16 @@ class Experiment:
     @status.setter
     def status(self, value):
         self._status = value
+        # Use a short-lived session to update status in the DB
+        with SessionLocal() as session:
+            experiment_model = session.get(ExperimentModel, self.model.id)
+            if experiment_model is None:
+                raise ValueError(f"Experiment with id {self.model.id} not found")
+            experiment_model.status = value
+            session.commit()
+        # Also update the in-memory model
         self.model.status = value
-        self.db.session.commit()
-        print(self.model.status,"status changed to", value)
+        print(self.model.status, "status changed to", value)
 
     def _delete_all_data(self):
         for v in range(1, 8):
@@ -311,6 +319,14 @@ class Experiment:
             c = self.cultures[vial]
             info[vial] = c.get_culture_status_dict()
         return info
+
+    def set_status(self, new_status):
+        self._status = new_status
+        # Update DB with a short-lived session
+        with SessionLocal() as session:
+            experiment_model = session.get(ExperimentModel, self.model.id)
+            experiment_model.status = new_status
+            session.commit()
 
 
 def object_to_dict(obj):

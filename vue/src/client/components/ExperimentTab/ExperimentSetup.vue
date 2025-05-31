@@ -1,9 +1,5 @@
 <template>
   <v-container>
-    <v-snackbar v-model="errorMessage" timeout="4000">
-      {{ errorMessage }}
-    </v-snackbar>
-
     <div class="experiment-setup">
       <!-- First Line: Select Experiment and New Experiment Button -->
       <div class="d-flex line-container">
@@ -18,8 +14,16 @@
           class="flex-grow-1 mt-3 experiment-select"
           :style="{ minWidth: '150px' }"
           @update:modelValue="handleExperimentSelected"
+          :disabled="currentExperiment.status === 'running'"
         ></v-select>
-        <v-btn color="primary" @click="handleNewExperimentButton" class="mt-3" :style="{ height: '60px' }" title="New Experiment">+</v-btn>
+        <v-btn
+          color="primary"
+          @click="handleNewExperimentButton"
+          class="mt-3"
+          :style="{ height: '60px' }"
+          title="New Experiment"
+          :disabled="currentExperiment.status === 'running'"
+        >+</v-btn>
       </div>
 
       <!-- Second Line: Start, Pause, Stop Buttons -->
@@ -33,16 +37,6 @@
           title="Start the experiment loop - measure OD every minute and dilute the cultures as necessary, according to the parameters."
         >
           Start
-        </v-btn>
-        <v-btn
-          class="start-button"
-          :class="{ 'active': currentExperiment.status === 'paused' }"
-          :style="{ 'background-color': currentExperiment.status === 'paused' ? '#ffc107' : 'transparent' }"
-          @click="pauseExperiment"
-          title="Pause the dilutions, but keep measuring the OD every minute."
-          color="warning"
-        >
-          Pause
         </v-btn>
         <v-btn
           class="start-button"
@@ -81,20 +75,20 @@
 import { ref, computed, onMounted } from 'vue';
 import { useExperimentStore } from '@/client/stores/experiment';
 import ExperimentParameters from './ExperimentParameters.vue';
+import { toast } from 'vue3-toastify';
+import 'vue3-toastify/dist/index.css';
 
 const experimentStore = useExperimentStore();
-
 const newExperimentname = ref('');
 const showCreate = ref(false);
 const currentExperimentId = ref(null);
 
 const experiments = computed(() => experimentStore.experiments);
 const currentExperiment = computed(() => experimentStore.currentExperiment || {});
-const errorMessage = computed(() => experimentStore.errorMessage);
 const reversedExperiments = computed(() => [...experiments.value].reverse());
 
-async function handleExperimentSelected() {
-  if (currentExperiment.value.status === 'running' || currentExperiment.value.status === 'paused') {
+async function handleExperimentSelected() { 
+  if (currentExperiment.value.status === 'running') {
     await experimentStore.stopExperiment();
   }
   await experimentStore.selectExperiment(currentExperimentId.value);
@@ -102,7 +96,7 @@ async function handleExperimentSelected() {
 
 async function handleNewExperimentButton() {
   showCreate.value = !showCreate.value;
-  if (currentExperiment.value.status === 'running' || currentExperiment.value.status === 'paused') {
+  if (currentExperiment.value.status === 'running') {
     await experimentStore.stopExperiment();
   }
 }
@@ -120,9 +114,7 @@ async function createAndSelectExperiment() {
 
 async function startExperiment() {
   await experimentStore.startExperiment();
-}
-async function pauseExperiment() {
-  await experimentStore.pauseExperiment();
+  toast('Experiment started!', { type: 'success' });
 }
 async function stopExperiment() {
   await experimentStore.stopExperiment();

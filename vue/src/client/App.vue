@@ -32,7 +32,6 @@ import { mapState } from "vuex";
 import { defineAsyncComponent } from "vue";
 import '@mdi/font/css/materialdesignicons.css';
 
-// Define components dynamically
 const components = {
   ExperimentTab: () => import("@/client/components/ExperimentTab/ExperimentTab.vue"),
   PredictionTab: () => import("@/client/components/PredictionTab/PredictionTab.vue"),
@@ -78,9 +77,11 @@ export default {
       this.currentTab = tabName;
     },
   },
-  components: Object.fromEntries(
-    Object.entries(components).map(([key, value]) => [key, defineAsyncComponent(value)])
-  ),
+  components: {
+    ...Object.fromEntries(
+      Object.entries(components).map(([key, value]) => [key, defineAsyncComponent(value)])
+    ),
+  },
 };
 </script>
 

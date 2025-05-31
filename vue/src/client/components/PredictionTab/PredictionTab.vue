@@ -60,6 +60,7 @@ const simulation_data = computed(() => experimentStore.simulation_data || {});
 
 const snackbar = ref(false);
 const snackbarMessage = ref('');
+const isPlotting = ref(false);
 
 function showSnackbar(message = 'Control parameters updated') {
   snackbarMessage.value = message;
