@@ -1,10 +1,19 @@
 <template>
+  <h2>
+    Culture Growth Parameters
+    <span 
+      class="info-icon" 
+      @click="toast.info('Growth parameters are used to predict the growth of the culture in the simulation. They do not affect the flow of the experiment but correct values are important for the accuracy of the prediction, helping adjust control parameters.', { position: 'top-right', autoClose: 8000 })"
+      style="cursor: pointer; margin-left: 8px; font-size: 0.8em;"
+    >
+      ⓘ
+    </span>
+  </h2>
   <div v-if="Object.keys(currentExperiment?.parameters?.growth_parameters || {}).length > 0">
     <TableComponent
       :key="currentExperiment.id"
       :fetchData="fetchCulturesData"
       :updateData="updateCulturesData"
-      tableTitle="Culture Growth Parameters"
       :columnHeaders="['Vial 1', 'Vial 2', 'Vial 3', 'Vial 4', 'Vial 5', 'Vial 6', 'Vial 7']"
       rowHeaderLabel="Parameter"
       :rowHeaderWidth="270"

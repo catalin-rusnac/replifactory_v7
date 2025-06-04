@@ -18,68 +18,64 @@
     </button>
   </div>
 </template>
-<script>
-import { mapState, mapActions } from 'vuex';
 
+<script setup>
+import { ref } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useDeviceStore } from '../../stores/device'
 
-export default {
-  name: 'ValveControl',
-  computed: mapState('device', ['valves']),
-  data() {
-    return {
-      audioContext: new (window.AudioContext || window.webkitAudioContext)(),
-      togglingValves: {},
-    };
-  },
-  methods: {
-    ...mapActions('device', ['setPartStateAction']),
-    toggleValve(valveIndex) {
-      const currentState = this.valves.states[valveIndex];
+const deviceStore = useDeviceStore()
+const { valves } = storeToRefs(deviceStore)
 
-      if (this.togglingValves[valveIndex]) {
-        return; // exit if already toggling
-      }
-      this.togglingValves = { ...this.togglingValves, [valveIndex]: true };
+const togglingValves = ref({})
 
-      const oscillator = this.playValveSound(currentState);
+const audioContext = new (window.AudioContext || window.webkitAudioContext)()
 
-      this.setPartStateAction({
-        devicePart: 'valves',
-        partIndex: valveIndex,
-        newState: currentState === 'open' ? 'closed' : 'open',
-      })
-        .then(() => {
-          oscillator.stop();
-          this.togglingValves = { ...this.togglingValves, [valveIndex]: false };
-        })
-        .catch((error) => {
-          console.error(error);
-        });
-    },
-    playValveSound(valveState) {
-      const startFrequency = valveState === 'open' ? 500 : 300;
-      const endFrequency = valveState === 'open' ? 300 : 500;
+function playValveSound(valveState) {
+  const startFrequency = valveState === 'open' ? 500 : 300
+  const endFrequency = valveState === 'open' ? 300 : 500
 
-      const oscillator = this.audioContext.createOscillator();
-      oscillator.type = 'sine';
+  const oscillator = audioContext.createOscillator()
+  oscillator.type = 'sine'
 
-      const gainNode = this.audioContext.createGain();
-      gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);
+  const gainNode = audioContext.createGain()
+  gainNode.gain.setValueAtTime(0.1, audioContext.currentTime)
 
-      oscillator.connect(gainNode);
-      gainNode.connect(this.audioContext.destination);
+  oscillator.connect(gainNode)
+  gainNode.connect(audioContext.destination)
 
-      oscillator.frequency.setValueAtTime(startFrequency, this.audioContext.currentTime);
-      oscillator.frequency.linearRampToValueAtTime(endFrequency, this.audioContext.currentTime + 0.3);
+  oscillator.frequency.setValueAtTime(startFrequency, audioContext.currentTime)
+  oscillator.frequency.linearRampToValueAtTime(endFrequency, audioContext.currentTime + 0.3)
 
-      oscillator.start();
-      oscillator.stop(this.audioContext.currentTime + 0.3); // Stops the oscillator after 0.3 seconds
+  oscillator.start()
+  oscillator.stop(audioContext.currentTime + 0.3)
 
-      return oscillator;
-    },
+  return oscillator
+}
 
-  },
-};
+async function toggleValve(valveIndex) {
+  const currentState = valves.value.states[valveIndex]
+
+  if (togglingValves.value[valveIndex]) {
+    return
+  }
+  togglingValves.value = { ...togglingValves.value, [valveIndex]: true }
+
+  const oscillator = playValveSound(currentState)
+
+  try {
+    await deviceStore.setPartStateAction({
+      devicePart: 'valves',
+      partIndex: valveIndex,
+      newState: currentState === 'open' ? 'closed' : 'open',
+    })
+    oscillator.stop()
+  } catch (error) {
+    console.error(error)
+  } finally {
+    togglingValves.value = { ...togglingValves.value, [valveIndex]: false }
+  }
+}
 </script>
 
 <style scoped>
@@ -118,7 +114,7 @@ export default {
 
 .btn-danger {
   background-color: red;
-  color: white;
+  color: rgb(255, 255, 255);
   border-color: red;
 }
 

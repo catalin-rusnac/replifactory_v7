@@ -68,11 +68,13 @@ class Culture:
         self.adapted_culture = RealCultureWrapper(self)
         self.updater.update(self.adapted_culture)
 
-    def plot(self, *args, **kwargs):
+    def plot_data(self, *args, **kwargs):
         return plot_culture(self, *args, **kwargs)
 
     def plot_predicted(self):
         self.updater = MorbidostatUpdater(**self.parameters.inner_dict)
+        print("-------------------------------- PLOT PREDICTED --------------------------------")
+        print(self.parameters.inner_dict)
         growth_parameters = self.experiment.model.parameters["growth_parameters"][str(self.vial)]
         self.culture_growth_model = CultureGrowthModel(**growth_parameters)
         self.culture_growth_model.updater = self.updater
@@ -97,7 +99,6 @@ class Culture:
         return culture_data.timestamp
 
     def get_latest_data_from_db(self):
-        print("Getting latest data from db")
         with SessionLocal() as db:
             latest_culture_data = db.query(CultureData).filter(
                 CultureData.experiment_id == self.experiment.model.id,
@@ -192,11 +193,13 @@ class Culture:
             vial_number=self.vial,
             od=od, growth_rate=None, rpm=rpm)
         with SessionLocal() as db:
-            db.add(self.new_culture_data)
+
+            db.add(self.new_culture_data) 
             self.calculate_latest_growth_rate(db)
             if self.new_culture_data.growth_rate is not None:
                 self.growth_rate = self.new_culture_data.growth_rate
             db.commit()
+            # timestamp is added by db at the time of commit
         self.get_latest_data_from_db()  # TODO: speed up by not querying the database again
 
     def log_pump_data(self, main_pump_volume, drug_pump_volume):
@@ -244,7 +247,7 @@ class Culture:
             db.commit()
 
     def calculate_latest_growth_rate(self, db):
-        od_dict, _, _ = self.get_last_ods_and_rpms(db=db, limit=200, include_current=True, since_pump=True)
+        od_dict, _, _ = self.get_last_ods_and_rpms(db=db, limit=200, since_pump=True)
         t = np.array(list(int(dt.timestamp()) for dt in od_dict.keys()))
         od = np.array([float(value) if value is not None else np.nan for value in od_dict.values()])
         if np.issubdtype(od.dtype, np.number):
@@ -255,29 +258,48 @@ class Culture:
             if np.isfinite(mu):
                 self.new_culture_data.growth_rate = mu
 
-    def get_last_ods_and_rpms(self, db=None, limit=100, include_current=False, since_pump=False):
+    def get_last_ods_and_rpms(self, db=None, limit=100, since_pump=False):
         if db is None:
             with SessionLocal() as db:
-                return self.get_last_ods_and_rpms(db, limit, include_current, since_pump)
+                return self.get_last_ods_and_rpms(db, limit, since_pump)
+        # Query and extract all needed data while session is open
         culture_data = db.query(CultureData).filter(
             CultureData.experiment_id == self.experiment.model.id,
             CultureData.vial_number == self.vial
         ).order_by(CultureData.timestamp.desc()).limit(limit).all()
-        if since_pump and len(culture_data) > 0:
-            if self.last_dilution_time is not None:
-                culture_data = [data for data in culture_data if data.timestamp > self.last_dilution_time]
-        od_dict = {data.timestamp: data.od for data in culture_data}
-        mu_dict = {data.timestamp: data.growth_rate for data in culture_data}
-        rpm_dict = {data.timestamp: data.rpm for data in culture_data}
-        if include_current and self.new_culture_data is not None:
-            od_dict[self.new_culture_data.timestamp] = self.new_culture_data.od
-        od_dict = {k: v for k, v in od_dict.items() if v is not None and k is not None}
-        mu_dict = {k: v for k, v in mu_dict.items() if v is not None and k is not None}
-        rpm_dict = {k: v for k, v in rpm_dict.items() if v is not None and k is not None}
-        od_dict = {k: v for k, v in sorted(od_dict.items(), key=lambda item: item[0])}
-        mu_dict = {k: v for k, v in sorted(mu_dict.items(), key=lambda item: item[0])}
-        rpm_dict = {k: v for k, v in sorted(rpm_dict.items(), key=lambda item: item[0])}
+        # Extract all relevant fields into a list of dicts
+        extracted = []
+        for row in culture_data:
+            if row.timestamp is not None:
+                extracted.append({
+                    "timestamp": row.timestamp,
+                    "od": row.od,
+                    "growth_rate": row.growth_rate,
+                    "rpm": row.rpm
+                })
+        # Optionally filter by last dilution time
+        if since_pump and self.last_dilution_time is not None:
+            extracted = [d for d in extracted if d["timestamp"] > self.last_dilution_time]
+        # Build the result dicts
+        od_dict = {d["timestamp"]: d["od"] for d in extracted if d["od"] is not None}
+        mu_dict = {d["timestamp"]: d["growth_rate"] for d in extracted if d["growth_rate"] is not None}
+        rpm_dict = {d["timestamp"]: d["rpm"] for d in extracted if d["rpm"] is not None}
+
+        # Optionally include the current (not-yet-committed) data. deprecated.
+        # if include_current:
+        #     if self.new_culture_data is not None:
+        #         if hasattr(self.new_culture_data, "timestamp"):
+        #             new_od = self.new_culture_data.od
+        #             new_timestamp = self.new_culture_data.timestamp
+        #             if new_timestamp is not None and new_od is not None:
+        #                 od_dict[new_timestamp] = new_od
+
+        # Sort by timestamp
+        od_dict = dict(sorted(od_dict.items()))
+        mu_dict = dict(sorted(mu_dict.items()))
+        rpm_dict = dict(sorted(rpm_dict.items()))
         return od_dict, mu_dict, rpm_dict
+
 
     def get_last_generations(self, limit=1000):
         with SessionLocal() as db:

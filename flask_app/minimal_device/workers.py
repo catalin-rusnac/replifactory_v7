@@ -62,13 +62,11 @@ class ExperimentWorker:
         self.experiment.device.soft_stop_trigger = True
         while self.thread.is_alive():
             time.sleep(0.5)
-        self.status()
         while (
             self.experiment.device.od_worker.is_performing_operation
             or self.experiment.device.dilution_worker.is_performing_operation
         ):
-            self.status()
-            time.sleep(5)
+            time.sleep(1)
         print(time.ctime(), "main thread and workers safely STOPPED")
         self.experiment.device.soft_stop_trigger = False
         if self.thread._tstate_lock:
@@ -92,9 +90,7 @@ class QueueWorker:
         self.device = device
         self.logger = None
         self.queue = queue.Queue(maxsize=1)
-        self.thread = threading.Thread(
-            target=self.process_queue, args=[self.queue], daemon=False
-        )
+        self.thread = threading.Thread(target=self.process_queue, args=[self.queue], daemon=False)
         if self.device.directory is not None:
             self.logger = logging.Logger(name=worker_name)
             log_filename = worker_name + "_thread.log"
@@ -113,9 +109,8 @@ class QueueWorker:
         print("%s worker started." % self.name)
 
     def stop(self):
-        if self.thread._tstate_lock:
-            self.thread._tstate_lock.release()
-        self.thread._stop()
+        self.queue.put(None)
+        self.thread.join()
 
     def check_status(self):
         if not self.queue.empty():
@@ -131,6 +126,8 @@ class QueueWorker:
         while True:
             try:
                 queued_operation = q.get_nowait()
+                if queued_operation is None:
+                    break
                 try:
                     self.is_performing_operation = True
                     queued_operation()
@@ -144,26 +141,3 @@ class QueueWorker:
 
             except queue.Empty:
                 time.sleep(0.5)
-
-    #
-    #     self.keep_running = True
-    #     self.start()
-    #
-    # def start(self):
-    #     self.keep_running = True
-    #     self.thread = threading.Thread(target=self.process_queue,
-    #                                    args=[self.queue], daemon=False)
-    #     self.thread.start()
-    #
-    # def is_alive(self):
-    #     if self.thread is None:
-    #         return False
-    #     else:
-    #         return self.thread.is_alive()
-    #
-    #
-    # def stop(self):
-    #     self.keep_running = False
-    #     while self.thread.is_alive():
-    #         time.sleep(0.5)
-    #     print("%s worker stopped safely." % self.name)

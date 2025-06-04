@@ -27,11 +27,12 @@ class EEPROM:
             self.queue = Queue()
             self.timer = None
             self.lock = threading.Lock()
-            self.worker_thread = threading.Thread(target=self.worker)
+            self._should_exit = False
+            self.worker_thread = threading.Thread(target=self.worker)  # non-daemon
             self.worker_thread.start()
 
         def worker(self):
-            while True:
+            while not self._should_exit:
                 with self.lock:
                     data = self.data
                     self.data = None
@@ -43,6 +44,10 @@ class EEPROM:
             with self.lock:
                 self.data = data
                 # print("Added data to EEPROM writer queue", time.ctime())
+
+        def stop(self):
+            self._should_exit = True
+            self.worker_thread.join()
 
     def __init__(self, device):
         print("Initializing EEPROM", time.ctime())

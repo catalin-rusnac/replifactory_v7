@@ -39,157 +39,140 @@
         :data="chartData"
       />
     </div>
+
+    <div v-if="calibrationModeEnabled" class="calibration-section">
+      <!-- Existing content -->
+    </div>
   </div>
 </template>
-<script>
-import { mapActions, mapState } from "vuex";
-import { Bar } from 'vue-chartjs';
-import { Chart as ChartJS, BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend } from 'chart.js';
-ChartJS.register(BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend);
+<script setup>
+import { ref, computed, onMounted, watch } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useDeviceStore } from '@/client/stores/device'
+import { Bar } from 'vue-chartjs'
+import { Chart as ChartJS, BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend } from 'chart.js'
 
-export default {
-  components: {Bar},
-  data() {
-    return {
-      chartData: {
-        datasets: [{data: []}]
-      },
-      chartOptions: {
-        responsive: true,
-        devicePixelRatio: 4,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            display: false
-          }
-        },
-        backgroundColor: 'rgba(0, 140, 186, 0.3)',
-        layout: {
-          padding: {
-            top: 20
-          }
-        },
-        scales: {
-          x: {
-            title: {
-              display: true,
-              text: 'rotations',
-            },
-          },
-          y: {
-            title: {
-              display: true,
-              text: 'mL / rotation',
-            },
-            beginAtZero: false,
-            suggestedMin: 0.1,
-            suggestedMax: 0.22,
-          },
-        },
-      },
-      isStopButton: {},
-      rows: [
-        {rotations: 1, iterations: 50, total_ml: NaN},
-        {rotations: 5, iterations: 10, total_ml: NaN},
-        {rotations: 10, iterations: 5, total_ml: NaN},
-        {rotations: 50, iterations: 1, total_ml: NaN},
-      ]
-    };
+ChartJS.register(BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend)
+
+const props = defineProps({
+  pumpId: {
+    type: Number,
+    required: true
+  }
+})
+
+const deviceStore = useDeviceStore()
+const { calibrationModeEnabled, pumps, valves } = storeToRefs(deviceStore)
+
+const chartData = ref({ datasets: [{ data: [] }] })
+const chartOptions = ref({
+  responsive: true,
+  devicePixelRatio: 4,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { display: false }
   },
-  props: {
-    pumpId: {
-      type: Number,
-      required: true
+  backgroundColor: 'rgba(0, 140, 186, 0.3)',
+  layout: { padding: { top: 20 } },
+  scales: {
+    x: { title: { display: true, text: 'rotations' } },
+    y: {
+      title: { display: true, text: 'mL / rotation' },
+      beginAtZero: false,
+      suggestedMin: 0.1,
+      suggestedMax: 0.22,
+    },
+  },
+})
+
+const isStopButton = ref({})
+const rows = ref([
+  { rotations: 1, iterations: 50, total_ml: NaN },
+  { rotations: 5, iterations: 10, total_ml: NaN },
+  { rotations: 10, iterations: 5, total_ml: NaN },
+  { rotations: 50, iterations: 1, total_ml: NaN },
+])
+
+const pumpIdCalibrationData = computed(() => pumps.value?.calibration?.[props.pumpId] || {})
+
+function createChartData() {
+  return {
+    labels: Object.keys(pumpIdCalibrationData.value),
+    datasets: [{
+      label: null,
+      data: Object.values(pumpIdCalibrationData.value),
+      fill: false,
+      borderColor: 'rgb(75, 192, 192)',
+      tension: 0.1,
+    }]
+  }
+}
+
+function updateChartData() {
+  chartData.value = createChartData()
+}
+
+function toggleButtonState(index) {
+  const isValveOpen = Object.values(valves.value.states).some((valve) => valve === 'open')
+  if (!isValveOpen) {
+    alert('At least one valve must be open to start the pump')
+    return
+  }
+  isStopButton.value[index] = !isStopButton.value[index]
+  if (isStopButton.value[index]) {
+    promptForMl(rows.value[index])
+  } else {
+    deviceStore.setPartStateAction({ devicePart: 'pumps', partIndex: props.pumpId, newState: 'stopped' })
+  }
+}
+
+function resetButton(row) {
+  isStopButton.value[row] = false
+}
+
+function onTotalMlInput(row) {
+  if (row.total_ml) {
+    deviceStore.setPartCalibrationAction({
+      devicePart: 'pumps',
+      partIndex: props.pumpId,
+      newCalibration: {
+        ...pumpIdCalibrationData.value,
+        [row.rotations]: row.total_ml / row.rotations / row.iterations
+      }
+    })
+    isStopButton.value[row] = false
+  }
+}
+
+function promptForMl(row) {
+  alert(`Pumping ${row.rotations} rotations ${row.iterations} times. Please blank the scale`)
+  deviceStore.startPumpCalibrationSequence({
+    pumpId: props.pumpId,
+    rotations: row.rotations,
+    iterations: row.iterations
+  }).then(() => {
+    resetButton(row)
+    const total_ml = parseFloat(prompt('Enter total mL pumped'))
+    if (!isNaN(total_ml)) {
+      row.total_ml = total_ml
+      onTotalMlInput(row)
     }
-  },
-  computed: {
-    ...mapState('device', ['calibrationModeEnabled', 'pumps', 'valves']),
-    pumpIdCalibrationData() {
-      return this.pumps?.calibration[this.pumpId];
-    },
-  },
-  methods: {
-    ...mapActions('device', ['setPartCalibrationAction', 'startPumpCalibrationSequence', 'setPartStateAction']),
+  })
+}
 
-    createChartData() {
-      return {
-        labels: Object.keys(this.pumpIdCalibrationData),
-        datasets: [{
-          label: null,
-          data: Object.values(this.pumpIdCalibrationData),
-          fill: false,
-          borderColor: 'rgb(75, 192, 192)',
-          tension: 0.1,
-        }]
-      };
-    },
-    updateChartData() {
-      this.chartData = this.createChartData();
-    },
-    toggleButtonState(index) {
-      const isValveOpen = Object.values(this.valves.states).some((valve) => valve === 'open');
+onMounted(() => {
+  if (pumpIdCalibrationData.value) {
+    updateChartData()
+  }
+  rows.value.forEach((row) => {
+    row.total_ml = (pumpIdCalibrationData.value[row.rotations] || 0) * row.rotations * row.iterations
+    row.total_ml = row.total_ml ? row.total_ml.toFixed(2) : ''
+  })
+})
 
-      if (!isValveOpen) {
-        alert('At least one valve must be open to start the pump');
-        return;
-      }
-      this.isStopButton[index] = !this.isStopButton[index];
-      if (this.isStopButton[index]) {
-        this.promptForMl(this.rows[index]);
-      } else {
-        this.setPartStateAction({devicePart: 'pumps', partIndex: this.pumpId, newState: 'stopped'});
-      }
-    },
-    resetButton(row) {
-      this.isStopButton[row] = false;
-    },
-    onTotalMlInput(row) {
-      if (row.total_ml) {
-        this.pumps.calibration[this.pumpId][row.rotations] = row.total_ml / row.rotations / row.iterations;
-        this.setPartCalibrationAction({
-          devicePart: 'pumps',
-          partIndex: this.pumpId,
-          newCalibration: this.pumps.calibration[this.pumpId]
-        });
-        this.isStopButton[row] = false;
-      }
-    },
-    promptForMl(row) {
-      console.log("starting pump calibration sequence for pumpId: " + this.pumpId);
-      alert("Pumping " + row.rotations + " rotations " + row.iterations + " times. Please blank the scale");
-      this.startPumpCalibrationSequence({
-        pumpId: this.pumpId,
-        rotations: row.rotations,
-        iterations: row.iterations
-      }).then(() => {
-        console.log("pump calibration sequence finished");
-        this.resetButton(row);
-        const total_ml = parseFloat(prompt('Enter total mL pumped'));
-        if (!isNaN(total_ml)) {
-          row.total_ml = total_ml;
-          this.onTotalMlInput(row);
-        }
-      });
-    },
-  },
-  mounted() {
-    if (this.pumpIdCalibrationData) {
-      this.updateChartData();
-    }
-    this.rows.forEach((row) => {
-      row.total_ml = this.pumps.calibration[this.pumpId][row.rotations] * row.rotations * row.iterations;
-      row.total_ml = row.total_ml.toFixed(2);
-    });
-  },
-  watch: {
-    pumpIdCalibrationData: {
-      deep: true,
-      handler() {
-        this.updateChartData();
-      },
-    },
-  },
-};
+watch(pumpIdCalibrationData, () => {
+  updateChartData()
+}, { deep: true })
 </script>
 
 <style scoped>

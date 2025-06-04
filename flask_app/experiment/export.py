@@ -22,7 +22,7 @@ def export_culture_plot_html(culture, output_directory, predicted=False):
     if predicted:
         fig = culture.plot_predicted()
     else:
-        fig = culture.plot()
+        fig = culture.plot_data()
     # clear experiment name from characters forbidden in file names such as !, ?, etc.
     experiment_name = clean_experiment_name(experiment_name)
 

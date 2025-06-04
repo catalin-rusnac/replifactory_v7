@@ -3,6 +3,7 @@ import threading
 import time
 from datetime import datetime
 import traceback
+import warnings
 
 import pyftdi.i2c
 import usb
@@ -137,17 +138,61 @@ class BaseDevice:
 
     def connect(self):
         self.connect_i2c_spi()
-        self.pwm_controller.connect()  # valves and stirrers
-        self.stirrers.connect()
-        self.photodiodes.connect()
-        self.lasers.connect()
-        self.rgb_leds.connect()
-        self.thermometers.connect()
-        self.pump1.connect()
-        self.pump2.connect()
-        self.pump3.connect()
-        self.pump4.connect()
-        self.eeprom.connect()
+        try:
+            self.pwm_controller.connect()
+        except Exception as e:
+            warnings.warn(f"Failed to connect pwm_controller: {e}")
+
+        try:
+            self.stirrers.connect()
+        except Exception as e:
+            warnings.warn(f"Failed to connect stirrers: {e}")
+
+        try:
+            self.photodiodes.connect()
+        except Exception as e:
+            warnings.warn(f"Failed to connect photodiodes: {e}")
+
+        try:
+            self.lasers.connect()
+        except Exception as e:
+            warnings.warn(f"Failed to connect lasers: {e}")
+
+        try:
+            self.rgb_leds.connect()
+        except Exception as e:
+            warnings.warn(f"Failed to connect rgb_leds: {e}")
+
+        try:
+            self.thermometers.connect()
+        except Exception as e:
+            warnings.warn(f"Failed to connect thermometers: {e}")
+
+        try:
+            self.pump1.connect()
+        except Exception as e:
+            warnings.warn(f"Failed to connect pump1: {e}")
+
+        try:
+            self.pump2.connect()
+        except Exception as e:
+            warnings.warn(f"Failed to connect pump2: {e}")
+
+        try:
+            self.pump3.connect()
+        except Exception as e:
+            warnings.warn(f"Failed to connect pump3: {e}")
+
+        try:
+            self.pump4.connect()
+        except Exception as e:
+            warnings.warn(f"Failed to connect pump4: {e}")
+
+        try:
+            self.eeprom.connect()
+        except Exception as e:
+            warnings.warn(f"Failed to connect eeprom: {e}")
+
         self.dilution_worker = QueueWorker(device=self, worker_name="dilution")
         self.od_worker = QueueWorker(device=self, worker_name="od")
         self.hard_stop_trigger = False

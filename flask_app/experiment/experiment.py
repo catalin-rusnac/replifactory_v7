@@ -22,7 +22,7 @@ class ExperimentWorker:
         self.experiment = experiment
         self.od_worker = QueueWorker(experiment=self.experiment, worker_name='OD_worker')
         self.dilution_worker = QueueWorker(experiment=self.experiment, worker_name='Dilution_worker')
-        self.thread = threading.Thread(target=self.run_loop, daemon=False)
+        self.thread = threading.Thread(target=self.run_loop, daemon=True)
         self.thread.start()
 
     def run_loop(self):
@@ -60,7 +60,7 @@ class QueueWorker:
         self.name = worker_name
         self.experiment = experiment
         self.queue = queue.Queue(maxsize=1)
-        self.thread = threading.Thread(target=self.process_queue, args=[self.queue], daemon=False)
+        self.thread = threading.Thread(target=self.process_queue, args=[self.queue], daemon=True)
         self.is_performing_operation = False
         self.paused = False
         self.thread.start()
@@ -164,7 +164,11 @@ class Experiment:
             session.commit()
         # Also update the in-memory model
         self.model.parameters = new_parameters
-
+        for culture in self.cultures.values():
+            culture.parameters = new_parameters["cultures"][culture.vial]
+        print(self.parameters)
+        print("Parameters updated in memory")
+        
     @property
     def status(self):
         return self._status
@@ -188,6 +192,12 @@ class Experiment:
             self.cultures[v]._delete_all_records()
 
     def start(self):
+        print("Starting experiment")
+        if not self.device.is_connected():
+            try:
+                self.device.connect()
+            except Exception as e:
+                raise Exception(f"Device is not connected. Cannot start experiment. {e}")
         if self.experiment_worker is None or not self.experiment_worker.thread.is_alive():
             self.status = "starting"
             self.experiment_worker = ExperimentWorker(self)

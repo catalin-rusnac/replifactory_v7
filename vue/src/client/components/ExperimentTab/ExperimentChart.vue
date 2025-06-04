@@ -24,55 +24,44 @@
   </div>
 </template>
 
-<script>
-import { mapActions, mapState } from 'vuex';
-import VialPlot from './VialPlot.vue';
+<script setup>
+import { storeToRefs } from 'pinia'
+import { useExperimentStore } from '../../stores/experiment'
+import { computed, onMounted } from 'vue'
+import VialPlot from './VialPlot.vue'
 
-export default {
-  components: {
-    VialPlot,
-  },
-  name: "ExperimentChart",
-  computed: {
-    ...mapState('experiment', ['currentExperiment', 'selectedVials', 'plot_data']),
-    filteredVials() {
-      return this.vials.filter(vial => this.selectedVials[vial]);
-    }
-  },
-  data() {
-    return {
-      vials: [1, 2, 3, 4, 5, 6, 7], // 7 vials
-    };
-  },
-  methods: {
-    ...mapActions('experiment', ['fetchCulturePlot', 'setSelectedVials']),
+const experimentStore = useExperimentStore()
+const { currentExperiment, selectedVials, plot_data } = storeToRefs(experimentStore)
 
-    async plotAllData() {
-      if (!this.currentExperiment) {
-        return;
-      }
-      for (let vial of this.filteredVials) {
-        await this.fetchCulturePlot(vial);
-      }
-    },
+const vials = [1, 2, 3, 4, 5, 6, 7]
 
-    async toggleVial(vial, event) {
-      let updatedVials;
-      if (event.altKey) {
-        updatedVials = { [vial]: true };
-      } else {
-        updatedVials = { ...this.selectedVials, [vial]: !this.selectedVials[vial] };
-      }
-      this.setSelectedVials(updatedVials);
-      if (updatedVials[vial]) {
-        await this.fetchCulturePlot(vial);
-      }
-    },
-  },
-  mounted() {
-    this.plotAllData();
-  },
+const filteredVials = computed(() =>
+  vials.filter(vial => selectedVials.value[vial])
+)
+
+async function plotAllData() {
+  if (!currentExperiment.value) return
+  for (let vial of filteredVials.value) {
+    await experimentStore.fetchCulturePlot(vial)
+  }
 }
+
+async function toggleVial(vial, event) {
+  let updatedVials
+  if (event.altKey) {
+    updatedVials = { [vial]: true }
+  } else {
+    updatedVials = { ...selectedVials.value, [vial]: !selectedVials.value[vial] }
+  }
+  experimentStore.setSelectedVials(updatedVials)
+  if (updatedVials[vial]) {
+    await experimentStore.fetchCulturePlot(vial)
+  }
+}
+
+onMounted(() => {
+  plotAllData()
+})
 </script>
 
 <style scoped>

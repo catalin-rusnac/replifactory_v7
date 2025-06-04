@@ -5,9 +5,8 @@
     <div class="experiment-running-overlay" v-if="deviceControlEnabled === false"></div>
     <div class="calibration-switch" style="text-align: right;">
       <v-switch
-        v-model="calibrationModeEnabled"
+        v-model="calibrationMode"
         label="Calibration Mode"
-        @change="toggleCalibrationMode"
       ></v-switch>
     </div>
 
@@ -25,50 +24,37 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { storeToRefs } from 'pinia'
+import { useDeviceStore } from '../../stores/device'
+import { computed, onMounted } from 'vue'
 import PumpControl from './PumpControl.vue';
 import ValveControl from './ValveControl.vue';
 import StirrerControl from './StirrerControl.vue';
 import ODControl from './ODControl.vue';
 import LEDControl from "./LEDControl.vue";
-import { mapState, mapMutations, mapActions } from 'vuex';
 
-export default {
-  components: {
-    PumpControl,
-    ValveControl,
-    StirrerControl,
-    ODControl,
-    LEDControl,
-  },
-  computed: {
-    ...mapState(['deviceConnected', 'deviceControlEnabled']),
-    ...mapState('device', ['calibrationModeEnabled', 'stirrers', 'pumps', 'valves', 'ods']),
-  },
-  data() {
-    return {
-      controlsVisible: false,
-    };
-  },
-  watch: {
-    deviceControlEnabled(newVal) {
-      this.controlsVisible = newVal;
-    },
-  },
-  mounted() {
-    // if not connected, try to connect
-    if (!this.deviceConnected) {
-      this.connectDevice().then(() => {
-        this.getAllDeviceData();
-      });
-    }
-  },
-  methods: {
-    ...mapMutations('device', ['toggleCalibrationMode', 'setDeviceControlEnabled']),
-    ...mapActions('device', ['getAllDeviceData']),
-    ...mapActions(['connectDevice']),
-  },
-};
+const deviceStore = useDeviceStore()
+const {
+  deviceConnected,
+  deviceControlEnabled,
+  calibrationModeEnabled,
+  stirrers,
+  pumps,
+  valves,
+  ods
+} = storeToRefs(deviceStore)
+
+const controlsVisible = computed(() => deviceControlEnabled.value)
+
+const calibrationMode = computed({
+  get: () => calibrationModeEnabled.value,
+  set: (val) => deviceStore.setCalibrationModeEnabled(val)
+})
+
+onMounted(() => {
+  deviceStore.fetchDeviceData()
+})
 </script>
 
 <style scoped>

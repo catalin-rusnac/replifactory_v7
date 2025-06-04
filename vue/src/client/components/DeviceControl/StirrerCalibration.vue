@@ -4,245 +4,179 @@
       <div class="stirrer-name">
         <header>Stirrer {{ stirrerId }}</header>
       </div>
-
-      <div v-if="calibrationModeEnabled">
-        <input
-          type="range"
-          class="slider slider-high"
-          :class="{ active: currentStirrerState === 'high' }"
-          :min=min
-          :max=max
-          :step=0.01
-          v-model="stirrers.calibration[stirrerId].high"
-          @change="onSliderChange('high', $event)"
-          @input="onSliderInput('high', $event)"
-        />
-        <input
-          type="range"
-          class="slider slider-low"
-          :class="{ active: currentStirrerState === 'low' }"
-          :min=min
-          :max=max
-          :step=0.01
-          v-model="stirrers.calibration[stirrerId].low"
-          @change="onSliderChange('low', $event)"
-          @input="onSliderInput('low', $event)"
-        />
-
-        <svg class="svg-container">
-          <line
-            :x1="lowX1"
-            :y1="lowY1"
-            :x2="lowX2"
-            :y2="lowY2"
-            stroke= "gray"
-            stroke-width="1"
+      <div v-if="calibrationModeEnabled && stirrers && stirrers.calibration && stirrers.calibration[stirrerId]">
+        <div style="position: relative; display: inline-block;">
+          <input
+            type="range"
+            class="slider slider-high"
+            :class="[{ active: currentStirrerState === 'high' }, { 'slider-disabled': currentStirrerState !== 'high' }]"
+            :min="min"
+            :max="max"
+            :step="0.01"
+            v-model.number="stirrers.calibration[stirrerId].high"
+            @input="onSliderInput('high', $event)"
+            @change="onSliderChange('high', $event)"
           />
-          <line
-            :x1="highX1"
-            :y1="highY1"
-            :x2="highX2"
-            :y2="highY2"
-            stroke="gray"
-            stroke-width="1"
+          <div
+            v-if="currentStirrerState !== 'high'"
+            class="slider-overlay"
+            @click="onSliderAttempt('high', $event)"
+          ></div>
+        </div>
+        <div style="position: relative; display: inline-block;">
+          <input
+            type="range"
+            class="slider slider-low"
+            :class="[{ active: currentStirrerState === 'low' }, { 'slider-disabled': currentStirrerState !== 'low' }]"
+            :min="min"
+            :max="max"
+            :step="0.01"
+            v-model.number="stirrers.calibration[stirrerId].low"
+            @input="onSliderInput('low', $event)"
+            @change="onSliderChange('low', $event)"
           />
-        </svg>
-
+          <div
+            v-if="currentStirrerState !== 'low'"
+            class="slider-overlay"
+            @click="onSliderAttempt('low', $event)"
+          ></div>
+        </div>
       </div>
-
       <div class="buttons-container">
         <button
           class="button button-high"
           :class="{ active: currentStirrerState === 'high' }"
           ref="buttonHigh"
-          @click="onClick('high')"
+          @click="setState('high')"
           @dblclick="onDoubleClick('high')"
-        >
-          High
-        </button>
+        >High</button>
         <button
           class="button button-low"
           :class="{ active: currentStirrerState === 'low' }"
           ref="buttonLow"
-          @click="onClick('low')"
+          @click="setState('low')"
           @dblclick="onDoubleClick('low')"
-        >
-          Low
-        </button>
+        >Low</button>
         <button
           class="button button-off"
           :class="{ active: currentStirrerState === 'stopped' }"
           ref="buttonOff"
-          @click="onClick('stopped')"
+          @click="setState('stopped')"
           @dblclick="onDoubleClick('stopped')"
-        >
-          OFF
-        </button>
+        >OFF</button>
       </div>
     </div>
   </div>
 </template>
-<script>
-import { mapState, mapActions } from 'vuex';
 
-export default {
-  name: "StirrerCalibration",
-  props: {
-    stirrerId: {
-      type: Number,
-      required: true
-    }
-  },
-  watch: {
-    calibrationModeEnabled(newVal) {
-      if (newVal) { // newVal will be true if calibrationModeEnabled has just been set to true
-        this.$nextTick(this.updateLine);
-      }
-    },
-  },
-  data() {
-    return {
-      min: 0,
-      max: 1,
-      lowX1: 0,
-      lowY1: 0,
-      lowX2: 0,
-      lowY2: 0,
-      highX1: 0,
-      highY1: 0,
-      highX2: 0,
-      highY2: 0,
-      audioContext: new (window.AudioContext || window.webkitAudioContext)(),
-      oscillator: null,
-      gainNode:null,
-      stopSoundTimeout: null,
-    };
-  },
+<script setup>
+import { ref, computed, nextTick, watch, onMounted, onBeforeUnmount } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useDeviceStore } from '../../stores/device'
+import { toast } from 'vue3-toastify';
+import 'vue3-toastify/dist/index.css';
 
-  // mounted() {
-  //     // console.log('mounted stirrer calibration')
-  //     // this.lowValue = this.stirrers.calibration[this.stirrerId].low;
-  //     // this.highValue = this.stirrers.calibration[this.stirrerId].high;
-  // },
+const props = defineProps({
+  stirrerId: { type: Number, required: true }
+})
 
+const min = 0
+const max = 1
 
-  computed: {
-    ...mapState('device', ['calibrationModeEnabled', 'stirrers']),
-    currentStirrerState() {
-      return this.stirrers.states[this.stirrerId];
-    },
-  },
+const container = ref(null)
+const buttonHigh = ref(null)
+const buttonLow = ref(null)
 
-  methods: {
-    ...mapActions('device', ['setPartStateAction', 'setPartCalibrationAction', 'getAllDeviceData', 'setAllStirrersStateAction']),
-    onClick(type) {
-          this.setPartStateAction({ devicePart: 'stirrers', partIndex: this.stirrerId, newState: type });
-},
-    onDoubleClick(type) {
-      this.setAllStirrersStateAction(type);
-    },
+const audioContext = new (window.AudioContext || window.webkitAudioContext)()
+let oscillator = null
+let gainNode = null
+let stopSoundTimeout = null
 
-    onSliderChange(type, event) {
-      if (type === 'low') {
-        this.stirrers.calibration[this.stirrerId].low = parseFloat(event.target.value);
-      } else if (type === 'high') {
-        this.stirrers.calibration[this.stirrerId].high = parseFloat(event.target.value);
-      }
-      this.setPartCalibrationAction({
-        devicePart: 'stirrers',
-        partIndex: this.stirrerId,
-        newCalibration: {
-          low: this.stirrers.calibration[this.stirrerId].low,
-          high: this.stirrers.calibration[this.stirrerId].high,
-        },
-      }).catch((error) => {
-        console.error('Error updating stirrer calibration:', error);
-      });
-    },
+const deviceStore = useDeviceStore()
+const { calibrationModeEnabled, stirrers } = storeToRefs(deviceStore)
 
-    onSliderInput(type, event) {
-      if (type === 'low') {
-        this.stirrers.calibration[this.stirrerId].low = parseFloat(event.target.value);
-      } else if (type === 'high') {
-        this.stirrers.calibration[this.stirrerId].high = parseFloat(event.target.value);
-      }
-      this.updateLine();
-        this.playSound(event.target.value);
-      },
+const currentStirrerState = computed(() =>
+  stirrers.value && stirrers.value.states
+    ? stirrers.value.states[props.stirrerId]
+    : undefined
+)
 
-    updateLine() {
-      this.$nextTick(() => {
-        const container = this.$refs.container;
-        const rectContainer = container.getBoundingClientRect();
+function setState(type) {
+  deviceStore.setPartStateAction({ devicePart: 'stirrers', partIndex: props.stirrerId, newState: type })
+}
 
-        const sliderLow = this.$el.querySelector(".slider-low");
-        const buttonLow = this.$refs.buttonLow;
-        const rectSliderLow = sliderLow.getBoundingClientRect();
-        const rectButtonLow = buttonLow.getBoundingClientRect();
-
-        this.lowX1 = rectSliderLow.x - rectContainer.x + rectSliderLow.width / 2;
-        this.lowY1 = rectSliderLow.y - rectContainer.y + rectSliderLow.height * (1 - this.stirrers.calibration[this.stirrerId].low / (this.max - this.min));
-        this.lowX2 = rectButtonLow.x - rectContainer.x
-        this.lowY2 = rectButtonLow.y - rectContainer.y + rectButtonLow.height / 2;
-
-        const sliderHigh = this.$el.querySelector(".slider-high");
-        const buttonHigh = this.$refs.buttonHigh;
-        const rectSliderHigh = sliderHigh.getBoundingClientRect();
-        const rectButtonHigh = buttonHigh.getBoundingClientRect();
-
-        this.highX1 = rectSliderHigh.x - rectContainer.x + rectSliderHigh.width / 2;
-        this.highY1 = rectSliderHigh.y - rectContainer.y + rectSliderHigh.height * (1 - this.stirrers.calibration[this.stirrerId].high / (this.max - this.min));
-        this.highX2 = rectButtonHigh.x - rectContainer.x
-        this.highY2 = rectButtonHigh.y - rectContainer.y + rectButtonHigh.height / 2;
-      });
-    },
-    playSound(speed) {
-    // If an oscillator is not already set up
-    if (!this.oscillator) {
-      this.oscillator = this.audioContext.createOscillator();
-      this.gainNode = this.audioContext.createGain();
-
-      this.oscillator.type = 'sine';
-      this.gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);
-      this.oscillator.connect(this.gainNode);
-      this.gainNode.connect(this.audioContext.destination);
-      this.oscillator.start();
-    }
-
-    const frequency = 300 + speed * 500;
-    this.oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
-
-    // Clear any previous stopSound timeout
-    if (this.stopSoundTimeout) {
-      clearTimeout(this.stopSoundTimeout);
-    }
-
-    // Set a new timeout to stop the sound in 0.3 seconds
-    this.stopSoundTimeout = setTimeout(this.stopSound, 200);
-  },
-
-  // Call this method when you want to stop the sound
-  stopSound() {
-    if (this.oscillator) {
-      this.gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.01);
-      this.gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime + 0.02);
-      this.oscillator.stop(this.audioContext.currentTime + 0.02);
-      this.oscillator = null;
-      this.gainNode = null;
+function onDoubleClick(type) {
+  if (stirrers.value && stirrers.value.states) {
+    for (let i = 1; i <= 7; i++) {
+      stirrers.value.states[i] = type
     }
   }
+  if (deviceStore.setAllStirrersStateAction) {
+    deviceStore.setAllStirrersStateAction(type)
+  }
+}
 
-  },
-};
+function onSliderInput(type, event) {
+  playSound(event.target.value)
+}
+
+function onSliderChange(type, event) {
+  if (!stirrers.value || !stirrers.value.calibration || !stirrers.value.calibration[props.stirrerId]) return;
+  deviceStore.setPartCalibrationAction({
+    devicePart: 'stirrers',
+    partIndex: props.stirrerId,
+    newCalibration: {
+      low: stirrers.value.calibration[props.stirrerId].low,
+      high: stirrers.value.calibration[props.stirrerId].high,
+    },
+  }).catch((error) => {
+    console.error('Error updating stirrer calibration:', error)
+  })
+}
+
+function playSound(speed) {
+  if (!oscillator) {
+    oscillator = audioContext.createOscillator()
+    gainNode = audioContext.createGain()
+    oscillator.type = 'sine'
+    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime)
+    oscillator.connect(gainNode)
+    gainNode.connect(audioContext.destination)
+    oscillator.start()
+  }
+  const frequency = 300 + speed * 500
+  oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime)
+  if (stopSoundTimeout) {
+    clearTimeout(stopSoundTimeout)
+  }
+  stopSoundTimeout = setTimeout(stopSound, 200)
+}
+
+function stopSound() {
+  if (oscillator) {
+    gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.01)
+    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime + 0.02)
+    oscillator.stop(audioContext.currentTime + 0.02)
+    oscillator = null
+    gainNode = null
+  }
+}
+
+function onSliderAttempt(type, event) {
+  if ((type === 'high' && currentStirrerState.value !== 'high') || (type === 'low' && currentStirrerState.value !== 'low')) {
+    event.preventDefault()
+    toast('Enable stirrer to adjust speed', { type: 'info' })
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('resize', () => {})
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', () => {})
+})
 </script>
-
-
-<!--<style>-->
-<!--body {-->
-<!--  background-color: #242424; /* or any dark color you prefer */-->
-<!--  /*color: white; !* this is the color for the general text on the page *!*/-->
-<!--}-->
-<!--</style>-->
 
 <style scoped>
 .stirrer-calibrator {
@@ -251,38 +185,31 @@ export default {
   width: 100px;
   margin: 5px;
 }
-
 .elements-container {
   display: flex;
   justify-content: center;
   padding-top: 20px;
-  /*align-items: ; bottom */
   align-items: flex-end;
-  //height: 100px;
-  border: 1px solid #e3e3e3; /* Sets the color of the border */
-  border-radius: 10px; /* Adjust as needed to create the level of roundness you desire */
+  border: 1px solid #e3e3e3;
+  border-radius: 10px;
+  position: relative;
 }
-
 .slider {
-  height: 10%;
+  height: 100px;
   margin: 0 3px;
   width: 10px;
-  pointer-events: none;
-  opacity: 0.4;
   writing-mode: vertical-lr;
   direction: rtl;
 }
-
 .active {
   opacity: 100%;
   pointer-events: all;
-  color: #fff; /* And this to the text color you want for active buttons */
+  color: #fff;
 }
-
 .button {
   background-color: transparent;
-  border: 1px solid #3aab40; /* green border */
-  color: #3aab40; /* green text */
+  border: 1px solid #3aab40;
+  color: #3aab40;
   text-align: center;
   text-decoration: none;
   display: inline-block;
@@ -295,63 +222,57 @@ export default {
   opacity: 60%;
   box-shadow: 0px 3px 5px rgba(0, 0, 0, 0.2);
 }
-
 .button:hover {
   opacity:80%;
 }
-
 .button-off {
   background-color: transparent;
-  border: 1px solid #da190b; /* red border */
-  color: #da190b; /* red text */
+  border: 1px solid #da190b;
+  color: #da190b;
   opacity: 40%;
 }
-
 .button-off:hover {
   background-color: #da190b;
   opacity:60%;
 }
-
 .active {
   opacity: 100%;
-  color: #fff; /* white text for active buttons */
-  background-color: #3aab40; /* green background for active buttons */
+  color: #fff;
+  background-color: #3aab40;
 }
-
 .button-off.active {
-  background-color: #da190b; /* red background for active off button */
+  background-color: #da190b;
 }
-
 .button:hover, .button-off:hover, .active:hover {
-  opacity: 100%; /* 100% opacity on hover for all buttons */
+  opacity: 100%;
 }
-
 .buttons-container {
   display: flex;
   justify-content: space-between;
   flex-direction: column;
 }
-
-.svg-container {
-  position: absolute;
-  opacity: 40%;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  overflow: visible;
-  z-index: -1;
-}
-
 .stirrer-name {
   position: absolute;
   top: 20px;
   left: 50%;
-  transform: translate(-50%, -50%); /* This centers the header */
-  z-index: -1; /* This ensures the header is above everything else */
-  color: #9b9b9b; /* Color of the text */
-  font-size: 14px; /* Adjust as needed */
+  transform: translate(-50%, -80%);
+  z-index: 1;
+  color: #636363;
+  font-size: 12px;
 }
-
+.slider-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  background: transparent;
+  cursor: not-allowed;
+}
+.slider-disabled {
+  filter: grayscale(1);
+  opacity: 0.4;
+  pointer-events: none;
+}
 </style>

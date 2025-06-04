@@ -1,14 +1,15 @@
 <template>
   <div>
-    <h3 v-if="tableTitle">{{ tableTitle }}</h3>
     <RevoGrid
       :columns="gridColumns"
       :source="gridSource"
       :readonly="false"
       @afteredit="handleEdit"
       class="hot-table"
-    :theme="'material'"
-    :range="true" 
+      :theme="'material'"
+      :range="true"
+      :rowHeaders="true"
+      :rowHeaderWidth="270"
     />
   </div>
 </template>
@@ -22,9 +23,9 @@ export default defineComponent({
   props: {
     fetchData: { type: Function, required: true },
     updateData: { type: Function, required: true },
-    tableTitle: { type: String, default: "" },
     columnHeaders: { type: Array, default: () => [] },
-    rowHeaderLabel: { type: String, default: "Row" }
+    rowHeaderLabel: { type: String, default: "Row" },
+    rowHeaderWidth: { type: Number, default: 270 }
   },
   setup(props) {
     const gridColumns = ref([]);
@@ -32,23 +33,30 @@ export default defineComponent({
 
     const loadTableData = async () => {
       console.log("loading table data");
-      // loading table data shows in console.
       const { data, keys } = await props.fetchData();
+      console.log(data, keys);
 
-      // Set up columns using your column headers or keys
-      gridColumns.value = props.columnHeaders.map((name, idx) => ({
-        prop: `col${idx}`,
-        name,
-        size: 120
-      }));
+      // Add row header column
+      gridColumns.value = [
+        {
+          prop: 'rowHeader',
+          name: props.rowHeaderLabel,
+          size: props.rowHeaderWidth,
+          readonly: true
+        },
+        ...props.columnHeaders.map((name, idx) => ({
+          prop: `col${idx}`,
+          name,
+          size: 120
+        }))
+      ];
 
       // Map your data into objects with properties matching columns
       gridSource.value = data.map((row, rIdx) => {
-        const obj = {};
+        const obj = { rowHeader: keys[rIdx] };
         row.forEach((cell, cIdx) => {
           obj[`col${cIdx}`] = cell;
         });
-        obj.rowHeader = keys[rIdx]; // Optional: for custom row headers
         return obj;
       });
     };

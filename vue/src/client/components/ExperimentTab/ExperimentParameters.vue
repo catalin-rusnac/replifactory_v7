@@ -8,7 +8,8 @@
           :label="`${key}`"
           v-model="currentExperiment.parameters[key]"
           :readonly="currentExperiment.status === 'running'"
-          @update:modelValue="handleInputChange(key, $event)"
+          @blur="handleInputCommit(key, $event.target.value)"
+          @keyup.enter="handleInputCommit(key, $event.target.value)"
         ></v-text-field>
       </template>
 <!--      TODO: arrange pump order-->
@@ -19,16 +20,21 @@
 <script setup>
 import { computed } from 'vue'
 import { useExperimentStore } from '@/client/stores/experiment'
+import { toast } from 'vue3-toastify';
 
 const experimentStore = useExperimentStore()
 const currentExperiment = computed(() => experimentStore.currentExperiment || {})
 
-async function handleInputChange(key, value) {
-  // Update the parameter in the local state
-  currentExperiment.value.parameters[key] = value
-
-  // Optionally, send updated parameters to the backend here
-  // e.g., await experimentStore.updateExperimentParameters({ ... })
+async function handleInputCommit(key, value) {
+  if (value !== '' && value !== null && value !== undefined) {
+    currentExperiment.value.parameters[key] = value
+    try {
+      await experimentStore.updateCurrentExperimentParameters(currentExperiment.value.parameters)
+      toast('Parameter updated', { type: 'success' })
+    } catch (e) {
+      toast('Failed to update parameter', { type: 'error' })
+    }
+  }
 }
 </script>
 

@@ -1,7 +1,6 @@
 import { createApp } from 'vue';
 import App from './client/App.vue';
 import { createPinia } from 'pinia';
-import store from './client/store';
 
 // Vuetify
 import 'vuetify/styles'
@@ -22,7 +21,6 @@ const app = createApp(App);
 
 app.use(vuetify)
    .use(createPinia())
-   .use(store)
    .use(Vue3Toastify, {
     autoClose: 4000,
     theme: 'dark',

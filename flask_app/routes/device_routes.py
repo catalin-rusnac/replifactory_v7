@@ -1,5 +1,7 @@
 import threading
 import traceback
+import os
+import json
 
 from flask import Blueprint, request, jsonify, current_app
 import time
@@ -236,6 +238,38 @@ def measure_od_calibration():
     return jsonify(success=True, odValue=odValue)
 
 
+@device_routes.route('/measure-od-calibration-single', methods=['POST'])
+def measure_od_calibration_single():
+    """Measure OD calibration for a specific vial and OD value"""
+    data = request.get_json()
+    odValue = data.get('odValue')
+    vialIndex = data.get('vialIndex')
+    
+    # Validate input
+    if odValue is None or vialIndex is None:
+        return jsonify(success=False, message="Missing required parameters: odValue and vialIndex"), 400
+    
+    try:
+        odValue = float(odValue)
+        vialIndex = int(vialIndex)
+        
+        if vialIndex < 1 or vialIndex > 7:
+            return jsonify(success=False, message="Invalid vial index, must be 1-7"), 400
+            
+        # Measure only for this specific vial
+        print(f'Measuring OD calibration with OD {odValue} for vial {vialIndex}')
+        current_app.device.od_sensors[vialIndex].measure_od_calibration(odValue)
+        
+        # Refit calibration curve for this vial
+        current_app.device.od_sensors[vialIndex].fit_calibration_function()
+        current_app.device.eeprom.save_config_to_eeprom()
+        
+        return jsonify(success=True, vialIndex=vialIndex, odValue=odValue)
+    except Exception as e:
+        print(f"Error in single OD calibration: {str(e)}")
+        return jsonify(success=False, message=str(e)), 500
+
+
 @device_routes.route('/start-pump-calibration-sequence', methods=['POST'])
 def start_pump_calibration_sequence():
     data = request.get_json()
@@ -339,4 +373,13 @@ def connect_device():
             return jsonify({'success': False, 'error': 'Could not connect to the device'})
     finally:
         connection_lock.release()
+
+@device_routes.route('/save-calibration', methods=['POST'])
+def save_calibration():
+    try:
+        # Use the device's built-in save function
+        current_app.device.save_timestamped_device_config()
+        return jsonify(success=True, message='Device calibration saved successfully')
+    except Exception as e:
+        return jsonify(success=False, message=str(e)), 500
 

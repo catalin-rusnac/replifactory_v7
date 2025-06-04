@@ -1,5 +1,5 @@
 <template>
-  <div class="pump-controls">
+  <div class="pump-controls" v-if="pumps && pumps.states">
     <div class="pump" v-for="i in [1,2,4]" :key="i">
       <v-btn
         class="pump-button"
@@ -12,7 +12,7 @@
           color="white"
           class="spinner-custom"
         ></v-progress-circular>
-        <span v-else>{{pump_names[i]}}<br>pump</span>
+        <span v-else>{{ pump_names[i] }}<br>pump</span>
       </v-btn>
 
       <div class="pump-input">
@@ -37,138 +37,132 @@
       </div>
     </div>
   </div>
+  <div v-else>
+    Loading pump data...
+  </div>
 </template>
 
-<script>
-import { mapActions, mapState } from 'vuex';
-import PumpCalibration from '@/client/components/DeviceControl/PumpCalibration.vue';
-import { VBtn, VTextField, VProgressCircular } from 'vuetify/components';
+<script setup>
+import { storeToRefs } from 'pinia'
+import { useDeviceStore } from '../../stores/device'
+import PumpCalibration from '@/client/components/DeviceControl/PumpCalibration.vue'
+import { onMounted, reactive } from 'vue'
 
-export default {
-  components: {
-    PumpCalibration,
-    VBtn,
-    VTextField,
-    VProgressCircular,
-  },
-  name: 'PumpControl',
-  data() {
-    return {
-      pump_names: {
-        1: 'MAIN',
-        2: 'DRUG',
-        3: 'MISSING!!!',
-        4: 'WASTE'
-      },
-      rotations: { 1: null, 2: null, 3: null, 4: null },
-      volume: { 1: null, 2: null, 3: null, 4: null },
-    };
-  },
-  computed: {
-    ...mapState('device', ['pumps', 'valves', 'calibrationModeEnabled']),
-  },
-  methods: {
-    ...mapActions('device', ['setPartStateAction']),
-    async handlePumpClick(pumpId) {
-      if (this.pumps.states[pumpId] === 'running') {
-        await this.setPartStateAction({ devicePart: 'pumps', partIndex: pumpId, newState: 'stopped' });
-        return;
-      }
+const deviceStore = useDeviceStore()
+const { pumps, valves, calibrationModeEnabled } = storeToRefs(deviceStore)
 
-      const isValveOpen = Object.values(this.valves.states).some((valve) => valve === 'open');
+const pump_names = {
+  1: 'MAIN',
+  2: 'DRUG',
+  3: 'MISSING!!!',
+  4: 'WASTE'
+}
+const rotations = reactive({ 1: null, 2: null, 3: null, 4: null })
+const volume = reactive({ 1: null, 2: null, 3: null, 4: null })
 
-      if (!isValveOpen) {
-        alert('At least one valve must be open to start the pump');
-        return;
-      }
+onMounted(() => {
+  if (!pumps.value) {
+    deviceStore.fetchDeviceData()
+  }
+})
 
-      const volume = parseFloat(this.volume[pumpId]);
+async function handlePumpClick(pumpId) {
+  if (pumps.value.states[pumpId] === 'running') {
+    await deviceStore.setPartStateAction({ devicePart: 'pumps', partIndex: pumpId, newState: 'stopped' })
+    return
+  }
 
-      if (!volume) {
-        alert('Please set the volume before starting the pump');
-        return;
-      }
+  const isValveOpen = Object.values(valves.value.states).some((valve) => valve === 'open')
+  if (!isValveOpen) {
+    alert('At least one valve must be open to start the pump')
+    return
+  }
 
-      try {
-        await this.setPartStateAction({ devicePart: 'pumps', partIndex: pumpId, newState: 'running', input: { volume } });
-      } catch (error) {
-        console.error(error);
-      } finally {
-        await this.setPartStateAction({ devicePart: 'pumps', partIndex: pumpId, newState: 'stopped' });
-      }
-    },
-    onVolumeInput(event, pumpId) {
-      this.volume[pumpId] = event;
-      const volume = parseFloat(this.volume[pumpId]);
-      if (!isNaN(volume)) {
-        this.rotations[pumpId] = this.calculateRotations(volume, pumpId).toFixed(2);
-      } else {
-        this.rotations[pumpId] = '';
-      }
-    },
-    onRotationsInput(event, pumpId) {
-      this.rotations[pumpId] = event;
-      const rotations = parseFloat(this.rotations[pumpId]);
-      if (!isNaN(rotations)) {
-        this.volume[pumpId] = this.calculateVolume(rotations, pumpId);
-      } else {
-        this.volume[pumpId] = '';
-      }
-    },
+  const vol = parseFloat(volume[pumpId])
+  if (!vol) {
+    alert('Please set the volume before starting the pump')
+    return
+  }
 
-    calculateRotations(volume, pumpId) {
-      const pumpCoefficients = this.pumps.calibration[pumpId];
-      const points = Object.entries(pumpCoefficients).map(([rot, coef]) => [parseInt(rot), coef]).sort((a, b) => a[0] - b[0]);
+  try {
+    await deviceStore.setPartStateAction({ devicePart: 'pumps', partIndex: pumpId, newState: 'running', input: { volume: vol } })
+  } catch (error) {
+    console.error(error)
+  } finally {
+    await deviceStore.setPartStateAction({ devicePart: 'pumps', partIndex: pumpId, newState: 'stopped' })
+  }
+}
 
-      if (volume >= points[points.length - 1][0] * points[points.length - 1][1]) {
-        return volume / points[points.length - 1][1];
-      }
+function onVolumeInput(event, pumpId) {
+  volume[pumpId] = event
+  const vol = parseFloat(volume[pumpId])
+  if (!isNaN(vol)) {
+    rotations[pumpId] = calculateRotations(vol, pumpId).toFixed(2)
+  } else {
+    rotations[pumpId] = ''
+  }
+}
 
-      let lowerPoint = points[0];
-      let upperPoint = points[points.length - 1];
-      for (let i = 0; i < points.length - 1; i++) {
-        if (volume >= points[i][0] * points[i][1] && volume <= points[i + 1][0] * points[i + 1][1]) {
-          lowerPoint = points[i];
-          upperPoint = points[i + 1];
-          break;
-        }
-      }
+function onRotationsInput(event, pumpId) {
+  rotations[pumpId] = event
+  const rot = parseFloat(rotations[pumpId])
+  if (!isNaN(rot)) {
+    volume[pumpId] = calculateVolume(rot, pumpId)
+  } else {
+    volume[pumpId] = ''
+  }
+}
 
-      const lowerVolume = lowerPoint[0] * lowerPoint[1];
-      const upperVolume = upperPoint[0] * upperPoint[1];
-      const factor = (volume - lowerVolume) / (upperVolume - lowerVolume);
+function calculateRotations(volumeVal, pumpId) {
+  const pumpCoefficients = pumps.value.calibration[pumpId]
+  const points = Object.entries(pumpCoefficients).map(([rot, coef]) => [parseInt(rot), coef]).sort((a, b) => a[0] - b[0])
 
-      const interpolatedCoefficient = lowerPoint[1] + (upperPoint[1] - lowerPoint[1]) * factor;
+  if (volumeVal >= points[points.length - 1][0] * points[points.length - 1][1]) {
+    return volumeVal / points[points.length - 1][1]
+  }
 
-      return volume / interpolatedCoefficient;
-    },
+  let lowerPoint = points[0]
+  let upperPoint = points[points.length - 1]
+  for (let i = 0; i < points.length - 1; i++) {
+    if (volumeVal >= points[i][0] * points[i][1] && volumeVal <= points[i + 1][0] * points[i + 1][1]) {
+      lowerPoint = points[i]
+      upperPoint = points[i + 1]
+      break
+    }
+  }
 
-    calculateVolume(rotations, pumpId) {
-      const pumpCoefficients = this.pumps.calibration[pumpId];
-      const points = Object.entries(pumpCoefficients).map(([rot, coef]) => [parseInt(rot), coef]).sort((a, b) => a[0] - b[0]);
+  const lowerVolume = lowerPoint[0] * lowerPoint[1]
+  const upperVolume = upperPoint[0] * upperPoint[1]
+  const factor = (volumeVal - lowerVolume) / (upperVolume - lowerVolume)
 
-      if (rotations >= points[points.length - 1][0]) {
-        return (rotations * points[points.length - 1][1]).toFixed(2);
-      }
+  const interpolatedCoefficient = lowerPoint[1] + (upperPoint[1] - lowerPoint[1]) * factor
 
-      let lowerPoint = points[0];
-      let upperPoint = points[points.length - 1];
-      for (let i = 0; i < points.length - 1; i++) {
-        if (rotations >= points[i][0] && rotations <= points[i + 1][0]) {
-          lowerPoint = points[i];
-          upperPoint = points[i + 1];
-          break;
-        }
-      }
+  return volumeVal / interpolatedCoefficient
+}
 
-      const factor = (rotations - lowerPoint[0]) / (upperPoint[0] - lowerPoint[0]);
+function calculateVolume(rotationsVal, pumpId) {
+  const pumpCoefficients = pumps.value.calibration[pumpId]
+  const points = Object.entries(pumpCoefficients).map(([rot, coef]) => [parseInt(rot), coef]).sort((a, b) => a[0] - b[0])
 
-      const interpolatedCoefficient = lowerPoint[1] + (upperPoint[1] - lowerPoint[1]) * factor;
+  if (rotationsVal >= points[points.length - 1][0]) {
+    return (rotationsVal * points[points.length - 1][1]).toFixed(2)
+  }
 
-      return (rotations * interpolatedCoefficient).toFixed(2);
-    },
-  },
-};
+  let lowerPoint = points[0]
+  let upperPoint = points[points.length - 1]
+  for (let i = 0; i < points.length - 1; i++) {
+    if (rotationsVal >= points[i][0] && rotationsVal <= points[i + 1][0]) {
+      lowerPoint = points[i]
+      upperPoint = points[i + 1]
+      break
+    }
+  }
+
+  const factor = (rotationsVal - lowerPoint[0]) / (upperPoint[0] - lowerPoint[0])
+  const interpolatedCoefficient = lowerPoint[1] + (upperPoint[1] - lowerPoint[1]) * factor
+
+  return (rotationsVal * interpolatedCoefficient).toFixed(2)
+}
 </script>
 
 <style scoped>

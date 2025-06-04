@@ -27,62 +27,54 @@
   </v-app>
 </template>
 
-<script>
-import { mapState } from "vuex";
-import { defineAsyncComponent } from "vue";
+<script setup>
+import { ref, computed, onMounted, watch, defineAsyncComponent } from 'vue'
+import { useHostStore } from '@/client/stores/host'
 import '@mdi/font/css/materialdesignicons.css';
 
+const hostStore = useHostStore()
+
 const components = {
-  ExperimentTab: () => import("@/client/components/ExperimentTab/ExperimentTab.vue"),
-  PredictionTab: () => import("@/client/components/PredictionTab/PredictionTab.vue"),
-  DeviceControl: () => import("./components/DeviceControl/DeviceControl.vue"),
-  NgrokTab: () => import("@/client/components/Remote/NgrokTab.vue"),
-  HelpTab: () => import("@/client/components/HelpTab/HelpTab.vue"),
-  StatusTab: () => import("@/client/components/StatusTab/StatusTab.vue"),
-  LogsTab: () => import("@/client/components/LogsTab/LogsTab.vue"),
-  SelfTest: () => import("@/client/components/DeviceControl/SelfTest/SelfTest.vue"),
+  ExperimentTab: defineAsyncComponent(() => import("@/client/components/ExperimentTab/ExperimentTab.vue")),
+  PredictionTab: defineAsyncComponent(() => import("@/client/components/PredictionTab/PredictionTab.vue")),
+  DeviceControl: defineAsyncComponent(() => import("@/client/components/DeviceControl/DeviceControl.vue")),
+  NgrokTab: defineAsyncComponent(() => import("@/client/components/Remote/NgrokTab.vue")),
+  HelpTab: defineAsyncComponent(() => import("@/client/components/HelpTab/HelpTab.vue")),
+  StatusTab: defineAsyncComponent(() => import("@/client/components/StatusTab/StatusTab.vue")),
+  LogsTab: defineAsyncComponent(() => import("@/client/components/LogsTab/LogsTab.vue")),
+  SelfTest: defineAsyncComponent(() => import("@/client/components/DeviceControl/SelfTest/SelfTest.vue")),
 };
 
-export default {
-  name: "App",
-  data() {
-    return {
-      drawer: true,
-      currentTab: "Experiment",
-      tabs: [
-        { name: "Experiment", component: "ExperimentTab", icon: "mdi-flask" },
-        { name: "Prediction", component: "PredictionTab", icon: "mdi-chart-bell-curve-cumulative" },
-        { name: "Device Control", component: "DeviceControl", icon: "mdi-robot-industrial" },
-        { name: "Device Test", component: "SelfTest", icon: "mdi-robot" },
-        { name: "Ngrok", component: "NgrokTab", icon: "mdi-remote-desktop" },
-        { name: "Docs", component: "HelpTab", icon: "mdi-book-open-variant" },
-        { name: "Status", component: "StatusTab", icon: "mdi-monitor-eye" },
-        { name: "Logs", component: "LogsTab", icon: "mdi-file-document-alert-outline" },
-      ],
-    };
-  },
-  computed: {
-    ...mapState(["hostname"]),
-    currentComponent() {
-      const activeTab = this.tabs.find((tab) => tab.name === this.currentTab);
-      return activeTab ? activeTab.component : null;
-    },
-  },
-  async mounted() {
-    await this.$store.dispatch("fetchHostname");
-    document.title = this.hostname;
-  },
-  methods: {
-    selectTab(tabName) {
-      this.currentTab = tabName;
-    },
-  },
-  components: {
-    ...Object.fromEntries(
-      Object.entries(components).map(([key, value]) => [key, defineAsyncComponent(value)])
-    ),
-  },
-};
+const drawer = ref(true)
+const currentTab = ref("Experiment")
+const tabs = [
+  { name: "Experiment", component: "ExperimentTab", icon: "mdi-flask" },
+  { name: "Prediction", component: "PredictionTab", icon: "mdi-chart-bell-curve-cumulative" },
+  { name: "Device Control", component: "DeviceControl", icon: "mdi-robot-industrial" },
+  { name: "Device Test", component: "SelfTest", icon: "mdi-robot" },
+  { name: "Ngrok", component: "NgrokTab", icon: "mdi-remote-desktop" },
+  { name: "Docs", component: "HelpTab", icon: "mdi-book-open-variant" },
+  { name: "Status", component: "StatusTab", icon: "mdi-monitor-eye" },
+  { name: "Logs", component: "LogsTab", icon: "mdi-file-document-alert-outline" },
+]
+
+const currentComponent = computed(() => {
+  const activeTab = tabs.find((tab) => tab.name === currentTab.value)
+  return activeTab ? components[activeTab.component] : null
+})
+
+onMounted(async () => {
+  await hostStore.fetchHostname()
+  document.title = hostStore.hostname
+})
+
+watch(() => hostStore.hostname, (newVal) => {
+  if (newVal) document.title = newVal
+})
+
+const selectTab = (tabName) => {
+  currentTab.value = tabName
+}
 </script>
 
 <style scoped>

@@ -12,13 +12,13 @@ class RealCultureWrapper:
     @property
     def population(self):
         # od_dict = {k: v for k, v in sorted(od_dict.items(), key=lambda item: item[0])}
-        od_dict, mu_dict, rpm_dict = self.culture.get_last_ods_and_rpms(include_current=True)
+        od_dict, mu_dict, rpm_dict = self.culture.get_last_ods_and_rpms()
         population = [(od, time) for time, od in od_dict.items()]
         return population
 
     @property
     def effective_growth_rates(self):
-        od_dict, mu_dict, rpm_dict = self.culture.get_last_ods_and_rpms(include_current=True)
+        od_dict, mu_dict, rpm_dict = self.culture.get_last_ods_and_rpms()
         effective_growth_rates = [(mu, time) for time, mu in mu_dict.items()]
         return effective_growth_rates
 

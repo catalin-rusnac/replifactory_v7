@@ -1,21 +1,23 @@
 <template>
   <div>
     <ExperimentSetup/>
-    <ExperimentChart v-if="Object.keys(currentExperiment?.parameters?.cultures || {}).length > 0"/>
+    <ExperimentChart v-if="hasCultures"/>
   </div>
 </template>
 
-<script>
-import {mapState} from "vuex";
-import ExperimentSetup from './ExperimentSetup.vue';
-import ExperimentChart from './ExperimentChart.vue';
-export default {
-  components: {
-    ExperimentSetup,
-    ExperimentChart,
-  },
-  computed: {
-    ...mapState('experiment', ['experiments', 'currentExperiment', 'errorMessage']),
-  },
-};
+<script setup>
+import { storeToRefs } from 'pinia'
+import { useExperimentStore } from '../../stores/experiment'
+import ExperimentSetup from './ExperimentSetup.vue'
+import ExperimentChart from './ExperimentChart.vue'
+import { computed, watch } from 'vue'
+
+const experimentStore = useExperimentStore()
+const { experiments, currentExperiment, errorMessage } = storeToRefs(experimentStore)
+
+const hasCultures = computed(() => {
+  const count = Object.keys(currentExperiment.value?.parameters?.cultures || {}).length
+  console.log('hasCultures:', count, currentExperiment.value?.parameters?.cultures)
+  return count > 0
+})
 </script>

@@ -2,6 +2,7 @@
 import threading
 import time
 import pyftdi.i2c
+import warnings
 
 
 class RGBLedController:
@@ -114,13 +115,16 @@ class RGBLedController:
 
     def blink_hello(self):
         """Blink green LEDs."""
-        self.set_all_leds(1, 0, 0) # red
-        self.set_all_leds(0, 1, 0) # green
-        self.set_all_leds(0, 0, 1) # blue
-        self.set_all_leds(1, 1, 1) # white
-        time.sleep(0.2)
-        self.set_all_leds(0, 0, 0) # off
-        time.sleep(0.2)
+        try: 
+            self.set_all_leds(1, 0, 0) # red
+            self.set_all_leds(0, 1, 0) # green
+            self.set_all_leds(0, 0, 1) # blue
+            self.set_all_leds(1, 1, 1) # white
+            time.sleep(0.2)
+            self.set_all_leds(0, 0, 0) # off
+            time.sleep(0.2)
+        except Exception as e:
+            warnings.warn(f"LED operation failed: {e}")
 
     def turn_off_all(self):
         """Turn off all LEDs."""
