@@ -22,6 +22,8 @@
   },
   "dependencies": {
     "@mdi/font": "^7.4.47",
+    "@revolist/revogrid": "^4.15.8",
+    "@revolist/revogrid-pro": "^1.5.25",
     "@revolist/vue-datagrid": "^4.15.8",
     "@revolist/vue3-datagrid": "^4.15.8",
     "axios": "^1.7.9",

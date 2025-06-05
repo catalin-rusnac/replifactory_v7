@@ -164,10 +164,9 @@ class Experiment:
             session.commit()
         # Also update the in-memory model
         self.model.parameters = new_parameters
+        new_parameters["cultures"] = {int(k): v for k, v in new_parameters["cultures"].items()}
         for culture in self.cultures.values():
             culture.parameters = new_parameters["cultures"][culture.vial]
-        print(self.parameters)
-        print("Parameters updated in memory")
         
     @property
     def status(self):

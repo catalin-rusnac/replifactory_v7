@@ -152,12 +152,16 @@ def update_current_experiment_parameters(
     parameters: dict = Body(...),
     db: Session = Depends(get_db),
 ):
-    experiment = experiment_manager.get_current_experiment()
-    if experiment is None:
-        raise HTTPException(status_code=404, detail="No current experiment set")
-    if "parameters" in parameters and len(parameters) == 1:
-        parameters = parameters["parameters"]
-    experiment.parameters = parameters
+    try:
+        experiment = experiment_manager.get_current_experiment()
+        if experiment is None:
+            raise HTTPException(status_code=404, detail="No current experiment set")
+        if "parameters" in parameters and len(parameters) == 1:
+            parameters = parameters["parameters"]
+        experiment.parameters = parameters
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=500, detail=str(e))
     return {"message": "Parameters updated", "parameters": experiment.parameters}
 
 @router.get("/experiments/current/growth_parameters")
