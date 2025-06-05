@@ -22,13 +22,7 @@
 import { defineComponent, ref, onMounted, watch, computed, onBeforeUnmount } from "vue";
 import RevoGrid from '@revolist/vue3-datagrid';
 import {
-  cellFlashArrowTemplate,
-  CellFlashPlugin,
-  ColumnStretchPlugin,
-  EventManagerPlugin,
   HistoryPlugin,
-  RowOddPlugin,
-  RowSelectPlugin
 } from '@revolist/revogrid-pro';
 
 export default defineComponent({
@@ -48,7 +42,7 @@ export default defineComponent({
       (gridSource.value.length * rowHeight) + 55 + 'px'
     );
 
-    const plugins = ref([EventManagerPlugin, HistoryPlugin]);
+    const plugins = ref([HistoryPlugin]);
     const grid = ref();
 
     const loadTableData = async () => {
