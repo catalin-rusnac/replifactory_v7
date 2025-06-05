@@ -64,3 +64,10 @@ class Lasers:
             time.sleep(0.08)
             self.switch_all_off()
             time.sleep(0.04)
+    
+    def blink_quick(self):
+        for i in range(2):
+            self.switch_all_on()
+            time.sleep(0.04)
+            self.switch_all_off()
+            time.sleep(0.02)

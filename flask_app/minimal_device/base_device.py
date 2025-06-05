@@ -305,6 +305,11 @@ class BaseDevice:
         self.rgb_leds.blink_hello()
         self.valves.connect()
         print("Said hello from device")
+    
+    def hello_quick(self):
+        self.pwm_controller.play_quick_beep()
+        self.lasers.blink_quick()
+        print("Said hello from device")
 
     def update_cultures(self):
         def queued_function():

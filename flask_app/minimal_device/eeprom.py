@@ -82,7 +82,6 @@ class EEPROM:
         filename = self.filename
         with open(filename, 'w') as file:
             yaml.dump(data, file)
-        print(f"Wrote data to {filename}.")
 
     def _read_from_file(self):
         filename = self.filename

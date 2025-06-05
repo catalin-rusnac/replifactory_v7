@@ -50,9 +50,9 @@ dev = [
     "rich>=14.0.0",
     "ruff>=0.11.12",
 ]
-prod = [
-    "picamera2>=0.3.25",
-]
+# prod = [
+#     "picamera2>=0.3.25; sys_platform == 'linux'"
+# ]
 
 [tool.setuptools]
 packages = [

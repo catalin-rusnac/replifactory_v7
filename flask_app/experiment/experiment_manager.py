@@ -68,6 +68,7 @@ class ExperimentManager:
 
     def connect_device(self):
         self._device.connect()
+        self._device.hello_quick()
         if self._current_experiment_obj is not None:
             self._current_experiment_obj.device = self._device
 

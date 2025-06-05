@@ -185,6 +185,18 @@ class PwmController:
         is_sleeping = bool(int(bin(mode1_register)[2:].rjust(8, "0")[-5]))  # sleep bit
         return is_sleeping
 
+    def play_quick_beep(self):
+        base_freq = self.frequency
+        self.stop_all()
+        self.set_duty_cycle_all(0.01)
+        self.set_frequency(261.63)
+        self.start_all()
+        time.sleep(0.05)
+        self.stop_all()
+        self.set_duty_cycle_all(0)
+        self.set_frequency(base_freq)
+
+
     def play_turn_on_sound(self):
         """
         Play the turn on sound.
