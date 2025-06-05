@@ -1,0 +1,3 @@
+/*!
+ * Built by Revolist OU ❤️
+ */const i="header",r="footer",l="content",c="data";function n(o,e){const t=o.viewports[o.colType].store.get("realCount"),s=o.viewports[e].store.get("realCount");return{x:t,y:s}}function w(o,e,t,s){return{colData:o.colStore,viewportCol:o.viewports[o.colType].store,viewportRow:o.viewports[e].store,lastCell:n(o,e),slot:t,type:e,canDrag:!s,position:o.position,dataStore:o.rowStores[e].store,dimensionCol:o.dimensions[o.colType].store,dimensionRow:o.dimensions[e].store,style:s?{height:`${o.dimensions[e].store.get("realSize")}px`}:void 0}}export{l as C,c as D,r as F,i as H,w as v};
