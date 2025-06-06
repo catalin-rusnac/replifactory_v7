@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from experiment.database_models import ExperimentModel
-from fastapi_db import get_db
+from experiment.experiment_manager import get_db
 from experiment.experiment_manager import experiment_manager
 from pydantic import BaseModel
 import copy
@@ -158,11 +158,15 @@ def update_current_experiment_parameters(
             raise HTTPException(status_code=404, detail="No current experiment set")
         if "parameters" in parameters and len(parameters) == 1:
             parameters = parameters["parameters"]
-        experiment.parameters = parameters
+        # experiment.parameters = parameters # commit to db somehow
+
     except Exception as e:
         print(e)
         raise HTTPException(status_code=500, detail=str(e))
-    return {"message": "Parameters updated", "parameters": experiment.parameters}
+    return {
+        "message": "Parameters updated",
+        "parameters": serialize_parameters(experiment.parameters)
+    }
 
 @router.get("/experiments/current/growth_parameters")
 def get_current_experiment_growth_parameters(

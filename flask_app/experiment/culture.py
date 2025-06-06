@@ -5,7 +5,7 @@ from experiment.database_models import CultureData, PumpData, CultureGenerationD
 from experiment.growth_rate import calculate_last_growth_rate
 from experiment.ModelBasedCulture.morbidostat_updater import MorbidostatUpdater, morbidostat_updater_default_parameters
 from minimal_device.dilution import make_device_dilution
-from fastapi_db import SessionLocal
+from experiment.experiment_manager import SessionLocal
 
 from .ModelBasedCulture.culture_growth_model import CultureGrowthModel, culture_growth_model_default_parameters
 from .ModelBasedCulture.real_culture_wrapper import RealCultureWrapper

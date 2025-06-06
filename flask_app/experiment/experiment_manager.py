@@ -1,3 +1,22 @@
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+import os
+
+# Database setup (moved from fastapi_db.py)
+script_dir = os.path.dirname(os.path.abspath(__file__))
+db_path = os.path.join(script_dir, '../db/replifactory.db')
+SQLALCHEMY_DATABASE_URL = f"sqlite:///{db_path}"
+
+engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
 from threading import Lock
 from experiment.database_models import db
 from experiment.experiment import Experiment
@@ -33,7 +52,6 @@ class ExperimentManager:
             elif self._device is None:
                 self._device = BaseDevice(connect=False)
             # attach device to experiment if experiment is not none
-            
 
     def get_device(self):
         with self._lock:
@@ -92,3 +110,13 @@ class ExperimentManager:
 
 # singleton experiment manager instance is initialized here. accessible globally with imports
 experiment_manager = ExperimentManager()
+
+# using experiment_manager outside of fastapi app:
+
+
+
+
+
+
+
+
