@@ -18,7 +18,7 @@
     "dev": "vite",
     "build": "vite build",
     "serve": "vite preview",
-    "dev:all": "concurrently --names \"backend,frontend\" --prefix-colors \"cyan,magenta\" \"cd ../flask_app && uv run server.py develop\" \"vite\""
+    "dev:all": "concurrently --names \"backend,frontend\" --prefix-colors \"cyan,magenta\" \"cd ../backend && uv run server.py develop\" \"vite\""
   },
   "dependencies": {
     "@mdi/font": "^7.4.47",

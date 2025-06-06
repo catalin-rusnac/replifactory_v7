@@ -4,7 +4,7 @@ module.exports = {
       name: "backend",
       script: "uv",
       args: "run server.py",
-      cwd: "/home/pi/replifactory_v7/flask_app",
+      cwd: "/home/pi/replifactory_v7/backend",
       autorestart: true,
       watch: false
     },

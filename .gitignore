@@ -4,12 +4,12 @@
 /.idea/
 /dev/
 
-/flask_app/minimal_device/__pycache__/
-/flask_app/data/
-/flask_app/__pycache__/
+/backend/minimal_device/__pycache__/
+/backend/data/
+/backend/__pycache__/
 /secrets/
 /secrets2/
 /logs/
 /venv/
-/flask_app/develop/
+/backend/develop/
 /db/
