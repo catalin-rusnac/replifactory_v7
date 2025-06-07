@@ -47,7 +47,6 @@ class BaseDevice:
 
     def __init__(self, ftdi_address="ftdi://ftdi:2232h", connect=False, directory=None):
         t0 = time.time()
-        print("Initializing device", time.ctime())
         self.ftdi_address = ftdi_address
         self.directory = directory
 
@@ -110,6 +109,25 @@ class BaseDevice:
                 self.save()
         if connect:
             self.connect()
+
+    def shutdown(self):
+        """shutdown all threads - eeprom writer, dilution worker, od worker"""
+        try:
+            if self.eeprom.writer is not None:
+                self.eeprom.writer.stop()   
+        except Exception as e:
+            logger.error(f"Error stopping EEPROM writer: {e}")
+        try:
+            if self.dilution_worker is not None:
+                self.dilution_worker.stop()
+        except Exception as e:
+            logger.error(f"Error stopping dilution worker: {e}")
+        try:
+            if self.od_worker is not None:
+                self.od_worker.stop()
+        except Exception as e:
+            logger.error(f"Error stopping od worker: {e}")
+        logger.info("All device workers stopped")
 
     def connect_i2c_spi(self, ftdi_address="ftdi://ftdi:2232h", retries=5):
         # acquire lock_pumps to prevent concurrent attempts to connect

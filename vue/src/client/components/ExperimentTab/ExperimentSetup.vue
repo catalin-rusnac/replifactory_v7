@@ -77,7 +77,6 @@ import { useExperimentStore } from '@/client/stores/experiment';
 import ExperimentParameters from './ExperimentParameters.vue';
 import { toast } from 'vue3-toastify';
 import 'vue3-toastify/dist/index.css';
-import api from '@/api'; // Adjust the path as needed
 
 const experimentStore = useExperimentStore();
 const newExperimentname = ref('');
@@ -103,14 +102,10 @@ async function handleNewExperimentButton() {
 }
 
 async function createAndSelectExperiment() {
-  if (currentExperiment.value) {
-    currentExperimentId.value = await experimentStore.createExperiment({ name: newExperimentname.value, parameters: currentExperiment.value.parameters });
-  } else {
-    currentExperimentId.value = await experimentStore.createExperiment({ name: newExperimentname.value });
-  }
-  await handleExperimentSelected();
+  currentExperimentId.value = await experimentStore.createExperiment({ name: newExperimentname.value });
+  await experimentStore.selectExperiment(currentExperimentId.value);
   showCreate.value = false;
-  newExperimentname.value = '';
+  newExperimentname.value = currentExperiment.value.name;
 }
 
 async function startExperiment() {
@@ -119,9 +114,6 @@ async function startExperiment() {
 }
 async function stopExperiment() {
   await experimentStore.stopExperiment();
-}
-function forceStopExperiment() {
-  // Optionally implement force stop logic
 }
 
 onMounted(async () => {

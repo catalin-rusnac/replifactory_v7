@@ -15,13 +15,26 @@
 </template>
 
 <script>
-import { mapActions } from "vuex";
+import { storeToRefs } from 'pinia'
+import { useDeviceStore } from '../../stores/device'
+import { onMounted } from 'vue'
+
+const deviceStore = useDeviceStore()
+const { leds } = storeToRefs(deviceStore)
+
+
+onMounted(() => {
+  if (!leds.value) {
+    deviceStore.fetchDeviceData()
+  }
+})
+
 
 export default {
   name: "SetLEDColor",
   data() {
     return {
-      vials: [1, 2, 3, 4, 5, 6, 7],
+      vials: [1,2,3,4,5,6,7],
       ledColors: {
         1: { red: 0, green: 0, blue: 0, color: "#000000" },
         2: { red: 0, green: 0, blue: 0, color: "#000000" },
@@ -34,7 +47,7 @@ export default {
     };
   },
   methods: {
-    ...mapActions("device", ["setLedColor"]),
+    
     async setLEDColor(vial, event) {
       if (event.shiftKey) {
         // If Shift key is held, set the same color for all vials
@@ -55,7 +68,7 @@ export default {
       const { red, green, blue } = this.ledColors[vial];
       try {
         console.log("Setting color for vial", vial, "to", red, green, blue);
-        await this.setLedColor({ vial, red, green, blue });
+        await deviceStore.setLedColor(vial, red, green, blue);
       } catch (error) {
         console.error(`Failed to set color for vial ${vial}:`, error);
         alert(`Error setting color for vial ${vial}`);

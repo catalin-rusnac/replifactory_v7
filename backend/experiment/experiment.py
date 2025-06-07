@@ -9,13 +9,12 @@ from copy import deepcopy
 from pprint import pformat, pprint
 from logger.logger import logger
 
-import numpy as np
 import schedule
-from .database_models import ExperimentModel
+from .database_models import ExperimentModel, default_parameters
 from .ModelBasedCulture.culture_growth_model import culture_growth_model_default_parameters
 from .ModelBasedCulture.morbidostat_updater import morbidostat_updater_default_parameters
-from .culture import Culture
 
+from .culture import Culture
 
 class ExperimentWorker:
     def __init__(self, experiment):
@@ -89,24 +88,6 @@ class QueueWorker:
                 self.is_performing_operation = False
 
 
-# class AutoCommitParameters:
-#     def __init__(self, model, db):
-#         self.model = model
-#         self.db = db
-#
-#     def __getattr__(self, name):
-#         return self.model.parameters[name]
-#
-#     def __setattr__(self, name, value):
-#         if name in ["model", "db"]:
-#             self.__dict__[name] = value
-#         else:
-#             self.model.parameters[name] = value
-#             self.model.parameters = self.model.parameters
-#             self.db.session.add(self.model)
-#             self.db.session.commit()
-
-
 class Experiment:
     _instance = None
 
@@ -123,12 +104,14 @@ class Experiment:
     def __init__(self, device, experiment_id, manager):
         self.device = device
         self.manager = manager
-        # Use a short-lived session to fetch the experiment model
-        with self.manager.get_session() as session:
-            experiment_model = self.manager.get_session().get(ExperimentModel, experiment_id)
-            if experiment_model is None:
-                raise ValueError(f"Experiment with id {experiment_id} not found")
-        self.model = experiment_model  # Store the database model object
+        if experiment_id == 0:
+            self.model = ExperimentModel(id=0, name="default", parameters=default_parameters)
+        else:    
+            with self.manager.get_session() as session:
+                experiment_model = session.get(ExperimentModel, experiment_id)
+                if experiment_model is None:
+                    raise ValueError(f"Experiment with id {experiment_id} not found")
+            self.model = experiment_model
         self._status = self.model.status
         self.schedule = schedule.Scheduler()
         self.locks = {i: threading.Lock() for i in range(1, 8)}
@@ -143,7 +126,7 @@ class Experiment:
             if experiment_model is None:
                 raise ValueError(f"Experiment with id {self.model.id} not found")
             self.model = experiment_model
-    
+
     @property
     def parameters(self):
         return self.model.parameters
@@ -218,6 +201,22 @@ class Experiment:
             if self.experiment_worker.dilution_worker.paused:
                 print("Dilution worker is paused. Resuming.")
                 self.experiment_worker.dilution_worker.paused = False
+
+    def is_running(self):
+        try:
+            if self.experiment_worker is None:
+                return False
+            if not self.experiment_worker.thread.is_alive():
+                return False
+            if not self.experiment_worker.od_worker.thread.is_alive():
+                return False
+            if not self.experiment_worker.dilution_worker.thread.is_alive():
+                return False
+            if self.status != "running":    
+                return False
+        except:
+            return False
+        return True
 
     def pause_dilution_worker(self):
         self.status = "paused"

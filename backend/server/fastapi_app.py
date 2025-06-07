@@ -16,10 +16,8 @@ async def lifespan(app):
     # Startup logic
     try:
         experiment_manager.connect_device()
-        device = experiment_manager.get_device()
     except Exception as e:
-        logger.error(f"Error getting device: {e}")
-        device = None
+        logger.error(f"Error connecting device: {e}")
     yield
     # Shutdown logic
     experiment_manager.shutdown()

@@ -4,29 +4,13 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import functools
 from sqlalchemy.orm import Session
+from experiment.database_models import default_parameters
 # Always resolve db_path as absolute path relative to the project root
 script_dir = os.path.dirname(os.path.abspath(__file__))
 db_path = os.path.abspath(os.path.join(script_dir, '..', '..', 'db', 'replifactory.db'))
-
-# Print the resolved path for debugging
-logger.info(f"Resolved DB path: {db_path}")
-
-# Check if db exists
 if not os.path.exists(db_path):
     raise FileNotFoundError(f"Database file not found at {db_path}")
-else:
-    logger.info(f"Database file found at {db_path}")
-
 SQLALCHEMY_DATABASE_URL = f"sqlite:///{db_path}"
-
-
-def get_db():
-    """Module-level FastAPI dependency for DB session, uses the singleton manager's session factory."""
-    db = experiment_manager.SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 from threading import Lock
 from experiment.database_models import db
@@ -38,15 +22,6 @@ import os
 from logger.logger import logger
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-
-script_dir = os.path.dirname(os.path.abspath(__file__))
-db_path = os.path.abspath(os.path.join(script_dir, '..', '..', 'db', 'replifactory.db'))
-logger.info(f"Resolved DB path: {db_path}")
-
-if not os.path.exists(db_path):
-    raise FileNotFoundError(f"Database file not found at {db_path}")
-else:
-    logger.info(f"Database file found at {db_path}")
 
 def with_db_session(method):
     @functools.wraps(method)
@@ -101,50 +76,96 @@ class ExperimentManager:
     def get_db(self):
         db = self.SessionLocal()
         try:
+            # logger.info(f"Yielding db")
             yield db
         finally:
             db.close()
 
     def get_session(self):
+        # logger.info(f"Getting session")
         return self.SessionLocal()
 
     def set_blank_device(self):
         self._device = BaseDevice(connect=False)
 
     def connect_device(self):
+        logger.info(f"Connecting device")
         self.set_blank_device()
         self._device.connect()
         self._device.hello_quick()
         if self._current_experiment_obj is not None:
             self._current_experiment_obj.device = self._device
+    
+    def get_status(self):
+        status_dict = {"device": None, "experiment": None}
+        try:
+            status_dict["device"] = self._device.status
+        except:
+            status_dict["device"] = "disconnected"
+        try:
+            status_dict["experiment"] = self.experiment.status
+        except:
+            status_dict["experiment"] = "not running"
+        try:
+            status_dict["cultures"] = {i: self._current_experiment_obj.cultures[i].status for i in range(1, 8)}
+        except:
+            status_dict["cultures"] = {i: "not running" for i in range(1, 8)}
+        return status_dict
+    
+    # @with_db_session
+    # def set_current_experiment(self, experiment_id, db_session=None):
+    #     if self.experiment is not None:
+    #         if self.experiment.is_running():
+    #             self.experiment.stop()
+    #     with self._exp_lock:
+    #         if experiment_id == 0:
+    #             self._current_experiment_obj = None
+    #         else:
+    #             self._current_experiment_obj = Experiment(self._device, experiment_id, manager=self)
+    #             self._current_experiment_obj.model = db_session.query(ExperimentModel).get(experiment_id)
 
     @with_db_session
-    def set_current_experiment(self, experiment_id, db_session=None):
-        with self._exp_lock:
-            self._current_experiment_obj = Experiment(self._device, experiment_id, manager=self)
-            self._current_experiment_obj.model = db_session.query(ExperimentModel).get(experiment_id)
-
-    @with_db_session
-    def create_experiment(self, name, parameters, db_session=None):
-        experiment = ExperimentModel(name=name, parameters=parameters)
-        db_session.add(experiment)
+    def create_experiment(self, name, db_session=None):
+        new_experiment_parameters = default_parameters
+        if self.experiment is not None:
+            current_experiment_id = self.experiment.model.id
+            new_experiment_parameters = self.experiment.parameters.copy()
+            logger.info(f"Copying parameters from current experiment {current_experiment_id} {self.experiment.model.name}")
+        
+        experiment_model = ExperimentModel(name=name, parameters=new_experiment_parameters)
+        db_session.add(experiment_model)
         db_session.commit()
-        db_session.refresh(experiment)
-        return experiment
-
-    @with_db_session
-    def select_experiment(self, experiment_id, db_session=None):
-        experiment_model = db_session.query(ExperimentModel).get(experiment_id)
-        if not experiment_model:
-            raise ExperimentNotFound(f"Experiment {experiment_id} not found")
-        self.set_current_experiment(experiment_id, db_session=db_session)
+        db_session.refresh(experiment_model)
+        self.select_experiment(experiment_model.id, db_session=db_session)
+        logger.info(f"Created experiment {experiment_model.id} {experiment_model.name}")
         return self.experiment
 
     @with_db_session
+    def select_experiment(self, experiment_id, db_session=None):
+        if self.experiment is not None:
+            if self.experiment.is_running():
+                if self.experiment.model.id == experiment_id:
+                    return self.experiment
+                else:
+                    self.experiment.stop()
+        if experiment_id == 0:
+            self._current_experiment_obj = None
+            return None
+        self._current_experiment_obj = Experiment(self._device, experiment_id, manager=self)
+        self._current_experiment_obj.model = db_session.query(ExperimentModel).get(experiment_id)
+        return self.experiment
+    
+    def get_default_experiment(self):
+        """Return a clean (default/template) experiment dict."""
+        experiment_model = ExperimentModel(name="---- default template ----", parameters={}, status="stopped")
+        experiment_model.id = 0
+        return experiment_model
+
+    @with_db_session
     def get_all_experiments(self, db_session=None):
+        default_experiment = self.get_default_experiment()
         all_experiments = db_session.query(ExperimentModel).all()
-        logger.info(f"All experiments: {all_experiments}")
-        return all_experiments
+        return [default_experiment] + all_experiments
 
     @with_db_session
     def get_experiment_by_id(self, experiment_id, db_session=None):
@@ -181,14 +202,14 @@ class ExperimentManager:
             raise ExperimentNotFound("No current experiment set")
         old_parameters = experiment.model.parameters.copy()
         old_parameters["growth_parameters"] = growth_parameters
-        experiment.parameters = old_parameters
+        self.experiment.parameters = old_parameters
         db_session.commit()
         for culture in experiment.cultures.values():
             culture.update_parameters_from_experiment()
         return experiment.model.parameters["growth_parameters"]
 
     def update_experiment_status(self, status, db_session=None):
-        experiment = self.get_current_experiment(db_session)
+        experiment = self.experiment
         if experiment is None:
             raise ExperimentNotFound("No current experiment set")
         experiment.model.status = status
@@ -198,33 +219,13 @@ class ExperimentManager:
     
     def shutdown(self):
         """Gracefully stop all device and worker threads."""
-        device = self._device  # Use the current device reference directly
-        if device is None:
-            logger.info("No device to shut down.")
-            return
+        import threading
+        logger.info(f"Threads at shutdown: {threading.enumerate()}")
         # Only attempt to stop workers if the device is connected
-        try:
-            if hasattr(device, 'is_connected') and not device.is_connected():
-                logger.info("Device is not connected. No shutdown actions needed.")
-                return
-            if hasattr(device, 'eeprom') and hasattr(device.eeprom, 'writer'):
-                device.eeprom.writer.stop()
-                logger.info("EEPROM writer stopped cleanly.")
-            if hasattr(device, 'od_worker') and device.od_worker is not None:
-                logger.info("Stopping od_worker thread...")
-                device.od_worker.stop()
-                logger.info("od_worker stopped cleanly.")
-            if hasattr(device, 'dilution_worker') and device.dilution_worker is not None:
-                logger.info("Stopping dilution_worker thread...")
-                device.dilution_worker.stop()
-                logger.info("dilution_worker stopped cleanly.")
-        except Exception as e:
-            logger.error(f"Error during shutdown: {e}")
-
-    def get_clean_experiment(self):
-        """Return a clean (default/template) experiment dict."""
-        return {"id": 0, "name": "---- default template ----", "status": "stopped"}
-
-
+        if self.experiment is not None:
+            if self.experiment.is_running():
+                self.experiment.stop()
+        if self._device is not None:
+            self._device.shutdown()
 
 experiment_manager = ExperimentManager()

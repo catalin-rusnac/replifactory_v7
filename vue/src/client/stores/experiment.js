@@ -16,15 +16,14 @@ export const useExperimentStore = defineStore('experiment', {
       const response = await api.get('/experiments')
       this.experiments = response.data
     },
-    async createExperiment({ name, parameters }) {
-      const response = await api.post('/experiments', { name, parameters })
+    async createExperiment({ name }) {
+      const response = await api.post('/experiments', { name })
       await this.fetchExperiments()
       await this.selectExperiment(response.data.id)
       return response.data.id
     },
     async selectExperiment(experimentId) {
-      const response = await api.put('/experiments/select', { experiment_id: experimentId })
-      this.selectedExperimentId = response.data.selected_experiment_id
+      await api.put('/experiments', { experiment_id: experimentId })
       await this.fetchCurrentExperiment()
     },
     async fetchCurrentExperiment() {

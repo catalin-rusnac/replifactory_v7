@@ -61,6 +61,18 @@ export const useDeviceStore = defineStore('device', {
         this.errorMessage = `Failed to set ${devicePart} state.`
       }
     },
+    async setLedColor(vial, red, green, blue) {
+      try {
+        const response = await api.post('/set-led-color', { vial, red, green, blue })
+        if (response.data.success) {
+          await this.fetchDeviceData()
+        } else {
+          this.errorMessage = 'Failed to set LED color.'
+        }
+      } catch (error) {
+        this.errorMessage = 'Failed to set LED color.'
+      }
+    },
     async setPartCalibration(devicePart, partIndex, newCalibration) {
       try {
         const response = await api.post(`/set-${devicePart}-calibration`, { partIndex, newCalibration })

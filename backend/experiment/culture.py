@@ -116,6 +116,7 @@ class Culture:
             experiment_manager=self.experiment.manager, 
             experiment_id=self.experiment.model.id, 
             vial=self.vial)
+        self.growth_parameters = self.experiment.model.parameters["growth_parameters"][str(self.vial)]
         self.updater = MorbidostatUpdater(**self.parameters.inner_dict)
 
     

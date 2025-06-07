@@ -50,7 +50,6 @@ class EEPROM:
             self.worker_thread.join()
 
     def __init__(self, device):
-        print("Initializing EEPROM", time.ctime())
         self.device = device
         self.port = None
         self.writer = self.EepromWriter(self)
@@ -65,7 +64,6 @@ class EEPROM:
                 yaml.dump(default_device_data, file)
             print(f"Created {self.filename} with default device data.")
 
-############ Replace EEPROM with filewriter ############
     def log_config_from_file(self):
         filename = self.filename
         if not os.path.exists(filename):
