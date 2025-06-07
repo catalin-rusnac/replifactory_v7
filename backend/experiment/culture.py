@@ -285,13 +285,13 @@ class Culture:
 
     def get_last_ods_and_rpms(self, db=None, limit=100, since_pump=False):
         if db is None:
-            with SessionLocal() as db:
-                return self.get_last_ods_and_rpms(db, limit, since_pump)
+            db = self.experiment.manager.get_session()
+        with db as db:
         # Query and extract all needed data while session is open
-        culture_data = db.query(CultureData).filter(
-            CultureData.experiment_id == self.experiment.model.id,
-            CultureData.vial_number == self.vial
-        ).order_by(CultureData.timestamp.desc()).limit(limit).all()
+            culture_data = db.query(CultureData).filter(
+                CultureData.experiment_id == self.experiment.model.id,
+                CultureData.vial_number == self.vial
+            ).order_by(CultureData.timestamp.desc()).limit(limit).all()
         # Extract all relevant fields into a list of dicts
         extracted = []
         for row in culture_data:
@@ -327,7 +327,8 @@ class Culture:
 
 
     def get_last_generations(self, limit=1000):
-        with SessionLocal() as db:
+        db = self.experiment.manager.get_session()
+        with db as db:
             generation_data = db.query(CultureGenerationData).filter(
                 CultureGenerationData.experiment_id == self.experiment.model.id,
                 CultureGenerationData.vial_number == self.vial
