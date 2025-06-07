@@ -7,14 +7,14 @@ import sys
 import io
 from copy import deepcopy
 from pprint import pformat, pprint
+from logger.logger import logger
 
 import numpy as np
 import schedule
-from experiment.database_models import ExperimentModel
+from .database_models import ExperimentModel
 from .ModelBasedCulture.culture_growth_model import culture_growth_model_default_parameters
 from .ModelBasedCulture.morbidostat_updater import morbidostat_updater_default_parameters
 from .culture import Culture
-from .db import SessionLocal
 
 
 class ExperimentWorker:
@@ -120,29 +120,39 @@ class Experiment:
         cls._instance = super(Experiment, cls).__new__(cls)
         return cls._instance
 
-    def __init__(self, device, experiment_id):
+    def __init__(self, device, experiment_id, manager):
         self.device = device
+        self.manager = manager
         # Use a short-lived session to fetch the experiment model
-        with SessionLocal() as session:
-            experiment_model = session.get(ExperimentModel, experiment_id)
+        with self.manager.get_session() as session:
+            experiment_model = self.manager.get_session().get(ExperimentModel, experiment_id)
             if experiment_model is None:
                 raise ValueError(f"Experiment with id {experiment_id} not found")
-            self.model = experiment_model  # Store the database model object
-            self._status = self.model.status
+        self.model = experiment_model  # Store the database model object
+        self._status = self.model.status
         self.schedule = schedule.Scheduler()
         self.locks = {i: threading.Lock() for i in range(1, 8)}
         self.experiment_worker = None
         self.cultures = {i: Culture(self, i) for i in range(1, 8)}
 
+    def reload_model_from_db(self, db_session=None):
+        if db_session is None:
+            db_session = self.manager.get_session()
+        with db_session as session:
+            experiment_model = session.get(ExperimentModel, self.model.id)
+            if experiment_model is None:
+                raise ValueError(f"Experiment with id {self.model.id} not found")
+            self.model = experiment_model
+    
     @property
     def parameters(self):
         return self.model.parameters
-
+    
     @parameters.setter
     def parameters(self, new_parameters):
         id = self.model.id
         # Use a short-lived session to update parameters in the DB
-        with SessionLocal() as session:
+        with self.manager.get_session() as session:
             experiment_model = session.get(ExperimentModel, id)
             if experiment_model is None:
                 raise ValueError(f"Experiment with id {id} not found")
@@ -154,7 +164,7 @@ class Experiment:
                             value = float(value)
                             new_parameters["cultures"][v][key] = value
             if "growth_parameters" in new_parameters.keys():
-                for v, culture_parameters in new_parameters["growth_parameters"].items():
+                for v, growth_parameters in new_parameters["growth_parameters"].items():
                     for key, value in new_parameters["growth_parameters"][v].items():
                         if key in culture_growth_model_default_parameters.keys():
                             if type(value) not in [int, float]:
@@ -162,11 +172,10 @@ class Experiment:
                                 new_parameters["growth_parameters"][v][key] = value
             experiment_model.parameters = new_parameters
             session.commit()
-        # Also update the in-memory model
-        self.model.parameters = new_parameters
-        new_parameters["cultures"] = {int(k): v for k, v in new_parameters["cultures"].items()}
-        for culture in self.cultures.values():
-            culture.parameters = new_parameters["cultures"][culture.vial]
+            # logger.info(f"Updating cultures parameters: {new_parameters}")
+            for culture in self.cultures.values():
+                # logger.info(f"Updating culture {culture.vial} parameters from db")
+                culture.update_parameters_from_experiment()
         
     @property
     def status(self):
@@ -176,7 +185,7 @@ class Experiment:
     def status(self, value):
         self._status = value
         # Use a short-lived session to update status in the DB
-        with SessionLocal() as session:
+        with self.manager.get_session() as session:
             experiment_model = session.get(ExperimentModel, self.model.id)
             if experiment_model is None:
                 raise ValueError(f"Experiment with id {self.model.id} not found")
@@ -332,7 +341,7 @@ class Experiment:
     def set_status(self, new_status):
         self._status = new_status
         # Update DB with a short-lived session
-        with SessionLocal() as session:
+        with self.manager.get_session() as session:
             experiment_model = session.get(ExperimentModel, self.model.id)
             experiment_model.status = new_status
             session.commit()

@@ -77,6 +77,7 @@ import { useExperimentStore } from '@/client/stores/experiment';
 import ExperimentParameters from './ExperimentParameters.vue';
 import { toast } from 'vue3-toastify';
 import 'vue3-toastify/dist/index.css';
+import api from '@/api'; // Adjust the path as needed
 
 const experimentStore = useExperimentStore();
 const newExperimentname = ref('');

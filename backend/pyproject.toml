@@ -2,7 +2,6 @@
 name = "flask-app"
 version = "0.1.0"
 description = "Add your description here"
-readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "blinker>=1.6.2",
@@ -53,12 +52,3 @@ dev = [
 # prod = [
 #     "picamera2>=0.3.25; sys_platform == 'linux'"
 # ]
-
-[tool.setuptools]
-packages = [
-    "server",
-    "experiment",
-    "experiment.ModelBasedCulture",
-    "minimal_device",
-    "fastapi_routes"
-]

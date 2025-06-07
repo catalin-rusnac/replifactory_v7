@@ -14,10 +14,11 @@ name_parameters = {"name": "Species 1",
 culture_parameters = {**name_parameters, **morbidostat_updater_default_parameters}
 
 default_parameters = {"stock_volume_drug": 1000, "stock_volume_main": 2000,
-                      "stock_volume_waste": 5000,
+                      "stock_volume_waste": 5000, "stock_concentration_drug": 1000,
+                      "bottle_volume_drug": 1000, "bottle_volume_main": 2000,
+                      "bottle_volume_waste": 5000,
                       'cultures': {i: culture_parameters for i in range(1, 8)},
                       'growth_parameters': {i: culture_growth_model_default_parameters for i in range(1, 8)}}
-
 
 class ExperimentModel(db.Model):
     __tablename__ = 'experiments'

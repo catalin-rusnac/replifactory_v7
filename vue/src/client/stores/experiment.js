@@ -28,19 +28,12 @@ export const useExperimentStore = defineStore('experiment', {
       await this.fetchCurrentExperiment()
     },
     async fetchCurrentExperiment() {
-      // Get the currently selected experiment's full data
-      const selectedIdResp = await api.get('/experiments/selected')
-      const id = selectedIdResp.data
-      if (id) {
-        const response = await api.get(`/experiments/${id}`)
-        this.currentExperiment = response.data
+      const selectedIdResp = await api.get('/experiments/current')
+      if (selectedIdResp.data) {
+        this.currentExperiment = selectedIdResp.data
       } else {
         this.currentExperiment = null
       }
-    },
-    async fetchExperimentById(id) {
-      const response = await api.get(`/experiments/${id}`)
-      return response.data
     },
     async updateExperimentStatus(status) {
       try {

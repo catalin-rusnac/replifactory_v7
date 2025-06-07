@@ -3,45 +3,58 @@ from datetime import datetime
 import numpy as np
 from experiment.database_models import CultureData, PumpData, CultureGenerationData
 from experiment.growth_rate import calculate_last_growth_rate
-from experiment.ModelBasedCulture.morbidostat_updater import MorbidostatUpdater, morbidostat_updater_default_parameters
+from experiment.ModelBasedCulture.morbidostat_updater import MorbidostatUpdater
 from minimal_device.dilution import make_device_dilution
-from experiment.experiment_manager import SessionLocal
+from logger.logger import logger
 
-from .ModelBasedCulture.culture_growth_model import CultureGrowthModel, culture_growth_model_default_parameters
+
+from .ModelBasedCulture.culture_growth_model import CultureGrowthModel
 from .ModelBasedCulture.real_culture_wrapper import RealCultureWrapper
+from .database_models import ExperimentModel, CultureData, PumpData, CultureGenerationData
 from .plot import plot_culture
 from .export import export_culture_csv, export_culture_plot_html
 from copy import deepcopy
 
+from copy import deepcopy
 
 class AutoCommitDict:
-    def __init__(self, initial_dict, db_session, experiment_model, vial):
+    def __init__(self, initial_dict, experiment_manager, experiment_id, vial):
         self.inner_dict = deepcopy(initial_dict)
-        self.db_session = db_session
-        self.experiment_model = experiment_model
-        self.vial = vial
+        self.experiment_manager = experiment_manager
+        self.experiment_id = experiment_id
+        self.vial = str(vial)
 
     def __getitem__(self, key):
-        try:  # If the key is a number, return it as a number
+        # Always read from the in-memory dict
+        try:
             return float(self.inner_dict[key])
-        except ValueError:  # If the key is a string, return it as a string
+        except ValueError:
             return self.inner_dict[key]
 
     def __setitem__(self, key, value):
         self.inner_dict[key] = value
-        parameters = deepcopy(self.experiment_model.parameters)
-        parameters["cultures"][str(self.vial)] = self.inner_dict
-        self.experiment_model.parameters = parameters
-        self.db_session.commit()
+        # Update database immediately with fresh session
+        with self.experiment_manager.get_session() as session:
+            experiment = session.query(ExperimentModel).get(self.experiment_id)
+            if experiment is None:
+                raise ValueError("Experiment not found")
+            parameters = deepcopy(experiment.parameters)
+            # Ensure all keys are strings for cultures
+            parameters["cultures"] = {str(k): v for k, v in parameters.get("cultures", {}).items()}
+            parameters["cultures"][self.vial] = self.inner_dict.copy()
+            experiment.parameters = parameters
+            session.commit()
+            session.refresh(experiment.model)
 
     def __repr__(self):
         return repr(self.inner_dict)
 
 
+
 class Culture:
     def __init__(self, experiment, vial):
         self.experiment = experiment
-        self.vial = vial
+        self.vial = str(vial)
         self.od = None
         self.growth_rate = None
         self.drug_concentration = None
@@ -50,10 +63,10 @@ class Culture:
         self.last_dilution_time = None
         self.new_culture_data = None
         self.parameters = AutoCommitDict(
-            experiment.model.parameters["cultures"][str(vial)],
-            vial=vial,
-            db_session=None,  # Will be set per operation
-            experiment_model=experiment.model)
+                        experiment.model.parameters["cultures"][str(vial)],
+                        experiment_manager=experiment.manager, 
+                        experiment_id=experiment.model.id, 
+                        vial=self.vial)
         self.culture_growth_model = CultureGrowthModel()
         self.get_latest_data_from_db()
         self.updater = MorbidostatUpdater(**self.parameters.inner_dict)
@@ -67,14 +80,13 @@ class Culture:
         self.updater = MorbidostatUpdater(**self.parameters.inner_dict)
         self.adapted_culture = RealCultureWrapper(self)
         self.updater.update(self.adapted_culture)
-
+    
     def plot_data(self, *args, **kwargs):
         return plot_culture(self, *args, **kwargs)
 
     def plot_predicted(self):
         self.updater = MorbidostatUpdater(**self.parameters.inner_dict)
         print("-------------------------------- PLOT PREDICTED --------------------------------")
-        print(self.parameters.inner_dict)
         growth_parameters = self.experiment.model.parameters["growth_parameters"][str(self.vial)]
         self.culture_growth_model = CultureGrowthModel(**growth_parameters)
         self.culture_growth_model.updater = self.updater
@@ -91,15 +103,28 @@ class Culture:
         return export_culture_plot_html(self, output_directory=output_directory, predicted=True)
 
     def get_first_od_timestamp(self):
-        with SessionLocal() as db:
+        with self.experiment.manager.get_session() as db:
             culture_data = db.query(CultureData).filter(
                 CultureData.experiment_id == self.experiment.model.id,
                 CultureData.vial_number == self.vial
             ).order_by(CultureData.timestamp).first()
         return culture_data.timestamp
 
-    def get_latest_data_from_db(self):
-        with SessionLocal() as db:
+    def update_parameters_from_experiment(self):
+        self.parameters = AutoCommitDict(
+            self.experiment.model.parameters["cultures"][str(self.vial)],
+            experiment_manager=self.experiment.manager, 
+            experiment_id=self.experiment.model.id, 
+            vial=self.vial)
+        self.updater = MorbidostatUpdater(**self.parameters.inner_dict)
+
+    
+    def get_latest_data_from_db(self, db_session=None):
+        # logger.info(f"Getting latest data from db for culture {self.vial}. current parameters: {self.parameters}")
+        if db_session is None:
+            db_session = self.experiment.manager.get_session()
+
+        with db_session as db:
             latest_culture_data = db.query(CultureData).filter(
                 CultureData.experiment_id == self.experiment.model.id,
                 CultureData.vial_number == self.vial).order_by(CultureData.timestamp.desc()).first()
@@ -140,15 +165,15 @@ class Culture:
                         if c1 == 0 or (c2-c1)/c1 > 0.01:
                             last_stress_increase_generation = gen_data[i + 1].generation
                 self.last_stress_increase_generation = last_stress_increase_generation
+        # logger.info(f"Latest data from db for culture {self.vial} after update: {self.parameters}")
 
     def get_data_at_timepoint(self, timepoint):
         self.parameters = AutoCommitDict(
-            self.experiment.model.parameters["cultures"][str(self.vial)],
-            vial=self.vial,
-            db_session=None,  # Will be set per operation
-            experiment_model=self.experiment.model)
+            experiment_manager=experiment_manager,
+            experiment_id=self.experiment.model.id,
+            vial=self.vial)
 
-        with SessionLocal() as db:
+        with self.experiment.manager.get_session() as db:
             # Get the last culture data for this culture
             latest_culture_data = db.query(CultureData).filter(
                 CultureData.experiment_id == self.experiment.model.id,

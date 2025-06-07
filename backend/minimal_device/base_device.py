@@ -4,6 +4,7 @@ import time
 from datetime import datetime
 import traceback
 import warnings
+from logger.logger import logger
 
 import pyftdi.i2c
 import usb
@@ -137,6 +138,7 @@ class BaseDevice:
         raise ConnectionError("Failed to connect to I2C and SPI")
 
     def connect(self):
+        logger.info("Attempting to connect to device...")
         self.connect_i2c_spi()
         try:
             self.pwm_controller.connect()
@@ -198,6 +200,7 @@ class BaseDevice:
         self.hard_stop_trigger = False
         self.soft_stop_trigger = False
         self.release_vial_locks()
+        
 
     # def connect(self, ftdi_address="ftdi://ftdi:2232h", retries=10):
     #     # if ftdi_address is None:
@@ -298,18 +301,19 @@ class BaseDevice:
         UsbTools.release_all_devices()
         UsbTools.flush_cache()
         self.reset_usb_device()
+        logger.info("Disconnected from device")
 
     def hello(self):
         self.pwm_controller.play_turn_on_sound()
         self.lasers.blink()
         self.rgb_leds.blink_hello()
         self.valves.connect()
-        print("Said hello from device")
+        logger.info("Said hello from device")
     
     def hello_quick(self):
         self.pwm_controller.play_quick_beep()
         self.lasers.blink_quick()
-        print("Said hello from device")
+        logger.info("Said hello_quick from device")
 
     def update_cultures(self):
         def queued_function():
@@ -322,7 +326,7 @@ class BaseDevice:
         if self.dilution_worker.queue.empty():
             self.dilution_worker.queue.put(queued_function)
         else:
-            print("Culture update not queued. dilution thread queue is not empty.")
+            logger.info("Culture update not queued. dilution thread queue is not empty.")
 
     @property
     def pumps(self):
