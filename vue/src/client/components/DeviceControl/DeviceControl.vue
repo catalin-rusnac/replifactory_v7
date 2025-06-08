@@ -9,6 +9,12 @@
         label="Calibration Mode"
       ></v-switch>
     </div>
+    <!-- if calibration mode is enabled, show a button to force connect device -->
+    <template v-if="calibrationModeEnabled">
+      <div class="calibration-switch" style="text-align: right;">
+        <v-btn @click="deviceStore.connectDevice">Force Connect Device</v-btn>
+      </div>
+    </template>
 
     <template v-if="deviceControlEnabled || controlsVisible">
       <PumpControl />
@@ -16,6 +22,9 @@
       <StirrerControl />
       <ODControl />
       <LEDControl />
+      <template v-if="calibrationModeEnabled">
+        <DeviceConfigs />
+      </template>
     </template>
 
     <template v-else>
@@ -33,6 +42,7 @@ import ValveControl from './ValveControl.vue';
 import StirrerControl from './StirrerControl.vue';
 import ODControl from './ODControl.vue';
 import LEDControl from "./LEDControl.vue";
+import DeviceConfigs from "./DeviceConfigs.vue";
 
 const deviceStore = useDeviceStore()
 const {

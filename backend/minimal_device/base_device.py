@@ -10,6 +10,7 @@ import pyftdi.i2c
 import usb
 
 import yaml
+import shutil
 from pyftdi.spi import SpiController
 from pyftdi.usbtools import UsbTools
 
@@ -281,7 +282,8 @@ class BaseDevice:
         dev = usb.core.find(idVendor=0x0403, idProduct=0x6010)  # FT2232H
 
         if dev is None:
-            raise ValueError("Device not found")
+            logger.error("No FT2232H device found")
+            raise ConnectionError("No FT2232H device found")
 
         # Detach any kernel drivers and reset the device
         try:
@@ -402,30 +404,42 @@ class BaseDevice:
             traceback.print_exc()
             return False
 
-    def save(self):
-        """
-        saves calibration data and stock concentrations to self.directory/device_config.yaml
-        """
-        config_path = os.path.join(self.directory, "device_config.yaml")
-        save_object(self, filepath=config_path)
-
     def save_timestamped_device_config(self):
         """
-        saves calibration data to self.directory/device_config_{timestamp}.yaml
+        saves calibration data to self.eeprom.filename with timestamp in filename
         """
-        timestamp_iso = datetime.now().isoformat()
-        timestamped_config_path = os.path.join(self.directory, f"device_config_{timestamp_iso}.yaml")
+        config_path = self.eeprom.filename
+        timestamp_for_filename = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        if "." in config_path:
+            #replace last occurence of . with timestamp
+            timestamped_config_path = config_path.rsplit(".", 1)[0] + "_" + timestamp_for_filename + "." + config_path.rsplit(".", 1)[1]
+        else:
+            timestamped_config_path = config_path + "_" + timestamp_for_filename
+        # copy config_path to timestamped_config_path
+        shutil.copy(config_path, timestamped_config_path)
+        logger.info(f"Saving device config to {timestamped_config_path}")
         save_object(self, filepath=timestamped_config_path)
 
-    def load_dev_config(self):
+    def list_device_configs(self):
+        """
+        lists all device configs in self.directory
+        """
+        eeprom_dir = os.path.dirname(self.eeprom.filename)
+        options = [f for f in os.listdir(eeprom_dir) if f.endswith(".yaml") and f.startswith("device_data_")]
+        return options
+    
+    def load_dev_config(self,filename):
         """
         loads calibration data and stock concentrations from self.directory/device_config.yaml
         """
         assert self.file_lock.acquire(timeout=5)
         try:
-            config_path = os.path.join(self.directory, "device_config.yaml")
+            eeprom_dir = os.path.dirname(self.eeprom.filename)
+            config_path = os.path.join(eeprom_dir, filename)
             if os.path.exists(config_path):
                 load_config(self, filepath=config_path)
+                logger.info(f"Loaded device config from {config_path}")
             else:
                 print("No device config file found. Using default device config.")
         finally:

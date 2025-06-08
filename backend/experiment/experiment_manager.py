@@ -85,12 +85,16 @@ class ExperimentManager:
         # logger.info(f"Getting session")
         return self.SessionLocal()
 
-    def set_blank_device(self):
-        self._device = BaseDevice(connect=False)
-
     def connect_device(self):
         logger.info(f"Connecting device")
-        self.set_blank_device()
+        try: 
+            if self._device is not None:
+                self._device.shutdown()
+                time.sleep(2)
+        except:
+            logger.error(f"Error shutting down device")
+        if self._device is None:
+            self._device = BaseDevice(connect=False)
         self._device.connect()
         self._device.hello_quick()
         if self._current_experiment_obj is not None:

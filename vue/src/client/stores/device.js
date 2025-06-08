@@ -171,9 +171,9 @@ export const useDeviceStore = defineStore('device', {
         this.errorMessage = 'Failed to update OD calibration key.';
       }
     },
-    async updateODCalibrationValueAction({ od, odsIndex, newValue }) {
+    async updateODCalibrationValueAction({ od, vial, newValue }) {
       try {
-        const response = await api.post('/update-od-calibration-value', { od, odsIndex, newValue });
+        const response = await api.post('/update-od-calibration-value', { od, vial, newValue });
         if (response.data.success) {
           await this.fetchDeviceData();
         } else {
@@ -195,20 +195,37 @@ export const useDeviceStore = defineStore('device', {
         this.errorMessage = 'Failed to remove OD calibration row.';
       }
     },
-    // async setAllODCalibrationsAction(newCalibrations) {
-    //   // newCalibrations: {1: {...}, 2: {...}, ..., 7: {...}}
-    //   try {
-    //     for (let vial = 1; vial <= 7; vial++) {
-    //       const payload = {
-    //         partIndex: vial,
-    //         newCalibration: newCalibrations[vial]
-    //       };
-    //       await api.post('/set-ods-calibration', payload);
-    //     }
-    //     await this.fetchDeviceData();
-    //   } catch (error) {
-    //     this.errorMessage = 'Failed to set all OD calibrations.';
-    //   }
-    // },
+    async saveCalibrationToBackend() {
+      try {
+        const response = await api.post('/save-calibration');
+        if (response.data.success) {
+          await this.fetchDeviceData();
+        } else {
+          this.errorMessage = 'Failed to save calibration.';
+        }
+      } catch (error) {
+        this.errorMessage = 'Failed to save calibration.';
+      }
+    },
+    async listDeviceConfigs() {
+      try {
+        const response = await api.get('/list-device-configs');
+        return response.data.configs;
+      } catch (error) {
+        this.errorMessage = 'Failed to list device configs.';
+      }
+    },
+    async loadDeviceConfig(filename) {
+      try {
+        const response = await api.post('/load-device-config', { filename });
+        if (response.data.success) {
+          await this.fetchDeviceData();
+        } else {
+          this.errorMessage = 'Failed to load device config.';
+        }
+      } catch (error) {
+        this.errorMessage = 'Failed to load device config.';
+      }
+    }
   }
 })

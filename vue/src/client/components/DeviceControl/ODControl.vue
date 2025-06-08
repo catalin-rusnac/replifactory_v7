@@ -45,7 +45,7 @@
                     </span>
                     <span v-else>
                       <v-icon>mdi-camera-metering-center</v-icon>
-                      {{ highlightMode === 'diagonal' ? 'Measure Diagonal ' + (highlightIndex + 1) : 'Measure OD ' + allOdValues[highlightIndex] }}
+                      {{ highlightMode === 'diagonal' ? 'Remeasure Diagonal ' + (highlightIndex + 1) : 'Remeasure OD ' + allOdValues[highlightIndex] }}
                     </span>
                   </button>
                 </th>
@@ -142,18 +142,15 @@
         </button>
         <div class="control-input-group">
           <label for="scalingFactor">Scaling Factor:</label>
-          <input 
-            id="scalingFactor" 
-            :value="tempScalingFactor !== null ? tempScalingFactor : scalingFactor" 
-            @input="tempScalingFactor = parseFloat($event.target.value)"
-            @blur="updateScalingFactor"
-            @keyup.enter="updateScalingFactor"
-            type="number" 
-            min="0.1" 
-            step="0.1" 
-            class="scaling-factor-input" />
+          <input
+            v-model.number="scalingFactor"
+            type="number"
+            min="0.1"
+            step="0.1"
+            class="scaling-factor-input"
+          />
         </div>
-        <button class="control-button mode-toggle" @click="toggleMeasurementMode">
+        <button class="control-button mode-toggle" @click="editMode = !editMode">
           <v-icon>{{ editMode ? 'mdi-eye' : 'mdi-pencil' }}</v-icon>
           {{ editMode ? 'View Mode' : 'Edit Mode' }}
         </button>
@@ -197,14 +194,14 @@
   const editMode = ref(false)
   const showCharts = ref(true)
   const probeLabels = ref(['a', 'b', 'c', 'd', 'e', 'f', 'g'])
-  const probeOdValues = ref([0, 0.12, 0.25, 0.5, 1, 2, 4])
-  const highlightMode = ref('diagonal')
+  const probeOdValues = ref([0, 0.12, 0.25, 0.5, 1, 1.5, 2])
+  const highlightMode = ref('row')
   const highlightIndex = ref(0)
   const isRemeasuring = ref(false)
   const isAutofilling = ref(false)
-  const scalingFactor = ref(2)
+  const scalingFactor = ref(1.6)
   const tempProbeValues = ref({})
-  const tempScalingFactor = ref(null)
+  const tempCalibrationValues = ref({})
   const allOdValues = computed(() => {
     let allOdValuesSet = new Set()
     if (ods.value.calibration) {
@@ -226,6 +223,38 @@
     await deviceStore.fetchDeviceData()
   }
   
+  function handleSignalInput(event, vial, odValue) {
+      // Initialize the vial's temporary values if needed
+      if (!tempCalibrationValues.value[vial]) {
+        tempCalibrationValues.value[vial] = {};
+      }
+      
+      // Store the temporary value
+      tempCalibrationValues.value[vial][odValue] = parseFloat(event.target.value);
+    }
+
+function updateSignalValue(vial, odValue) {
+    if (tempCalibrationValues.value[vial] && tempCalibrationValues.value[vial][odValue] !== undefined) {
+    if (!ods.value.calibration[vial]) {
+        ods.value.calibration[vial] = {};
+    }
+    
+    const newValue = tempCalibrationValues.value[vial][odValue]
+    
+    if (isNaN(tempCalibrationValues.value[vial][odValue])) {
+      delete ods.value.calibration[vial][odValue];
+    }
+    deviceStore.updateODCalibrationValueAction({
+        od: odValue,
+        vial: vial,
+        newValue: newValue
+    }).catch(error => {
+        console.error(`Error updating calibration for vial ${vial}:`, error);
+    });
+    delete tempCalibrationValues.value[vial][odValue];
+    }
+}
+
   async function measureAllODSignals() {
     isRemeasuring.value = true
     try {
@@ -244,6 +273,18 @@
     }
   }
   
+  function getCalibrationInputValue(vial, odValue) {
+      // Check if we have a temporary value first
+      if (tempCalibrationValues.value[vial] && tempCalibrationValues.value[vial][odValue] !== undefined) {
+        return tempCalibrationValues.value[vial][odValue];
+      }
+      
+      // Otherwise return the actual calibration value
+      return ods.value.calibration && ods.value.calibration[vial] && ods.value.calibration[vial][odValue] !== undefined
+        ? ods.value.calibration[vial][odValue]
+        : '';
+    }
+
   function getHighlightedOdValue(vial) {
     if (highlightMode.value === 'diagonal') {
       const rowIndex = (vial - 1 - highlightIndex.value + allOdValues.value.length) % allOdValues.value.length
@@ -334,7 +375,7 @@
         
         // Prepare a new calibration object
         const newCalibration = {};
-  
+        console.log("autofillValues", this.vials, "scalingFactor", this.scalingFactor)
         this.vials.forEach((vial) => {
           // OD0 could be stored as "0", "0.0", or 0 - need to check all possibilities
           let blank = null;
@@ -376,10 +417,19 @@
       }
   
   function updateProbeValue(odValue, idx) {
-    // Commit the temporary value to the actual probeOdValues array
     if (tempProbeValues.value[idx] !== undefined) {
       probeOdValues.value[idx] = tempProbeValues.value[idx]
       delete tempProbeValues.value[idx]
+      for (let vial in ods.value.calibration) {
+        console.log("changing od value for vial", vial, "from", odValue, "to", probeOdValues.value[idx])  
+        console.log("old_calibration", ods.value.calibration[vial])
+        const old_calibration = ods.value.calibration[vial]
+        const new_calibration = JSON.parse(JSON.stringify(old_calibration))
+        delete new_calibration[odValue]
+        new_calibration[probeOdValues.value[idx]] = old_calibration[odValue]
+        console.log("new_calibration", new_calibration)
+        deviceStore.setPartCalibrationAction({ devicePart: 'ods', partIndex: vial, newCalibration: new_calibration })
+      }
     }
   }
   
@@ -387,6 +437,55 @@
     console.log("handleProbeValueInput", event.target.value)
     tempProbeValues.value[idx] = parseFloat(event.target.value)
   }
+
+  async function saveCalibration() {
+      try {
+        await deviceStore.saveCalibrationToBackend();
+        console.log('Device calibration saved successfully');
+      } catch (error) {
+        console.error('Error saving device calibration:', error);
+        // Show a more user-friendly error message
+        const errorMessage = typeof error === 'string' ? error : 
+                           error.response?.data?.message || 
+                           error.message || 
+                           'Failed to save calibration. Please try again.';
+        alert('Failed to save calibration: ' + errorMessage);
+      }
+    }
+    
+    function loadCalibration() {
+      this.$refs.fileInput.click();
+    }
+    
+    function onFileSelected(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const data = JSON.parse(e.target.result);
+          
+          // Check if we have proper calibration data
+          if (!data.calibration) {
+            throw new Error('Invalid calibration format: missing calibration data');
+          }
+          
+          // Set the calibration data in our local state first
+          ods.value.calibration = { ...data.calibration };
+          
+          // Then update the calibration curves
+          await deviceStore.setAllODCalibrationsAction(data.calibration);
+          
+          // Reset the file input
+          this.$refs.fileInput.value = '';
+        } catch (error) {
+          console.error('Error parsing calibration file:', error);
+          alert('Invalid calibration file format: ' + error.message);
+        }
+      };
+      reader.readAsText(file);
+    }
   
   </script>
   
