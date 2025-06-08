@@ -15,13 +15,6 @@ export const useDeviceStore = defineStore('device', {
     thermometers: {},
     leds: {},
     isFetchingCalibration: false,
-    valves: null,
-    pumps: null,
-    stirrers: null,
-    ods: null,
-    thermometers: null,
-    leds: null,
-    isFetchingCalibration: false,
     errorMessage: null,
   }),
   actions: {
@@ -117,7 +110,7 @@ export const useDeviceStore = defineStore('device', {
       return this.setPartState(payload.devicePart, payload.partIndex, payload.newState, payload.input)
     },
     async setPartCalibrationAction(payload) {
-      // payload: { devicePart, partIndex, newCalibration }
+      console.log("setPartCalibrationAction", payload)
       return this.setPartCalibration(payload.devicePart, payload.partIndex, payload.newCalibration)
     },
     toggleCalibrationMode() {
@@ -151,6 +144,19 @@ export const useDeviceStore = defineStore('device', {
         }
       } catch (error) {
         this.errorMessage = 'Failed to measure OD calibration.';
+      }
+    },
+    async measureAllODSignalsAction(payload) {
+      try {
+        const response = await api.post('/measure-all-od-signals', payload);
+        if (response.data.success) {
+          console.log("measured all od signals", response.data.device_states.ods.calibration)
+          await this.fetchDeviceData();
+        } else {
+          this.errorMessage = 'Failed to measure all OD signals.';
+        }
+      } catch (error) {
+        this.errorMessage = 'Failed to measure all OD signals.';
       }
     },
     async updateODCalibrationKeyAction({ oldOD, newOD }) {
@@ -189,5 +195,20 @@ export const useDeviceStore = defineStore('device', {
         this.errorMessage = 'Failed to remove OD calibration row.';
       }
     },
+    // async setAllODCalibrationsAction(newCalibrations) {
+    //   // newCalibrations: {1: {...}, 2: {...}, ..., 7: {...}}
+    //   try {
+    //     for (let vial = 1; vial <= 7; vial++) {
+    //       const payload = {
+    //         partIndex: vial,
+    //         newCalibration: newCalibrations[vial]
+    //       };
+    //       await api.post('/set-ods-calibration', payload);
+    //     }
+    //     await this.fetchDeviceData();
+    //   } catch (error) {
+    //     this.errorMessage = 'Failed to set all OD calibrations.';
+    //   }
+    // },
   }
 })
