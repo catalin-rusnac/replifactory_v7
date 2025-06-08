@@ -9,20 +9,35 @@
       <v-card-text>{{ message }}</v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn color="success" text @click="$emit('confirm')">Yes</v-btn>
-        <v-btn color="error" text @click="$emit('cancel')">No</v-btn>
+        <v-btn color="success" text @click="handleConfirm">Yes</v-btn>
+        <v-btn color="error" text @click="handleNo">No</v-btn>
+        <v-btn v-if="showCancel" color="grey" text @click="handleCancel">Cancel</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
 </template>
 
 <script setup>
-defineProps({
+const props = defineProps({
   modelValue: Boolean,
   title: { type: String, default: 'Are you sure?' },
-  message: { type: String, default: 'Do you want to proceed?' }
+  message: { type: String, default: 'Do you want to proceed?' },
+  showCancel: { type: Boolean, default: true }
 });
-defineEmits(['update:modelValue', 'confirm', 'cancel']);
+const emit = defineEmits(['update:modelValue', 'confirm', 'no', 'cancel']);
+
+function handleConfirm() {
+  emit('update:modelValue', false)
+  emit('confirm')
+}
+function handleNo() {
+  emit('update:modelValue', false)
+  emit('no')
+}
+function handleCancel() {
+  emit('update:modelValue', false)
+  emit('cancel')
+}
 </script>
 
 <style scoped>

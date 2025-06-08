@@ -23,6 +23,17 @@
       <div class="tab-content">
         <component :is="currentComponent" v-if="currentComponent" />
       </div>
+
+      <ConfirmDialog
+        v-if="dialogState.show"
+        :title="dialogState.title"
+        :message="dialogState.message"
+        :show-cancel="dialogState.showCancel"
+        v-model="dialogState.show"
+        @confirm="() => handle('yes')"
+        @no="() => handle('no')"
+        @cancel="() => handle('cancel')"
+      />
     </v-container>
   </v-app>
 </template>
@@ -31,7 +42,9 @@
 import { ref, computed, onMounted, watch, defineAsyncComponent } from 'vue'
 import { useHostStore } from '@/client/stores/host'
 import '@mdi/font/css/materialdesignicons.css';
-
+import { useDialog } from '@/client/composables/useDialog'
+const { dialogState, handle } = useDialog()
+import ConfirmDialog from '@/client/components/ConfirmDialog.vue'
 const hostStore = useHostStore()
 
 const components = {

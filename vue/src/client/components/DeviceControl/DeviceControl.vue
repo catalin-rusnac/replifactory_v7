@@ -3,18 +3,15 @@
 <!--    <div class="disconnected-overlay" v-if="deviceConnected === false"></div>-->
 <!--    <div v-if="deviceConnected === false" class="centered-text"> device connection not available </div>-->
     <div class="experiment-running-overlay" v-if="deviceControlEnabled === false"></div>
-    <div class="calibration-switch" style="text-align: right;">
+    <div class="calibration-switch-row">
+      <template v-if="calibrationModeEnabled">
+        <v-btn class="reconnect-btn" @click="onReconnectClick">Reconnect Device</v-btn>
+      </template>
       <v-switch
         v-model="calibrationMode"
         label="Calibration Mode"
       ></v-switch>
     </div>
-    <!-- if calibration mode is enabled, show a button to force connect device -->
-    <template v-if="calibrationModeEnabled">
-      <div class="calibration-switch" style="text-align: right;">
-        <v-btn @click="deviceStore.connectDevice">Force Connect Device</v-btn>
-      </div>
-    </template>
 
     <template v-if="deviceControlEnabled || controlsVisible">
       <PumpControl />
@@ -36,13 +33,14 @@
 <script setup>
 import { storeToRefs } from 'pinia'
 import { useDeviceStore } from '../../stores/device'
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import PumpControl from './PumpControl.vue';
 import ValveControl from './ValveControl.vue';
 import StirrerControl from './StirrerControl.vue';
 import ODControl from './ODControl.vue';
 import LEDControl from "./LEDControl.vue";
 import DeviceConfigs from "./DeviceConfigs.vue";
+import { useDialog } from '@/client/composables/useDialog'
 
 const deviceStore = useDeviceStore()
 const {
@@ -62,6 +60,20 @@ const calibrationMode = computed({
   set: (val) => deviceStore.setCalibrationModeEnabled(val)
 })
 
+const { openDialog } = useDialog()
+
+async function onReconnectClick() {
+  console.log('onReconnectClick')
+  const result = await openDialog({
+    title: 'Reconnect Device?',
+    message: 'Are you sure you want to reconnect the device?',
+    showCancel: true
+  })
+  if (result === 'yes') {
+    deviceStore.connectDevice()
+  }
+}
+
 onMounted(() => {
   deviceStore.fetchDeviceData()
 })
@@ -78,9 +90,18 @@ onMounted(() => {
   position: relative;
 }
 
-.calibration-switch {
-  left: 50%;
-  transform: translateX(calc(min(400px, 90vw)));
+.calibration-switch-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  width: 100%;
+  gap: 1em;
+  margin-bottom: 1em;
+}
+
+.reconnect-btn {
+  margin-left: 0.5em;
 }
 
 .disconnected-overlay {

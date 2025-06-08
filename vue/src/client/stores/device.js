@@ -226,6 +226,24 @@ export const useDeviceStore = defineStore('device', {
       } catch (error) {
         this.errorMessage = 'Failed to load device config.';
       }
+    },
+    async startPumpCalibrationSequence(payload) {
+      const { pumpId, rotations, iterations } = payload;
+      const devicePart = 'pumps';
+      const endpoint = `/start-pump-calibration-sequence`;
+      try {
+        const response = await api.post(endpoint, { pumpId, rotations, iterations });
+        if (response.data.success) {
+          await this.setPartStateAction({ devicePart, partIndex: pumpId, newState: "stopped" });
+          return true;
+        } else {
+          this.errorMessage = `Error updating ${devicePart} calibration: ${response.data.message}`;
+          throw new Error(this.errorMessage);
+        }
+      } catch (error) {
+        this.errorMessage = `Error updating ${devicePart} calibration: ${error.message || error}`;
+        throw error;
+      }
     }
   }
 })
