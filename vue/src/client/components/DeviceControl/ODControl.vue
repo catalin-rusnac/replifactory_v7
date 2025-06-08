@@ -154,14 +154,6 @@
           <v-icon>{{ editMode ? 'mdi-eye' : 'mdi-pencil' }}</v-icon>
           {{ editMode ? 'View Mode' : 'Edit Mode' }}
         </button>
-        <button class="control-button save" @click="saveCalibration">
-          <v-icon>mdi-content-save</v-icon>
-          Save
-        </button>
-        <button class="control-button load" @click="loadCalibration">
-          <v-icon>mdi-folder-open</v-icon>
-          Load
-        </button>
       </div>
   
       <div class="chart-container" v-if="showCharts">
@@ -903,22 +895,6 @@ function updateSignalValue(vial, odValue) {
   .control-button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
-  }
-  
-  .control-button.save {
-    background-color: rgba(76, 175, 80, 0.8);
-  }
-  
-  .control-button.save:hover {
-    background-color: rgba(76, 175, 80, 1);
-  }
-  
-  .control-button.load {
-    background-color: rgba(33, 150, 243, 0.8);
-  }
-  
-  .control-button.load:hover {
-    background-color: rgba(33, 150, 243, 1);
   }
   
   .control-button.mode-toggle {
