@@ -17,7 +17,6 @@ const { experiments, currentExperiment, errorMessage } = storeToRefs(experimentS
 
 const hasCultures = computed(() => {
   const count = Object.keys(currentExperiment.value?.parameters?.cultures || {}).length
-  console.log('hasCultures:', count, currentExperiment.value?.parameters?.cultures)
   return count > 0
 })
 </script>

@@ -22,6 +22,8 @@ import os
 from logger.logger import logger
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+import asyncio
+from fastapi import WebSocket
 
 def with_db_session(method):
     @functools.wraps(method)
@@ -64,6 +66,9 @@ class ExperimentManager:
         self._device = None
         self._exp_lock = Lock()  # For experiment state
         self._db = db  # Use the imported db object
+        self.fix_inconsistent_experiment_states()
+        self.active_sockets = set()
+        self.main_event_loop = None
 
     @property
     def experiment(self):
@@ -151,6 +156,7 @@ class ExperimentManager:
                 if self.experiment.model.id == experiment_id:
                     return self.experiment
                 else:
+                    logger.info(f"Stopping experiment {self.experiment.model.id} {self.experiment.model.name} because it is running")
                     self.experiment.stop()
         if experiment_id == 0:
             self._current_experiment_obj = None
@@ -212,15 +218,45 @@ class ExperimentManager:
             culture.update_parameters_from_experiment()
         return experiment.model.parameters["growth_parameters"]
 
+    @with_db_session
+    def can_start_experiment(self, db_session=None):
+        running = db_session.query(ExperimentModel).filter(ExperimentModel.status == 'running').first()
+        if running:
+            return False, f"Cannot start: experiment {running.name} is already running"
+        paused = db_session.query(ExperimentModel).filter(ExperimentModel.status == 'paused').first()
+        if paused and paused.id != self.experiment.model.id:
+            return False, f"Cannot start: experiment {paused.name} is paused"
+        return True, None
+
+    @with_db_session
+    def stop_experiment(self, db_session=None):
+        experiment = self.experiment
+        if experiment is None:
+            return {'message': 'No current experiment set'}
+        if experiment.model.status == 'stopped':
+            # emit ws message with error type
+            self.emit_ws_message({"type": "error", "message": "Experiment is already stopped"})
+            return {'message': 'Experiment is already stopped'}
+        experiment.stop()
+        db_session.commit()
+        return {"message": "Experiment stopped"}
+
+    @with_db_session
     def update_experiment_status(self, status, db_session=None):
         experiment = self.experiment
         if experiment is None:
-            raise ExperimentNotFound("No current experiment set")
-        experiment.model.status = status
+            return {'error': 'No current experiment set'}
+        if status == 'running':
+            ok, msg = self.can_start_experiment(db_session)
+            if not ok:
+                return {'error': msg}
+            self.experiment.start()
+        if status == 'stopped':
+            self.stop_experiment(db_session=db_session)
+            return {"message": "Experiment stopped"}
         db_session.commit()
         return {"message": f"Experiment {status}"}
 
-    
     def shutdown(self):
         """Gracefully stop all device and worker threads."""
         import threading
@@ -231,5 +267,44 @@ class ExperimentManager:
                 self.experiment.stop()
         if self._device is not None:
             self._device.shutdown()
+
+    @with_db_session
+    def fix_inconsistent_experiment_states(self, db_session=None):
+        logger.info(f"Fixing inconsistent experiment states (if not stopped or inactive)")
+        not_stopped_or_inactive = db_session.query(ExperimentModel).filter(
+            ExperimentModel.status.not_in(['stopped', 'inactive'])
+        ).all()
+        for exp in not_stopped_or_inactive:
+            exp.status = 'stopped'
+            logger.warning(f"Fixed experiment {exp.id} {exp.name} from {exp.status} to stopped")
+        db_session.commit()
+        if not_stopped_or_inactive:
+            logger.warning(f"Fixed {len(not_stopped_or_inactive)} experiments left in running/paused state.")
+
+    def register_socket(self, ws: WebSocket):
+        print(f"Adding ws id: {id(ws)} to active_sockets")
+        self.active_sockets.add(ws)
+
+    def unregister_socket(self, ws: WebSocket):
+        if ws in self.active_sockets:
+            print(f"Removing ws id: {id(ws)} from active_sockets")
+            self.active_sockets.remove(ws)
+
+    async def broadcast(self, message):
+        for ws in list(self.active_sockets):
+            logger.info(f"Broadcasting to ws {id(ws)} with debug_id {message.get('debug_id')}. number of active sockets: {len(self.active_sockets)}")
+            try:
+                await ws.send_json(message)
+            except Exception as e:
+                print(f"Error sending to ws {id(ws)}: {e}")
+
+    def emit_ws_message(self, message):
+        future = asyncio.run_coroutine_threadsafe(self.broadcast(message), self.main_event_loop)
+        def log_if_exception(fut):
+            try:
+                fut.result()
+            except Exception as e:
+                print(f"Exception in broadcast: {e}")
+        future.add_done_callback(log_if_exception)
 
 experiment_manager = ExperimentManager()

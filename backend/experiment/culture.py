@@ -22,7 +22,7 @@ class AutoCommitDict:
         self.inner_dict = deepcopy(initial_dict)
         self.experiment_manager = experiment_manager
         self.experiment_id = experiment_id
-        self.vial = str(vial)
+        self.vial = int(vial)
 
     def __getitem__(self, key):
         # Always read from the in-memory dict
@@ -54,7 +54,7 @@ class AutoCommitDict:
 class Culture:
     def __init__(self, experiment, vial):
         self.experiment = experiment
-        self.vial = str(vial)
+        self.vial = vial
         self.od = None
         self.growth_rate = None
         self.drug_concentration = None
@@ -68,6 +68,7 @@ class Culture:
                         experiment_id=experiment.model.id, 
                         vial=self.vial)
         self.culture_growth_model = CultureGrowthModel()
+        self.culture_growth_model.vial = "%d(simulated)" % self.vial
         self.get_latest_data_from_db()
         self.updater = MorbidostatUpdater(**self.parameters.inner_dict)
         self.adapted_culture = RealCultureWrapper(self)
@@ -86,7 +87,6 @@ class Culture:
 
     def plot_predicted(self):
         self.updater = MorbidostatUpdater(**self.parameters.inner_dict)
-        print("-------------------------------- PLOT PREDICTED --------------------------------")
         growth_parameters = self.experiment.model.parameters["growth_parameters"][str(self.vial)]
         self.culture_growth_model = CultureGrowthModel(**growth_parameters)
         self.culture_growth_model.updater = self.updater
@@ -218,10 +218,10 @@ class Culture:
             experiment_id=self.experiment.model.id,
             vial_number=self.vial,
             od=od, growth_rate=None, rpm=rpm)
-        with SessionLocal() as db:
-
+        with self.experiment.manager.get_session() as db:
             db.add(self.new_culture_data) 
-            self.calculate_latest_growth_rate(db)
+            self.calculate_latest_growth_rate(include_current=True)
+            
             if self.new_culture_data.growth_rate is not None:
                 self.growth_rate = self.new_culture_data.growth_rate
             db.commit()
@@ -235,7 +235,7 @@ class Culture:
             volume_main=main_pump_volume,
             volume_drug=drug_pump_volume,
             volume_waste=main_pump_volume+drug_pump_volume)
-        with SessionLocal() as db:
+        with self.experiment.manager.get_session() as db:
             db.add(new_pump_data)
             db.commit()
         self.get_latest_data_from_db()
@@ -256,13 +256,13 @@ class Culture:
             generation=generation,
             drug_concentration=concentration,
         )
-        with SessionLocal() as db:
+        with self.experiment.manager.get_session() as db:
             db.add(new_generation_data)
             db.commit()
         self.get_latest_data_from_db()
 
     def _delete_all_records(self):
-        with SessionLocal() as db:
+        with self.experiment.manager.get_session() as db:
             db.query(CultureData).filter(CultureData.experiment_id == self.experiment.model.id,
                                                   CultureData.vial_number == self.vial).delete()
             db.query(PumpData).filter(PumpData.experiment_id == self.experiment.model.id,
@@ -272,8 +272,8 @@ class Culture:
                                        CultureGenerationData.vial_number == self.vial).delete()
             db.commit()
 
-    def calculate_latest_growth_rate(self, db):
-        od_dict, _, _ = self.get_last_ods_and_rpms(db=db, limit=200, since_pump=True)
+    def calculate_latest_growth_rate(self, db=None, include_current=True):
+        od_dict, _, _ = self.get_last_ods_and_rpms(db=db, limit=200, since_pump=True, include_current=include_current)
         t = np.array(list(int(dt.timestamp()) for dt in od_dict.keys()))
         od = np.array([float(value) if value is not None else np.nan for value in od_dict.values()])
         if np.issubdtype(od.dtype, np.number):
@@ -284,41 +284,42 @@ class Culture:
             if np.isfinite(mu):
                 self.new_culture_data.growth_rate = mu
 
-    def get_last_ods_and_rpms(self, db=None, limit=100, since_pump=False):
+    def get_last_ods_and_rpms(self, db=None, limit=100, since_pump=False, include_current=False):
         if db is None:
             db = self.experiment.manager.get_session()
+
         with db as db:
         # Query and extract all needed data while session is open
             culture_data = db.query(CultureData).filter(
                 CultureData.experiment_id == self.experiment.model.id,
                 CultureData.vial_number == self.vial
             ).order_by(CultureData.timestamp.desc()).limit(limit).all()
-        # Extract all relevant fields into a list of dicts
-        extracted = []
-        for row in culture_data:
-            if row.timestamp is not None:
-                extracted.append({
-                    "timestamp": row.timestamp,
-                    "od": row.od,
-                    "growth_rate": row.growth_rate,
-                    "rpm": row.rpm
-                })
-        # Optionally filter by last dilution time
-        if since_pump and self.last_dilution_time is not None:
-            extracted = [d for d in extracted if d["timestamp"] > self.last_dilution_time]
-        # Build the result dicts
-        od_dict = {d["timestamp"]: d["od"] for d in extracted if d["od"] is not None}
-        mu_dict = {d["timestamp"]: d["growth_rate"] for d in extracted if d["growth_rate"] is not None}
-        rpm_dict = {d["timestamp"]: d["rpm"] for d in extracted if d["rpm"] is not None}
+            # Extract all relevant fields into a list of dicts
+            extracted = []
+            for row in culture_data:
+                if row.timestamp is not None:
+                    extracted.append({
+                        "timestamp": row.timestamp,
+                        "od": row.od,
+                        "growth_rate": row.growth_rate,
+                        "rpm": row.rpm
+                    })
+            # Optionally filter by last dilution time
+            if since_pump and self.last_dilution_time is not None:
+                extracted = [d for d in extracted if d["timestamp"] > self.last_dilution_time]
+            # Build the result dicts
+            od_dict = {d["timestamp"]: d["od"] for d in extracted if d["od"] is not None}
+            mu_dict = {d["timestamp"]: d["growth_rate"] for d in extracted if d["growth_rate"] is not None}
+            rpm_dict = {d["timestamp"]: d["rpm"] for d in extracted if d["rpm"] is not None}
 
-        # Optionally include the current (not-yet-committed) data. deprecated.
-        # if include_current:
-        #     if self.new_culture_data is not None:
-        #         if hasattr(self.new_culture_data, "timestamp"):
-        #             new_od = self.new_culture_data.od
-        #             new_timestamp = self.new_culture_data.timestamp
-        #             if new_timestamp is not None and new_od is not None:
-        #                 od_dict[new_timestamp] = new_od
+            # Optionally include the current (not-yet-committed) data.
+            if include_current:
+                if self.new_culture_data is not None:
+                    if hasattr(self.new_culture_data, "timestamp"):
+                        new_od = self.new_culture_data.od
+                        new_timestamp = self.new_culture_data.timestamp
+                    if new_timestamp is not None and new_od is not None:
+                        od_dict[new_timestamp] = new_od
 
         # Sort by timestamp
         od_dict = dict(sorted(od_dict.items()))
@@ -357,13 +358,12 @@ class Culture:
                 self.experiment.locks[self.vial].acquire(blocking=True)
                 lock_acquired_here = True
             postfill = self.parameters["postfill"] > 0
-            with SessionLocal() as db:
-                make_device_dilution(device=self.experiment.device,
-                                     vial=self.vial,
-                                     pump1_volume=main_pump_volume,
-                                     pump2_volume=drug_pump_volume,
-                                     extra_vacuum=5,
-                                     postfill=postfill)
+            make_device_dilution(device=self.experiment.device,
+                                    vial=self.vial,
+                                    pump1_volume=main_pump_volume,
+                                    pump2_volume=drug_pump_volume,
+                                    extra_vacuum=5,
+                                    postfill=postfill)
             self.last_dilution_time = datetime.now()
             self.log_pump_data(main_pump_volume, drug_pump_volume)
             self.calculate_generation_concentration_after_dil(main_pump_volume=main_pump_volume,

@@ -31,21 +31,28 @@
         <v-btn
           class="start-button"
           :class="{ 'active': currentExperiment.status === 'running' }"
-          :style="{ 'background-color': currentExperiment.status === 'running' ? '#28a745' : 'transparent' }"
+          :style="{
+            'background-color': currentExperiment.status === 'running' ? '#28a745' : 'transparent',
+            'opacity': currentExperiment.status === 'running' ? 0.5 : 1
+          }"
           @click="startExperiment"
           color="success"
           title="Start the experiment loop - measure OD every minute and dilute the cultures as necessary, according to the parameters."
+          :disabled="currentExperiment.status === 'running'"
         >
           Start
         </v-btn>
         <v-btn
           class="start-button"
           :class="{ 'active': currentExperiment.status === 'stopped' }"
-          :style="{ 'background-color': currentExperiment.status === 'stopped' ? '#dc3545' : 'transparent' }"
+          :style="{
+            'background-color': currentExperiment.status === 'stopped' ? '#dc3545' : 'transparent',
+            'opacity': currentExperiment.status === 'stopped' ? 0.5 : 1
+          }"
           @click="stopExperiment"
-          @dblclick="forceStopExperiment"
           color="error"
           title="Stop gracefully - wait for the current dilution to finish."
+          :disabled="currentExperiment.status === 'stopped'"
         >
           Stop
         </v-btn>
@@ -109,11 +116,18 @@ async function createAndSelectExperiment() {
 }
 
 async function startExperiment() {
-  await experimentStore.startExperiment();
-  toast('Experiment started!', { type: 'success' });
+  try {
+    await experimentStore.startExperiment();
+    await experimentStore.fetchCurrentExperiment();
+    toast('Experiment started!', { type: 'success' });
+  } catch (error) {
+    toast(error.message, { type: 'error' });
+  }
 }
+
 async function stopExperiment() {
   await experimentStore.stopExperiment();
+  await experimentStore.fetchCurrentExperiment();
 }
 
 onMounted(async () => {

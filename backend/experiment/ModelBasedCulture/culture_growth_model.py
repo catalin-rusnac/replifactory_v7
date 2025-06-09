@@ -177,7 +177,7 @@ class CultureGrowthModel:
         Simulate bacterial growth over a specified period, with a change in drug dose after 3 dilutions.
         """
         self.check_parameters()
-        for t in range(1, simulation_hours * 60):
+        for t in range(1, int(simulation_hours * 60)):
             self.time_current += timedelta(minutes=1)
             self.simulate_experiment_minute()
 

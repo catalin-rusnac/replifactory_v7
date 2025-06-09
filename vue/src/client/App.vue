@@ -45,6 +45,7 @@ import '@mdi/font/css/materialdesignicons.css';
 import { useDialog } from '@/client/composables/useDialog'
 const { dialogState, handle } = useDialog()
 import ConfirmDialog from '@/client/components/ConfirmDialog.vue'
+import { useExperimentStore } from '@/client/stores/experiment'
 const hostStore = useHostStore()
 
 const components = {
@@ -79,6 +80,8 @@ const currentComponent = computed(() => {
 onMounted(async () => {
   await hostStore.fetchHostname()
   document.title = hostStore.hostname
+  const experimentStore = useExperimentStore()
+  experimentStore.connectWebSocket()
 })
 
 watch(() => hostStore.hostname, (newVal) => {

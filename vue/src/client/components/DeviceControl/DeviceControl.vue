@@ -25,7 +25,7 @@
     </template>
 
     <template v-else>
-      <p>Device Control Disabled - please pause experiment to control device.</p>
+      <p>Device Control Disabled</p>
     </template>
   </div>
 </template>

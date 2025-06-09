@@ -18,9 +18,9 @@
             </div>
           </td>
           <td>
-            <button @click="toggleButtonState(index)" :class="{ 'stop-button': isStopButton[index] }">
-              <span v-if="!isStopButton[index]">Start</span>
-              <span v-else>Stop</span>
+            <button @click="toggleButtonState(index)" :class="[isStopButton[index] ? 'stop-button' : '', isStopButton[index] === false && rows[index].total_ml ? 'restart-button' : '']">
+              <span v-if="isStopButton[index]">Stop</span>
+              <span v-else>Start</span>
             </button>
           </td>
           <td>
@@ -211,8 +211,14 @@ button {
   font-size: 0.7rem;
 }
 
-button stop-button {
-  background-color: #f44336;
+button.stop-button {
+  background-color: #f44336 !important;
+  color: white !important;
+}
+
+button.restart-button {
+  background-color: #15007ea3 !important;
+  color: white !important;
 }
 
 button:hover {

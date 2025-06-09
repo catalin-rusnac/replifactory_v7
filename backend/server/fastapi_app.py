@@ -10,12 +10,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from experiment.experiment_manager import experiment_manager
 from contextlib import asynccontextmanager
 from logger.logger import logger
+import asyncio
 
 @asynccontextmanager
 async def lifespan(app):
     # Startup logic
     try:
         experiment_manager.connect_device()
+        experiment_manager.main_event_loop = asyncio.get_event_loop()
     except Exception as e:
         logger.error(f"Error connecting device: {e}")
     yield
@@ -38,4 +40,4 @@ app.include_router(device_router)
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("fastapi_app:app", host="0.0.0.0", port=5000, log_level="debug")
+    uvicorn.run("fastapi_app:app", host="0.0.0.0", port=5000, log_level="info")

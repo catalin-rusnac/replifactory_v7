@@ -6,6 +6,8 @@ from experiment.exceptions import ExperimentNotFound
 from server.schemas.experiment_schemas import ExperimentCreate, ExperimentOut, SelectExperimentIn, ParametersUpdate
 from logger.logger import logger
 import traceback
+from fastapi import WebSocket, WebSocketDisconnect
+
 router = APIRouter()
 get_db = experiment_manager.get_db
 
@@ -52,12 +54,14 @@ def get_current_experiment(db_session: Session = Depends(get_db)):
     except ExperimentNotFound as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-@router.put("/experiments/current/status")
+@router.post("/experiments/current/status")
 def update_experiment_status(payload: dict, db_session: Session = Depends(get_db)):
     """Update the status of the current experiment (start/stop)"""
     status = payload['status']
     try:
         result = experiment_manager.update_experiment_status(status, db_session=db_session)
+        if 'error' in result:
+            raise HTTPException(status_code=400, detail=result['error'])
         return result
     except ExperimentNotFound as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -121,4 +125,16 @@ def get_culture_plot(vial: int, db_session: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=str(e)) 
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    experiment_manager.active_sockets.add(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except Exception:
+        pass
+    finally:
+        experiment_manager.active_sockets.discard(websocket)

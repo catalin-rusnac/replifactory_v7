@@ -30,29 +30,25 @@ class ExperimentWorker:
         self.experiment.device.eeprom.save_config_to_eeprom()
         while True:
             status = self.experiment.get_status()
-            if status == 'stopped' or status == 'stopping':
-                self.stop() # stop the experiment worker
+            if status in ('stopped', 'stopping'):
+                self.stop()  # stop the experiment worker
                 break
-            else:
-                self.experiment.schedule.run_pending()
-                # print("ran pending", time.ctime())
+            self.experiment.schedule.run_pending()
             time.sleep(1)
 
     def stop(self):
-        print("Stopping experiment worker: stopping dilution and OD workers")
         self.od_worker.stop()
         self.dilution_worker.stop()
         while self.dilution_worker.thread.is_alive() or self.od_worker.thread.is_alive():
-            print("One of the workers is still alive")
-            if self.dilution_worker.thread.is_alive():
-                print("Waiting for dilution worker to stop")
-            if self.od_worker.thread.is_alive():
-                print("Waiting for OD worker to stop")
-            time.sleep(0.5)
-        print("OD and dilution workers stopped. Stopping stirrers")
+            time.sleep(1)
+            if int(time.time()) % 7 == 0: 
+                if self.dilution_worker.thread.is_alive():
+                    self.experiment.manager.emit_ws_message({"type": "progress", "action": "stop", "message": "Waiting for dilution..."})
+                if self.od_worker.thread.is_alive():
+                    self.experiment.manager.emit_ws_message({"type": "progress", "action": "stop", "message": "Waiting for OD measurement..."})
+        self.experiment.manager.emit_ws_message({"type": "progress", "action": "stop", "message": "Stopping stirrers"})
         self.experiment.device.stirrers.set_speed_all("stopped")
-        print("Experiment worker stopped")
-
+        self.experiment.manager.emit_ws_message({"type": "success", "action": "stop", "message": "Experiment stopped"})
 
 class QueueWorker:
     def __init__(self, experiment, worker_name):
@@ -93,8 +89,9 @@ class Experiment:
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is not None:
-            if cls._instance.status != "stopped":
-                print("Experiment instance already exists and is not stopped. Stopping it now.")
+            if cls._instance.status not in ["stopped", "inactive"]:
+                logger.warning(f"Experiment instance already exists and is not stopped. Stopping it now. cls status: {cls._instance.status}")
+                # print("Experiment instance already exists and is not stopped. Stopping it now.")
                 cls._instance.stop()
             else:
                 print("Experiment instance already exists")
@@ -183,7 +180,7 @@ class Experiment:
             self.cultures[v]._delete_all_records()
 
     def start(self):
-        print("Starting experiment")
+        logger.info("Starting experiment...")
         if not self.device.is_connected():
             try:
                 self.device.connect()
@@ -193,7 +190,6 @@ class Experiment:
             self.status = "starting"
             self.experiment_worker = ExperimentWorker(self)
             self.device.stirrers.set_speed_all("high")
-            # self.device.eeprom.save_config_to_eeprom()
             self.make_schedule()
             self.status = "running"
         else:
@@ -223,16 +219,8 @@ class Experiment:
         self.experiment_worker.dilution_worker.paused = True
 
     def stop(self):
-        if self.status == "stopped":
-            print("Experiment is already stopped.")
-        self.status = "stopping"
-        if self.experiment_worker is not None:
-            if self.experiment_worker.dilution_worker.thread.is_alive() or self.experiment_worker.od_worker.thread.is_alive():
-                print("Worker is finishing up. Waiting for it to finish.")
-            while self.experiment_worker.dilution_worker.thread.is_alive() or self.experiment_worker.od_worker.thread.is_alive():
-                time.sleep(0.5)
-            print("dilution worker and od worker stopped")
         self.status = "stopped"
+        self.manager.emit_ws_message({"type": "info", "action": "stop", "message": "Stopping experiment..."})
         return
 
     def measure_od_and_rpm_in_background(self):

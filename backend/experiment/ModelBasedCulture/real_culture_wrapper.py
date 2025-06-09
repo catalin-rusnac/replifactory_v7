@@ -8,6 +8,10 @@ class RealCultureWrapper:
     """
     def __init__(self, culture):
         self.culture = culture
+    
+    @property
+    def vial(self):
+        return self.culture.vial
 
     @property
     def population(self):

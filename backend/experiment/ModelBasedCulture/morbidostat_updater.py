@@ -1,6 +1,7 @@
 from datetime import timedelta
 from pprint import pprint
 import numpy as np
+from logger.logger import logger
 
 morbidostat_updater_default_parameters = {
     'volume_vial': 12,  # Volume of the vial in mL (liquid volume under waste needle)
@@ -111,9 +112,11 @@ class MorbidostatUpdater:
             if model.doses:
                 target_dose = model.doses[-1][0]
                 self.status_dict["dilution_message"] = "Dilution %d to dose %3f. Drug addition at dilution %d" % (next_dilution_number, target_dose, self.dilution_number_first_drug_addition)
+                logger.info("Vial %s: Dilution %d keeping dose at current vial dose %3f", model.vial, next_dilution_number, target_dose)
             else:
                 target_dose = self.pump1_stock_drug_concentration
                 self.status_dict["dilution_message"] = "Dilution %d to dose %3f. Drug addition at dilution %d" % (next_dilution_number, target_dose, self.dilution_number_first_drug_addition)
+                logger.info("Vial %s: Dilution %d keeping dose at pump1 stock concentration %3f", model.vial, next_dilution_number, target_dose)
             model.dilute_culture(target_dose)
             return
 
@@ -121,6 +124,7 @@ class MorbidostatUpdater:
         if next_dilution_number == self.dilution_number_first_drug_addition:
             target_dose = self.dose_first_drug_addition
             self.status_dict["dilution_message"] = "First drug addition at dilution %d with dose %3f" % (next_dilution_number, target_dose)
+            # logger.info("Vial %s: Dilution %d adding first drug dose %3f", model.vial, next_dilution_number, target_dose)
             model.dilute_culture(target_dose)
             return
 
@@ -162,6 +166,7 @@ class MorbidostatUpdater:
         target_dose = self.dose_initialization
         self.status_dict["dilution_message"] = "Initializing culture to %3f" % target_dose
         model.dilute_culture(target_dose)
+        logger.info("Vial %s: making initialization dilution", model.vial)
         return True
 
     def make_time_triggered_dilution_if_necessary(self, model):
@@ -178,6 +183,7 @@ class MorbidostatUpdater:
             return
         self.status_dict["time_triggered_dilution"] = "Hours since last dilution %.2f > max %.2f, diluting" % (hours_since_last_dilution, self.delay_dilution_max_hours)
         self.dilute_and_adjust_dose(model)
+        logger.info("Vial %s: Diluting because %.2f hours passed since last dilution", model.vial, hours_since_last_dilution)
         return True
 
     def make_od_triggered_dilution_if_necessary(self, model):
@@ -192,6 +198,7 @@ class MorbidostatUpdater:
             return
         self.status_dict["od_triggered_dilution"] = "OD %3f >= threshold %3f, diluting" % (model.population[-1][0], self.od_dilution_threshold)
         self.dilute_and_adjust_dose(model)
+        logger.info("Vial %s: Diluting because current OD %3f >= threshold %3f", model.vial, model.population[-1][0], self.od_dilution_threshold)
         return True
 
     def must_wait_since_last_dilution(self, model):

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import api from '@/api'
+import { toast } from 'vue3-toastify'
 
 export const useExperimentStore = defineStore('experiment', {
   state: () => ({
@@ -10,6 +11,8 @@ export const useExperimentStore = defineStore('experiment', {
     simulation_data: {},
     plot_data: {},
     selectedVials: {},
+    ws: null,
+    progressMessages: [],
   }),
   actions: {
     async fetchExperiments() {
@@ -34,23 +37,22 @@ export const useExperimentStore = defineStore('experiment', {
         this.currentExperiment = null
       }
     },
-    async updateExperimentStatus(status) {
+    async startExperiment() {
       try {
-        const response = await api.put('/experiments/current/status', { status })
-        if (response.data.message) {
-          await this.fetchCurrentExperiment()
-        } else if (response.data.detail) {
-          this.errorMessage = response.data.detail
-        }
+        const response = await api.post('/experiments/current/status', { status: 'running' });
+        return response.data; // success
       } catch (error) {
-        this.errorMessage = 'An error occurred while updating experiment status.'
+        // error.response.data.detail is the error message from FastAPI
+        throw new Error(error.response?.data?.detail || 'Failed to start experiment');
       }
     },
-    async startExperiment() {
-      await this.updateExperimentStatus('running')
-    },
     async stopExperiment() {
-      await this.updateExperimentStatus('stopped')
+      try {
+        const response = await api.post('/experiments/current/status', { status: 'stopped' });
+        return response.data;
+      } catch (error) {
+        throw new Error(error.response?.data?.detail || 'Failed to stop experiment');
+      }
     },
     setErrorMessage(message) {
       this.errorMessage = message
@@ -110,6 +112,47 @@ export const useExperimentStore = defineStore('experiment', {
     get filteredVials() {
       if (!this.selectedVials) return [];
       return Object.keys(this.selectedVials).filter(vial => this.selectedVials[vial]);
-    }
+    },
+    connectWebSocket() {
+      if (this.ws) {
+        console.log('WebSocket already connected');
+        return;
+      }
+      this.ws = new WebSocket('ws://localhost:5000/ws');
+      this.ws.onopen = () => {
+        console.log('WebSocket connected');
+      };
+      this.ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.message) {
+            if (data.type === 'success') {
+              toast(data.message, { type: 'success' });
+            } else {
+              toast(data.message, { type: 'info' });
+            }
+          }
+          if (data.type === 'progress') {
+            console.log(`[WS progress] ${data.message}`);
+            this.progressMessages.push(data.message);
+          }
+        } catch (e) {
+          console.log('WS message (non-JSON):', event.data);
+        }
+      };
+      this.ws.onclose = () => {
+        console.log('WebSocket closed');
+        this.ws = null;
+      };
+      this.ws.onerror = (event) => {
+        console.error('WebSocket error', event);
+      };
+    },
+    disconnectWebSocket() {
+      if (this.ws) {
+        this.ws.close();
+        this.ws = null;
+      }
+    },
   }
 }) 
