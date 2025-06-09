@@ -244,6 +244,37 @@ export const useDeviceStore = defineStore('device', {
         this.errorMessage = `Error updating ${devicePart} calibration: ${error.message || error}`;
         throw error;
       }
+    },
+    async fetchODCalibrationData() {
+      this.isFetchingCalibration = true;
+      try {
+        const response = await api.post('/run-ods-test');
+        if (response.data.success) {
+          // Assume response.data.device_states.ods contains the calibration data
+          await this.fetchDeviceData();
+        } else {
+          this.errorMessage = 'Failed to fetch OD calibration data.';
+        }
+      } catch (error) {
+        this.errorMessage = 'Failed to fetch OD calibration data.';
+      } finally {
+        this.isFetchingCalibration = false;
+      }
+    },
+    async fetchStirrerCalibrationData() {
+      this.isFetchingCalibration = true;
+      try {
+        const response = await api.post('/run-stirrer-test');
+        if (response.data.success) {
+          await this.fetchDeviceData();
+        } else {
+          this.errorMessage = 'Failed to fetch stirrer calibration data.';
+        }
+      } catch (error) {
+        this.errorMessage = 'Failed to fetch stirrer calibration data.';
+      } finally {
+        this.isFetchingCalibration = false;
+      }
     }
   }
 })

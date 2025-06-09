@@ -14,12 +14,12 @@
 
 <script setup>
 import { ref, computed, watch, defineExpose } from 'vue';
-import { useStore } from 'vuex';
+import { useDeviceStore } from '@/client/stores/device';
 import Chart from 'chart.js/auto';
 
-const store = useStore();
-const isFetchingCalibration = computed(() => store.state.device.isFetchingCalibration);
-const speedProfiles = computed(() => store.state.device.stirrers.speed_profiles);
+const deviceStore = useDeviceStore();
+const isFetchingCalibration = computed(() => deviceStore.isFetchingCalibration);
+const speedProfiles = computed(() => deviceStore.stirrers?.speed_profiles);
 
 const chartCanvas = ref(null);
 let chart = null;
@@ -106,8 +106,8 @@ defineExpose({ getChartImage });
 
 // 3) Actions to fetch data, then create chart
 const runCalibrationTest = async () => {
-  await store.dispatch('device/fetchStirrerCalibrationData');
-  await store.dispatch('device/getAllDeviceData');
+  await deviceStore.fetchStirrerCalibrationData();
+  await deviceStore.getAllDeviceData();
   if (speedProfiles.value) {
     createChart(speedProfiles.value);
   }

@@ -30,11 +30,11 @@
 
 <script setup>
 import { ref } from 'vue';
-import { useStore } from 'vuex';
+import { useDeviceStore } from '@/client/stores/device';
 import StirrerTest from './StirrerTest.vue';
 import ODTest from './ODTest.vue';
 
-const store = useStore();
+const deviceStore = useDeviceStore();
 const stirrerRef = ref(null);
 const odRef = ref(null);
 
@@ -42,7 +42,7 @@ const odRef = ref(null);
  * Fetch all existing data for charts.
  */
 const plotExistingData = async () => {
-  await store.dispatch('device/getAllDeviceData');
+  await deviceStore.fetchDeviceData();
 };
 
 /**
@@ -52,7 +52,7 @@ function exportPageAsHtml() {
   // Ensure all data is available before exporting
   const stirrerImg = stirrerRef.value?.getChartImage() || '';
   const odImg = odRef.value?.getChartImage() || '';
-  const cameraMedia = cameraRef.value?.getCameraMedia() || '';
+  // const cameraMedia = cameraRef.value?.getCameraMedia() || '';
 
   if (!stirrerImg || !odImg) {
     alert('Please run all tests before exporting.');
@@ -90,7 +90,7 @@ function exportPageAsHtml() {
   `;
 
   // Generate filename using device name and timestamp
-  const deviceName = store.state.hostname || 'device';
+  const deviceName = deviceStore.hostname || 'device';
   const date = new Date().toISOString().split('T')[0];
   const filename = `${deviceName}-self-test-report-${date}.html`;
 

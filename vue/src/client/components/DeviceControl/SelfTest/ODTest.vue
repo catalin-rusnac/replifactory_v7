@@ -13,12 +13,12 @@
 
 <script setup>
 import { ref, computed, watch, defineExpose } from 'vue';
-import { useStore } from 'vuex';
+import { useDeviceStore } from '@/client/stores/device';
 import Chart from 'chart.js/auto';
 
-const store = useStore();
-const isFetchingCalibration = computed(() => store.state.device.isFetchingCalibration);
-const maxODSignals = computed(() => store.state.device.ods.max_signal);
+const deviceStore = useDeviceStore();
+const isFetchingCalibration = computed(() => deviceStore.isFetchingCalibration);
+const maxODSignals = computed(() => deviceStore.ods?.max_signal);
 
 const chartCanvas = ref(null);
 let chart = null;
@@ -102,9 +102,8 @@ defineExpose({ getChartImage });
  */
 async function runODTest() {
   console.log('Running OD test...');
-  await store.dispatch('device/fetchODCalibrationData');
+  await deviceStore.fetchODCalibrationData();
   console.log('OD test completed. Plotting data...');
-  await store.dispatch('device/getAllDeviceData');
   if (maxODSignals.value) {
     createChart(maxODSignals.value);
   } else {

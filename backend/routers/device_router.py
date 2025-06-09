@@ -221,3 +221,15 @@ def load_device_config(payload: dict, device: BaseDevice = Depends(get_device)):
     filename = payload['filename']
     device.load_dev_config(filename)
     return {"success": True, "message": "Device config loaded successfully"}
+
+@router.post("/run-ods-test")
+def ods_test(device: BaseDevice = Depends(get_device)):
+    device.od_sensors[1].measure_optical_signal_max() # measures all sensors
+    max_signals = device.device_data["ods"]["max_signal"]
+    return {"success": True, "max_signals": max_signals}
+
+@router.post("/run-stirrer-test")
+def stirrer_test(device: BaseDevice = Depends(get_device)):
+    device.stirrers.get_all_calibration_curves()
+    data = device.device_data["stirrers"]["speed_profiles"]
+    return {"success": True, "speed_profiles": data}
