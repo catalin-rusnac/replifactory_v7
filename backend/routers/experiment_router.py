@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from experiment.experiment_manager import experiment_manager
 from experiment.exceptions import ExperimentNotFound
-from server.schemas.experiment_schemas import ExperimentCreate, ExperimentOut, SelectExperimentIn, ParametersUpdate
+from routers.experiment_schemas import ExperimentCreate, ExperimentOut, SelectExperimentIn, ParametersUpdate
 from logger.logger import logger
 import traceback
 from fastapi import WebSocket, WebSocketDisconnect
