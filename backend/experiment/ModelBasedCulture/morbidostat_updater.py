@@ -165,8 +165,8 @@ class MorbidostatUpdater:
         self.status_dict["initialization_dilution"] = "Initialization enabled and no dilutions have been made yet - time to initialize!"
         target_dose = self.dose_initialization
         self.status_dict["dilution_message"] = "Initializing culture to %3f" % target_dose
-        model.dilute_culture(target_dose)
         logger.info("Vial %s: making initialization dilution", model.vial)
+        model.dilute_culture(target_dose)
         return True
 
     def make_time_triggered_dilution_if_necessary(self, model):
@@ -182,8 +182,8 @@ class MorbidostatUpdater:
             self.status_dict["time_triggered_dilution"] = "Hours since last dilution %.2f < max %.2f, not diluting" % (hours_since_last_dilution, self.delay_dilution_max_hours)
             return
         self.status_dict["time_triggered_dilution"] = "Hours since last dilution %.2f > max %.2f, diluting" % (hours_since_last_dilution, self.delay_dilution_max_hours)
-        self.dilute_and_adjust_dose(model)
         logger.info("Vial %s: Diluting because %.2f hours passed since last dilution", model.vial, hours_since_last_dilution)
+        self.dilute_and_adjust_dose(model)
         return True
 
     def make_od_triggered_dilution_if_necessary(self, model):
@@ -197,8 +197,8 @@ class MorbidostatUpdater:
             self.status_dict["od_triggered_dilution"] = "OD %3f < threshold %3f" % (model.population[-1][0], self.od_dilution_threshold)
             return
         self.status_dict["od_triggered_dilution"] = "OD %3f >= threshold %3f, diluting" % (model.population[-1][0], self.od_dilution_threshold)
-        self.dilute_and_adjust_dose(model)
         logger.info("Vial %s: Diluting because current OD %3f >= threshold %3f", model.vial, model.population[-1][0], self.od_dilution_threshold)
+        self.dilute_and_adjust_dose(model)
         return True
 
     def must_wait_since_last_dilution(self, model):

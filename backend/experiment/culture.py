@@ -68,7 +68,6 @@ class Culture:
                         experiment_id=experiment.model.id, 
                         vial=self.vial)
         self.culture_growth_model = CultureGrowthModel()
-        self.culture_growth_model.vial = "%d(simulated)" % self.vial
         self.get_latest_data_from_db()
         self.updater = MorbidostatUpdater(**self.parameters.inner_dict)
         self.adapted_culture = RealCultureWrapper(self)
@@ -89,6 +88,7 @@ class Culture:
         self.updater = MorbidostatUpdater(**self.parameters.inner_dict)
         growth_parameters = self.experiment.model.parameters["growth_parameters"][str(self.vial)]
         self.culture_growth_model = CultureGrowthModel(**growth_parameters)
+        self.culture_growth_model.vial = "%d(simulated)" % self.vial
         self.culture_growth_model.updater = self.updater
         self.culture_growth_model.simulate_experiment()
         return plot_culture(self.culture_growth_model)
@@ -117,6 +117,8 @@ class Culture:
             experiment_id=self.experiment.model.id, 
             vial=self.vial)
         self.growth_parameters = self.experiment.model.parameters["growth_parameters"][str(self.vial)]
+        self.culture_growth_model = CultureGrowthModel(**self.growth_parameters)
+        self.culture_growth_model.vial = "%d(simulated)" % self.vial
         self.updater = MorbidostatUpdater(**self.parameters.inner_dict)
 
     

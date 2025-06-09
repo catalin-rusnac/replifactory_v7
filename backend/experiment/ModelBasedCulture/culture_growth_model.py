@@ -44,6 +44,7 @@ class CultureGrowthModel:
         self.mu_max = np.log(2) / (self.doubling_time_mins / 60)
         self._initialize_model_state()
         self.updater = None
+        self.vial = "simulated"
 
     def _initialize_model_state(self):
         self.time_current = datetime.now()

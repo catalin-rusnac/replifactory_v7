@@ -214,6 +214,7 @@ class ExperimentManager:
         old_parameters["growth_parameters"] = growth_parameters
         self.experiment.parameters = old_parameters
         db_session.commit()
+        experiment.reload_model_from_db(db_session)
         for culture in experiment.cultures.values():
             culture.update_parameters_from_experiment()
         return experiment.model.parameters["growth_parameters"]
@@ -292,7 +293,6 @@ class ExperimentManager:
 
     async def broadcast(self, message):
         for ws in list(self.active_sockets):
-            logger.info(f"Broadcasting to ws {id(ws)} with debug_id {message.get('debug_id')}. number of active sockets: {len(self.active_sockets)}")
             try:
                 await ws.send_json(message)
             except Exception as e:

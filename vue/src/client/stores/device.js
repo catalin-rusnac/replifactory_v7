@@ -250,8 +250,7 @@ export const useDeviceStore = defineStore('device', {
       try {
         const response = await api.post('/run-ods-test');
         if (response.data.success) {
-          // Assume response.data.device_states.ods contains the calibration data
-          await this.fetchDeviceData();
+          this.ods = response.data.max_signals;
         } else {
           this.errorMessage = 'Failed to fetch OD calibration data.';
         }
@@ -266,7 +265,7 @@ export const useDeviceStore = defineStore('device', {
       try {
         const response = await api.post('/run-stirrer-test');
         if (response.data.success) {
-          await this.fetchDeviceData();
+          this.stirrers = response.data.device_states.stirrers;
         } else {
           this.errorMessage = 'Failed to fetch stirrer calibration data.';
         }

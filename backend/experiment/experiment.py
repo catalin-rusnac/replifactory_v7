@@ -25,7 +25,6 @@ class ExperimentWorker:
         self.thread.start()
 
     def run_loop(self):
-        print('Experiment worker started')
         self.experiment.device.valves.close_all()
         self.experiment.device.eeprom.save_config_to_eeprom()
         while True:
@@ -173,7 +172,6 @@ class Experiment:
             session.commit()
         # Also update the in-memory model
         self.model.status = value
-        print(self.model.status, "status changed to", value)
 
     def _delete_all_data(self):
         for v in range(1, 8):
@@ -306,7 +304,6 @@ class Experiment:
             self.device.connect()
 
     def make_schedule(self):
-        print("Making schedule")
         self.schedule.clear()
         self.schedule.every().minute.at(":05").do(self.update_cultures_in_background)
         self.schedule.every().minute.at(":00").do(self.measure_od_and_rpm_in_background)
