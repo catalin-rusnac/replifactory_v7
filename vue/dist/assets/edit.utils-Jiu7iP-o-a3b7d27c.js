@@ -1,3 +1,0 @@
-import{a1 as r,K as o,a3 as e}from"./PredictionTab-61bbb6a9.js";/*!
- * Built by Revolist OU ❤️
- */function c(t){return o.BACKSPACE===t||o.DELETE===t}function i(t){return o.TAB===t}function u(t){return e.ENTER===t}function a(t){return t.ctrlKey&&t.code==="KeyX"||t.metaKey&&t.code==="KeyX"}function y(t){return t.ctrlKey&&t.code==="KeyC"||t.metaKey&&t.code==="KeyC"}function n(t){return t.ctrlKey&&t.code==="KeyV"||t.metaKey&&t.code==="KeyV"}function K(t){return t.ctrlKey&&t.code==="KeyA"||t.metaKey&&t.code==="KeyA"}function f(t){return!!(t!=null&&t.closest(`.${r}`))}function d(t){return typeof t=="function"&&typeof t.prototype=="object"}export{c as a,i as b,u as c,y as d,a as e,n as f,K as g,d as h,f as i};

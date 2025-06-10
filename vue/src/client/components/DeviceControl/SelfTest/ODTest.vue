@@ -104,6 +104,7 @@ async function runODTest() {
   console.log('Running OD test...');
   await deviceStore.fetchODCalibrationData();
   console.log('OD test completed. Plotting data...');
+  await deviceStore.getAllDeviceData();
   if (maxODSignals.value) {
     createChart(maxODSignals.value);
   } else {

@@ -165,8 +165,9 @@ class MorbidostatUpdater:
         self.status_dict["initialization_dilution"] = "Initialization enabled and no dilutions have been made yet - time to initialize!"
         target_dose = self.dose_initialization
         self.status_dict["dilution_message"] = "Initializing culture to %3f" % target_dose
-        logger.info("Vial %s: making initialization dilution", model.vial)
+        
         model.dilute_culture(target_dose)
+        
         return True
 
     def make_time_triggered_dilution_if_necessary(self, model):
