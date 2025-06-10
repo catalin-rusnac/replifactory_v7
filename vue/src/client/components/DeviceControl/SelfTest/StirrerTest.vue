@@ -107,7 +107,7 @@ defineExpose({ getChartImage });
 // 3) Actions to fetch data, then create chart
 const runCalibrationTest = async () => {
   await deviceStore.fetchStirrerCalibrationData();
-  await deviceStore.getAllDeviceData();
+  await deviceStore.fetchDeviceData();
   if (speedProfiles.value) {
     createChart(speedProfiles.value);
   }
