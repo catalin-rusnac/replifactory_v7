@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from routers.experiment_router import router as experiment_router
 from routers.service_router import router as service_router
 from routers.device_router import router as device_router
+from routers.camera_router import router as camera_router
 from fastapi.middleware.cors import CORSMiddleware
 from experiment.experiment_manager import experiment_manager
 from contextlib import asynccontextmanager

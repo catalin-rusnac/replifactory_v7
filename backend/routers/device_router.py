@@ -136,7 +136,7 @@ def update_od_calibration_value(payload: dict, device: BaseDevice = Depends(get_
         old_value = None
     device.device_data['ods']['calibration'][vial][od] = newValue
     device.od_sensors[vial].fit_calibration_function()
-    logger.info(f"updated od calibration value for vial {vial} to from {old_value} to {newValue}")
+    # logger.info(f"updated od calibration value for vial {vial} to from {old_value} to {newValue}")
     return {"success": True, "device_states": device.device_data}
 
 
