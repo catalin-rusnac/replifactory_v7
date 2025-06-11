@@ -37,6 +37,7 @@ app.add_middleware(
 app.include_router(experiment_router)
 app.include_router(service_router)
 app.include_router(device_router)
+app.include_router(camera_router)
 
 if __name__ == "__main__":
     import uvicorn
