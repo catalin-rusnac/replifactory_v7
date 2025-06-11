@@ -4,45 +4,54 @@ import time
 import numpy as np
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
+from logger.logger import logger
 
 
-def od_calibration_function(x, a, b, c, d, g):
-    """
-    converts signal mV to optical density
-    4 Parameter logistic function
-    adapted from:
-    https://weightinginbayesianmodels.github.io/poctcalibration/calib_tut4_curve_background.html
+# def od_calibration_function(x, a, b, c, d, g):
+#     """
+#     converts signal mV to optical density
+#     4 Parameter logistic function
+#     adapted from:
+#     https://weightinginbayesianmodels.github.io/poctcalibration/calib_tut4_curve_background.html
 
-    :param x: signal voltage in millivolts
-    :param a: On the scale of y; horizontal asymptote as x goes to infinity.
-    :param b: Hill coefficient
-    :param c: Inflection point.
-    :param d: On the scale of y; horizontal asymptote as x goes, in theory, to negative infinity,
-              but, in practice, to zero.
-    :return: y - optical density
-    """
-    y = d + (a - d) / ((1 + (x / c) ** b) ** g)
-    return y
+#     :param x: signal voltage in millivolts
+#     :param a: On the scale of y; horizontal asymptote as x goes to infinity.
+#     :param b: Hill coefficient
+#     :param c: Inflection point.
+#     :param d: On the scale of y; horizontal asymptote as x goes, in theory, to negative infinity,
+#               but, in practice, to zero.
+#     :return: y - optical density
+#     """
+#     y = d + (a - d) / ((1 + (x / c) ** b) ** g)
+#     return y
 
 
-def od_calibration_function_inverse(y, a, b, c, d, g):
-    """
-    converts optical density to signal mV
+# def od_calibration_function_inverse(y, a, b, c, d, g):
+#     """
+#     converts optical density to signal mV
 
-    Inverse of 4 Parameter logistic function
-    adapted from:
-    https://weightinginbayesianmodels.github.io/poctcalibration/calib_tut4_curve_background.html
+#     Inverse of 4 Parameter logistic function
+#     adapted from:
+#     https://weightinginbayesianmodels.github.io/poctcalibration/calib_tut4_curve_background.html
 
-    :param y: optical density
-    :param a: On the scale of y; horizontal asymptote as x goes to infinity.
-    :param b: Hill coefficient
-    :param c: Inflection point.
-    :param d: On the scale of y; horizontal asymptote as x goes, in theory, to negative infinity,
-              but, in practice, to zero.
-    :return: x - signal voltage in millivolts
-    """
-    x = c * (((a - d) / (y - d)) ** (1 / g) - 1) ** (1 / b)
-    return x
+#     :param y: optical density
+#     :param a: On the scale of y; horizontal asymptote as x goes to infinity.
+#     :param b: Hill coefficient
+#     :param c: Inflection point.
+#     :param d: On the scale of y; horizontal asymptote as x goes, in theory, to negative infinity,
+#               but, in practice, to zero.
+#     :return: x - signal voltage in millivolts
+#     """
+#     x = c * (((a - d) / (y - d)) ** (1 / g) - 1) ** (1 / b)
+#     return x
+
+def BeerLambertScaled(sig, blank, scaling):
+    """convert signal to optical density using Beer-Lambert law and scaling factor"""
+    return -np.log10(sig / blank) * scaling
+
+def BeerLambertScaledInverse(od, blank, scaling):
+    """convert optical density to signal using Beer-Lambert law and scaling factor"""
+    return blank * 10**(-od / scaling)
 
 
 class OdSensor:
@@ -52,9 +61,26 @@ class OdSensor:
 
     def mv_to_od(self, mv):
         coefs = self.device.device_data['ods']['calibration_coefs'][self.vial_number]
-        a, b, c, d, g = coefs
-        return od_calibration_function(mv, a, b, c, d, g)
+        if len(coefs) > 3:
+            self.fit_calibration_function()
+            print("fit calibration function with beer-lambert scaled because there were too many calibration coefficients")
+            coefs = self.device.device_data['ods']['calibration_coefs'][self.vial_number]
+        blank_signal, scaling = coefs
+        # if the minimum value in calibration is equal to 0 or 0.0, use it as blank
+        lowest_od_in_calibration = min(self.device.device_data['ods']['calibration'][self.vial_number].keys())
+        if float(lowest_od_in_calibration) == 0.0:
+            blank_signal = self.device.device_data['ods']['calibration'][self.vial_number][lowest_od_in_calibration]
+        return BeerLambertScaled(mv, blank_signal, scaling)
 
+    def assign_blank(self, value):
+        """assign a blank value to the vial, assuming known scaling factor"""
+        try: 
+            self.device.device_data['ods']['blank'][self.vial_number]['0'] = value
+        except:
+            self.device.device_data['ods']['blank'] = {self.vial_number: {'0': value}}
+        if self.device.is_connected():
+            self.device.eeprom.save_config_to_eeprom()
+    
     def measure_transmitted_intensity(self):
         """
         returns the intensity of the transmitted light
@@ -135,6 +161,15 @@ class OdSensor:
         mask = np.array([item is not None for item in calibration_mv])
         calibration_mv = calibration_mv[mask]
         calibration_od = calibration_od[mask]
+        calibration_od = np.array([float(i) for i in calibration_od])
+        logger.info(f"calibration_od: {calibration_od}")
+        logger.info(f"calibration_mv: {calibration_mv}")
+        try:
+            blank_signal = calibration_mv[calibration_od == 0.0][0]
+            blank_bounds = (blank_signal - 0.00001, blank_signal + 0.00001)
+        except:
+            logger.info(f"no 0.0 in calibration for vial {self.vial_number}, using default bounds")
+            blank_bounds = (0.5, 200)
 
         if len(calibration_mv.shape)==1:
             calibration_mv = np.array([[i,i,i] for i in calibration_mv])
@@ -149,18 +184,24 @@ class OdSensor:
         calibration_mv = np.nanmean(calibration_mv_filled, 1)
 
         calibration_mv_err += 0.01  # allows curve fit with single measurements
+        # coefficients for fitting beer lambert scaled are blank and scaling factor
+        # blank bounds are 0.5-200, scaling factor bounds are 1-3
+        # initial guess is 50mV for blank and 1.6 for scaling factor
+        
+        
         coefs, _ = curve_fit(
-            od_calibration_function_inverse,
+            BeerLambertScaledInverse,
             calibration_od,
             calibration_mv,
             maxfev=5000,
-            p0=(20, 5, 0.07, -0.2, 1),
-            bounds=[(3, 0, 0, -0.5, 0), (200, 10, 20, 0.1, 5)],
+            p0=(blank_signal, 1.6),
+            bounds=[(blank_bounds[0], 0.1), (blank_bounds[1], 5)],
             sigma=calibration_mv_err,
         )
-        coefs = [round(i, 3) for i in coefs]
+        coefs = [round(i, 4) for i in coefs]
         coefs = [float(i) for i in coefs]
-        print(coefs)
+        blank_signal, scaling = coefs
+        logger.info(f"fitted calibration function for vial {self.vial_number} with blank {blank_signal} and scaling {scaling}")
         # a, b, c, d, g = coefs
         self.device.device_data['ods']['calibration_coefs'][self.vial_number] = coefs
         if self.device.is_connected():

@@ -114,6 +114,7 @@ def measure_all_od_signals(payload: dict, device: BaseDevice = Depends(get_devic
         od = vial_ods[vial]
         od_str = str(od)
         device.device_data['ods']['calibration'][vial][od_str] = signal
+        device.od_sensors[vial].fit_calibration_function()
         logger.info(f"measured signal {signal} for vial {vial} with od {od_str}")
     device.eeprom.save_config_to_eeprom()
     logger.info(f"measured all od signals {device.device_data['ods']['calibration']}")
@@ -127,12 +128,14 @@ def update_od_calibration_value(payload: dict, device: BaseDevice = Depends(get_
     if newValue is None:
         del device.device_data['ods']['calibration'][vial][od]
         logger.info(f"removed od calibration value for vial {vial} and od {od}")
+        device.od_sensors[vial].fit_calibration_function()
         return {"success": True, "device_states": device.device_data}
     try:
         old_value = device.device_data['ods']['calibration'][vial][od]
     except KeyError:
         old_value = None
     device.device_data['ods']['calibration'][vial][od] = newValue
+    device.od_sensors[vial].fit_calibration_function()
     logger.info(f"updated od calibration value for vial {vial} to from {old_value} to {newValue}")
     return {"success": True, "device_states": device.device_data}
 

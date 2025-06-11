@@ -36,20 +36,27 @@ const calibrationData = computed(() => ods.value?.calibration?.[props.partId])
 const calibrationCoefs = computed(() => ods.value?.calibration_coefs?.[props.partId])
 const currentOD = computed(() => ({od:ods.value?.states?.[props.partId], signal:ods.value?.odsignals?.[props.partId]}))
 
-function odCalibrationFunction(x, a, b, c, d, g) {
-  return d + ((a - d) / Math.pow((1 + Math.pow((x / c), b)), g));
+// function odCalibrationFunction(x, a, b, c, d, g) {
+//   return d + ((a - d) / Math.pow((1 + Math.pow((x / c), b)), g));
+// }
+
+function beerLambertScaled(sig, blank, scaling) {
+  return -Math.log10(sig / blank) * scaling;
 }
 
 const chartData = computed(() => {
   if (calibrationData.value && typeof calibrationData.value === 'object' && calibrationCoefs.value) {
     const dataPoints = Object.entries(calibrationData.value).map(([key, value]) => ({x: Number(value), y: Number(key)})).sort((a, b) => a.x - b.x);
 
-    const min_x = Math.min(...dataPoints.map(point => point.x));
-    const max_x = Math.max(...dataPoints.map(point => point.x));
-
+    let min_x = Math.min(...dataPoints.map(point => point.x));
+    let max_x = Math.max(...dataPoints.map(point => point.x));
     const calibrationDataPoints = [];
+    if (min_x === max_x) {
+      min_x = 0;
+      max_x = 50;
+    }
     for(let x = min_x; x <= max_x; x += 0.1) {
-      const y = odCalibrationFunction(x, ...calibrationCoefs.value);
+      const y = beerLambertScaled(x, ...calibrationCoefs.value);
       calibrationDataPoints.push({x, y});
     }
 
@@ -94,7 +101,7 @@ const chartOptions = computed(() => ({
     },
     title: {
       display: true,
-      text: `Vial ${props.partId}`,
+      text: `Vial ${props.partId}` + (calibrationCoefs.value ? `\nblank: ${calibrationCoefs.value[0]?.toFixed(2)}, scaling: ${calibrationCoefs.value[1]?.toFixed(2)}` : ''),
     },
   },
   scales: {

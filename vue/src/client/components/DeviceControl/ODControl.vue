@@ -38,16 +38,17 @@
                 </td>
               </tr>
               <tr>
-                <th class="state-row-label">
-                  <button class="control-button measure-inline" @click=measureAllODSignals :disabled="isRemeasuring">
+                <th class="state-row-label" style="position: relative;">
+                  <button class="control-button measure-inline" @click=measureAllODSignals :disabled="!editMode || isRemeasuring" :class="{ 'disabled-measure': !editMode }">
                     <span v-if="isRemeasuring">
                       <span class="loading-spinner"></span> Measuring...
                     </span>
                     <span v-else>
                       <v-icon>mdi-camera-metering-center</v-icon>
-                      {{ highlightMode === 'diagonal' ? 'Remeasure Diagonal ' + (highlightIndex + 1) : 'Remeasure OD ' + allOdValues[highlightIndex] }}
+                      {{ highlightMode === 'diagonal' ? 'Measure Diagonal ' + (highlightIndex + 1) : 'Measure OD ' + allOdValues[highlightIndex] + ' signals' }}
                     </span>
                   </button>
+                  <div v-if="!editMode" class="measure-overlay" @click="toast.error('Enable edit mode to measure calibration signals')"></div>
                 </th>
                 <td v-for="(vial, idx) in vials" :key="'signal-' + vial" class="state-signal-cell"
                     :class="{'highlighted': isHighlightedCell(getHighlightedOdValue(vial), vial)}"
@@ -61,120 +62,154 @@
           </table>
         </div>
         <div class="table-controls">
-          <button class="control-button" @click="toggleHighlightMode">
-            {{ highlightMode === 'diagonal' ? 'Select Row' : 'Select Diagonal' }}
+          <button class="control-button next-button" @click="nextHighlight">
+            Select Next
           </button>
-          <button class="control-button" @click="nextHighlight">
-            {{ highlightMode === 'diagonal' ? 'Next Diagonal' : 'Next Row' }}
+          <div class="segmented-toggle">
+            <button
+              class="toggle-segment"
+              :class="{ active: highlightMode === 'diagonal' }"
+              @click="highlightMode = 'diagonal'"
+              type="button"
+            >
+              Diagonal
+            </button>
+            <button
+              class="toggle-segment"
+              :class="{ active: highlightMode === 'row' }"
+              @click="highlightMode = 'row'"
+              type="button"
+            >
+              Row
+            </button>
+          </div>
+          <div class="autofill-group">
+            <button class="control-button auto-round" @click=autofillValues() :disabled="isAutofilling.value">
+              <span v-if="isAutofilling.value">
+                <span class="loading-spinner"></span>
+              </span>
+              <span v-else>
+                Auto
+              </span>
+            </button>
+          </div>
+          <div style="flex:1"></div>
+          <button class="control-button mode-toggle" :class="{ 'edit-on': editMode }" @click="editMode = !editMode">
+            <v-icon>{{ editMode ? 'mdi-pencil' : 'mdi-pencil-outline' }}</v-icon>
+            Edit
+          </button>
+          <button class="control-button help-button" @click="openODGuide">
+            <v-icon>mdi-help-circle-outline</v-icon>
           </button>
         </div>
       </div>
       <div class="calibration-controls">
       </div>
   
-      <table class="calibration-table">
-        <thead>
-          <tr>
-            <th style="width: 90px;">OD Value</th>
-            <th v-for="vial in vials" :key="vial" style="width: 90px;">Vial {{ vial }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <!-- All OD value rows, including OD 0 (blank) -->
-          <tr v-for="(odValue, idx) in allOdValues" :key="odValue">
-            <td style="width: 90px;" :style="getODBackgroundStyle(odValue)">
-              <input
-                v-if="idx < probeOdValues.length"
-                :value="tempProbeValues[idx] !== undefined ? tempProbeValues[idx] : probeOdValues[idx]"
-                @input="handleProbeValueInput($event, idx)"
-                @blur="updateProbeValue(odValue, idx)"
-                @keyup.enter="updateProbeValue(odValue, idx)"
-                type="number"
-                step="0.1"
-                class="property-value"
-                style="text-align: center;" />
-              <input
-                v-else
-                :value="odValue"
-                @change="updateODCalibrationKeyAction({oldOD: odValue, newOD: $event.target.value})"
-                type="number"
-                step="0.1"
-                class="property-value"
-                style="text-align: center;" />
-            </td>
-            <td v-for="vial in vials" :key="vial" style="width: 90px;"
-                :class="{ 
-                  'has-data': ods.calibration && ods.calibration[vial] && ods.calibration[vial][odValue] !== undefined,
-                  'diagonal-cell': isHighlightedCell(odValue, vial)
-                }"
-                :style="{ 'background': isHighlightedCell(odValue, vial) ? 'rgba(100, 149, 237, 0.15)' : getSignalBackgroundStyle(vial, odValue).background }">
-              <template v-if="editMode">
-                <input 
-                  :value="getCalibrationInputValue(vial, odValue)"
-                  @input="handleSignalInput($event, vial, odValue)"
-                  @blur="updateSignalValue(vial, odValue)"
-                  @keyup.enter="updateSignalValue(vial, odValue)"
-                  type="number" 
-                  class="calibration-signal" />
-              </template>
-              <template v-else>
-                <span v-if="ods.calibration && ods.calibration[vial] && ods.calibration[vial][odValue] !== undefined" class="signal-value">
-                  {{ parseFloat(ods.calibration[vial][odValue]).toFixed(2) }}mV
-                </span>
-                <span v-else>
-                  <!-- Removed the little measure button as requested -->
-                </span>
-              </template>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-  
-      <div class="table-controls bottom-controls">
-        <button class="control-button" @click=autofillValues() :disabled="isAutofilling">
-          <span v-if="isAutofilling">
-            <span class="loading-spinner"></span> Autofilling...
-          </span>
-          <span v-else>
-            <v-icon>mdi-autorenew</v-icon>
-            Autofill OD>0
-          </span>
-        </button>
-        <div class="control-input-group">
-          <label for="scalingFactor">Scaling Factor:</label>
-          <input
-            v-model.number="scalingFactor"
-            type="number"
-            min="0.1"
-            step="0.1"
-            class="scaling-factor-input"
-          />
-        </div>
-        <button class="control-button mode-toggle" @click="editMode = !editMode">
-          <v-icon>{{ editMode ? 'mdi-eye' : 'mdi-pencil' }}</v-icon>
-          {{ editMode ? 'View Mode' : 'Edit Mode' }}
-        </button>
+      <div class="calibration-table-wrapper">
+        <table class="calibration-table">
+          <thead>
+            <tr class="scaling-factor-row">
+              <th class="scaling-factor-label">Scaling Factor</th>
+              <th v-for="(sf, idx) in scalingFactorsLocal" :key="'sf-head-' + idx" class="scaling-factor-cell">
+                <template v-if="editMode">
+                  <input type="number" step="0.01" min="0.1" v-model.number="scalingFactorsLocal[idx]" style="width: 60px; text-align: center; background: #23272e; color: #90caf9; border: 1px solid #444; border-radius: 4px;" />
+                </template>
+                <template v-else>
+                  {{ typeof sf === 'number' ? sf.toFixed(2) : sf }}
+                </template>
+              </th>
+              <th v-if="editMode" style="width: 36px;"></th>
+            </tr>
+            <tr>
+              <th style="width: 110px;">OD Value</th>
+              <th v-for="vial in vials" :key="vial" style="width: 90px;">Vial {{ vial }}</th>
+              <th v-if="editMode" style="width: 36px;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- All OD value rows, including OD 0 (blank) -->
+            <tr v-for="(odValue, idx) in allOdValues" :key="odValue" :class="{ 'od-zero-row': parseFloat(odValue) === 0 }">
+              <td style="width: 110px;" :style="getODBackgroundStyle(odValue)">
+                <input
+                  v-if="idx < probeOdValues.length"
+                  :value="tempProbeValues[idx] !== undefined ? tempProbeValues[idx] : probeOdValues[idx]"
+                  @input="handleProbeValueInput($event, idx)"
+                  @blur="updateProbeValue(odValue, idx)"
+                  @keyup.enter="updateProbeValue(odValue, idx)"
+                  type="number"
+                  step="0.1"
+                  class="property-value"
+                  style="text-align: center;" />
+                <input
+                  v-else
+                  :value="odValue"
+                  @change="updateODCalibrationKeyAction({oldOD: odValue, newOD: $event.target.value})"
+                  type="number"
+                  step="0.1"
+                  class="property-value"
+                  style="text-align: center;" />
+              </td>
+              <td v-for="vial in vials" :key="vial"
+                  :class="{ 
+                    'has-data': ods.calibration && ods.calibration[vial] && ods.calibration[vial][odValue] !== undefined,
+                    'diagonal-cell': isHighlightedCell(odValue, vial)
+                  }"
+                  :style="{ 'background': isHighlightedCell(odValue, vial) ? 'rgba(100, 149, 237, 0.15)' : getSignalBackgroundStyle(vial, odValue).background }">
+                <template v-if="editMode">
+                  <input 
+                    :value="getCalibrationInputValue(vial, odValue)"
+                    @input="handleSignalInput($event, vial, odValue)"
+                    @blur="updateSignalValue(vial, odValue)"
+                    @keyup.enter="updateSignalValue(vial, odValue)"
+                    type="number" 
+                    class="calibration-signal" />
+                </template>
+                <template v-else>
+                  <span v-if="ods.calibration && ods.calibration[vial] && ods.calibration[vial][odValue] !== undefined" class="signal-value">
+                    {{ parseFloat(ods.calibration[vial][odValue]).toFixed(2) }}mV
+                  </span>
+                  <span v-else>
+                    <!-- Removed the little measure button as requested -->
+                  </span>
+                </template>
+              </td>
+              <td v-if="editMode" style="text-align: center; width: 36px; padding: 4px;">
+                <button class="delete-od-row" @click="deleteODRow(idx)" :disabled="deletingRows.has(allOdValues[idx])">
+                  <v-icon>mdi-delete</v-icon>
+                </button>
+              </td>
+            </tr>
+            <tr v-if="editMode">
+              <td>
+                <button class="add-od-probe-table" @click="addODProbe">
+                  <v-icon>mdi-plus</v-icon> Add
+                </button>
+              </td>
+              <td v-for="vial in vials" :key="'add-row-' + vial"></td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
       </div>
   
       <div class="chart-container" v-if="showCharts">
         <ODChart v-for="vial in vials" :partId="vial" :key="vial"></ODChart>
       </div>
     </div>
-  
-    <!-- Hidden file input for loading calibration data -->
-    <input 
-      type="file" 
-      ref="fileInput" 
-      style="display: none" 
-      accept=".json" 
-      @change="onFileSelected" />
+    <ODGuide v-if="showODGuide" @close="closeODGuide" />
   </template>
   
   <script setup>
-  import { ref, computed, watch } from 'vue'
+  import { ref, computed, watch, onMounted } from 'vue'
   import { storeToRefs } from 'pinia'
   import { useDeviceStore } from '../../stores/device'
   import ODChart from './ODChart.vue'
+  import { useGuideDialog } from '@/client/composables/useGuideDialog'
+  import ODGuide from './ODGuide.vue'
+  import { useDialog } from '@/client/composables/useDialog'
+  import { toast } from 'vue3-toastify'
+  import ConfirmDialog from '@/client/components/ConfirmDialog.vue'
   
   const deviceStore = useDeviceStore()
   const {
@@ -182,16 +217,16 @@
     calibrationModeEnabled
   } = storeToRefs(deviceStore)
   
+  const { openGuide } = useGuideDialog()
+  const { openDialog } = useDialog()
+  
   const vials = [1, 2, 3, 4, 5, 6, 7]
   const editMode = ref(false)
   const showCharts = ref(true)
-  const probeLabels = ref(['a', 'b', 'c', 'd', 'e', 'f', 'g'])
-  const probeOdValues = ref([0, 0.12, 0.25, 0.5, 1, 1.5, 2])
   const highlightMode = ref('row')
   const highlightIndex = ref(0)
   const isRemeasuring = ref(false)
   const isAutofilling = ref(false)
-  const scalingFactor = ref(1.6)
   const tempProbeValues = ref({})
   const tempCalibrationValues = ref({})
   const allOdValues = computed(() => {
@@ -204,8 +239,50 @@
       }
     }
     const values = Array.from(allOdValuesSet).sort((a, b) => parseFloat(a) - parseFloat(b))
-    return values.slice(0, 7)
+    return values
   })
+
+  const showODGuide = ref(false)
+
+  const probeOdValues = computed(() => {
+    // Get all unique OD values from the calibration dict
+    if (!ods.value.calibration) return [];
+    const odSet = new Set();
+    for (const vial in ods.value.calibration) {
+      for (const od in ods.value.calibration[vial]) {
+        odSet.add(parseFloat(od));
+      }
+    }
+    return Array.from(odSet).sort((a, b) => a - b);
+  });
+
+  const deletingRows = ref(new Set());
+
+  // Add computed for scaling factors per vial
+  const scalingFactors = computed(() => {
+    const coefs = ods.value.calibration_coefs || {};
+    return vials.map(vial => coefs[vial]?.[1] ?? '—');
+  });
+
+  // Add local editable scaling factors
+  const scalingFactorsLocal = ref([]);
+
+  // Sync local scaling factors with backend values when calibration_coefs changes
+  watch(scalingFactors, (newFactors) => {
+    scalingFactorsLocal.value = [...newFactors];
+  }, { immediate: true });
+
+  // Set scalingFactor to the highlighted vial's scaling by default
+  watch([highlightIndex, highlightMode, () => ods.value.calibration_coefs], () => {
+    const vial = highlightMode.value === 'diagonal'
+      ? (vials[(highlightIndex.value) % vials.length])
+      : (vials[highlightIndex.value]);
+    const scaling = ods.value.calibration_coefs?.[vial]?.[1];
+  }, { immediate: true });
+
+  onMounted(() => {
+    deviceStore.fetchDeviceData();
+  });
 
   async function handleOdClick(odIndex) {
     await deviceStore.measureDevicePart({
@@ -286,13 +363,25 @@ function updateSignalValue(vial, odValue) {
     }
   }
   
-  function getProbeForVial(vial) {
-    if (highlightMode.value === 'diagonal') {
-      const probeIndex = (vial - 1 - highlightIndex.value + probeLabels.value.length) % probeLabels.value.length
-      return probeLabels.value[probeIndex].toUpperCase()
-        } else {
-      return probeLabels.value[highlightIndex.value].toUpperCase()
+  function getProbeLabel(index) {
+    // Generate Excel-style column labels: A, B, ..., Z, AA, AB, ...
+    let label = '';
+    index = Math.floor(index);
+    while (index >= 0) {
+      label = String.fromCharCode(65 + (index % 26)) + label;
+      index = Math.floor(index / 26) - 1;
     }
+    return label;
+  }
+
+  function getProbeForVial(vial) {
+    let probeIndex;
+    if (highlightMode.value === 'diagonal') {
+      probeIndex = (vial - 1 - highlightIndex.value + allOdValues.value.length) % allOdValues.value.length;
+    } else {
+      probeIndex = highlightIndex.value;
+    }
+    return getProbeLabel(probeIndex);
   }
   
   function getSignalBackgroundStyle(vial, odValue) {
@@ -360,53 +449,48 @@ function updateSignalValue(vial, odValue) {
     highlightIndex.value = (highlightIndex.value + 1) % allOdValues.value.length;
   }
   
+  // Use local scaling factor for autofill
   async function autofillValues() {
-        if (!confirm('This will autofill the entire table based on OD0 and the probe OD values. Continue?')) return;
-  
-        this.isAutofilling = true;
-        
-        // Prepare a new calibration object
-        const newCalibration = {};
-        console.log("autofillValues", this.vials, "scalingFactor", this.scalingFactor)
-        this.vials.forEach((vial) => {
-          // OD0 could be stored as "0", "0.0", or 0 - need to check all possibilities
-          let blank = null;
-          if (this.ods.calibration && this.ods.calibration[vial]) {
-            // Check for different possible keys representing zero
-            if (this.ods.calibration[vial]["0"] !== undefined) {
-              blank = parseFloat(this.ods.calibration[vial]["0"]);
-            } else if (this.ods.calibration[vial]["0.0"] !== undefined) {
-              blank = parseFloat(this.ods.calibration[vial]["0.0"]);
-            } else if (this.ods.calibration[vial][0] !== undefined) {
-              blank = parseFloat(this.ods.calibration[vial][0]);
-            }
-          }
-          
-          // If we still couldn't find an OD0 value, use a default or skip
-          if (blank === null) {
-            console.warn(`No OD0 value found for vial ${vial}. Using default of 500mV.`);
-            blank = 500; // Use default value instead of skipping
-          }
-  
-          newCalibration[vial] = {};
-          // Always set OD0
-          newCalibration[vial]["0"] = blank;
-  
-          // For each probe OD value (except 0), calculate the signal
-          this.probeOdValues.forEach((od) => {
-            if (parseFloat(od) === 0) return; // skip OD0, already set
-            // signal = blank * 10^(-OD) * scaling_factor
-            // For OD measurements, signal decreases with increasing OD
-            const simulated = blank * Math.pow(10, -parseFloat(od * this.scalingFactor));
-            newCalibration[vial][od.toString()] = simulated;
-            console.log(`Autofilled Vial ${vial} - OD ${od}: ${simulated.toFixed(2)}mV (blank: ${blank.toFixed(2)}mV, scaling: ${this.scalingFactor})`);
-          });
-          deviceStore.setPartCalibrationAction({ devicePart: 'ods', partIndex: vial, newCalibration: newCalibration[vial] })
-        });
-        this.isAutofilling = false
-        await deviceStore.fetchDeviceData()
-        this.isAutofilling = false
+    const confirmed = await openDialog({
+      title: 'Autofill Calibration Table?',
+      message: 'Use blank and scaling factor to autofill the rest of the table.',
+    });
+    if (!confirmed) return;
+
+    isAutofilling.value = true;
+
+    // Prepare a new calibration object
+    const newCalibration = {};
+    vials.forEach((vial, idx) => {
+      // OD0 could be stored as "0", "0.0", or 0 - need to check all possibilities
+      let blank = null;
+      if (ods.value.calibration && ods.value.calibration[vial]) {
+        if (ods.value.calibration[vial]["0"] !== undefined) {
+          blank = parseFloat(ods.value.calibration[vial]["0"]);
+        } else if (ods.value.calibration[vial]["0.0"] !== undefined) {
+          blank = parseFloat(ods.value.calibration[vial]["0.0"]);
+        } else if (ods.value.calibration[vial][0] !== undefined) {
+          blank = parseFloat(ods.value.calibration[vial][0]);
+        }
       }
+      if (blank === null) {
+        blank = 500;
+      }
+      newCalibration[vial] = {};
+      newCalibration[vial]["0"] = blank;
+      probeOdValues.value.forEach((od) => {
+        if (parseFloat(od) === 0) return;
+        // Use local scaling factor for this vial
+        const scaling = parseFloat(scalingFactorsLocal.value[idx]) || 1.6;
+        const simulated = blank * Math.pow(10, -parseFloat(od / scaling));
+        newCalibration[vial][od.toString()] = simulated;
+      });
+      deviceStore.setPartCalibrationAction({ devicePart: 'ods', partIndex: vial, newCalibration: newCalibration[vial] })
+    });
+    isAutofilling.value = false
+    await deviceStore.fetchDeviceData()
+    isAutofilling.value = false
+  }
   
   function updateProbeValue(odValue, idx) {
     if (tempProbeValues.value[idx] !== undefined) {
@@ -445,9 +529,6 @@ function updateSignalValue(vial, odValue) {
       }
     }
     
-    function loadCalibration() {
-      this.$refs.fileInput.click();
-    }
     
     function onFileSelected(event) {
       const file = event.target.files[0];
@@ -469,8 +550,6 @@ function updateSignalValue(vial, odValue) {
           // Then update the calibration curves
           await deviceStore.setAllODCalibrationsAction(data.calibration);
           
-          // Reset the file input
-          this.$refs.fileInput.value = '';
         } catch (error) {
           console.error('Error parsing calibration file:', error);
           alert('Invalid calibration file format: ' + error.message);
@@ -478,6 +557,61 @@ function updateSignalValue(vial, odValue) {
       };
       reader.readAsText(file);
     }
+  
+  function openODGuide() {
+    showODGuide.value = true;
+  }
+  
+  function closeODGuide() {
+    showODGuide.value = false;
+  }
+  
+  async function clearTable() {
+    const confirmed = await openDialog({
+      title: 'Clear Calibration Table',
+      message: 'Are you sure you want to clear all calibration values? This action cannot be undone unless you saved a checkpoint.',
+      showCancel: true
+    });
+    if (confirmed) {
+      // Clear all calibration values for all vials
+      for (const vial in ods.value.calibration) {
+        deviceStore.setPartCalibrationAction({ devicePart: 'ods', partIndex: vial, newCalibration: {} });
+      }
+      await deviceStore.fetchDeviceData();
+    }
+  }
+  
+  function getNextODValue() {
+    // Find the next OD value (e.g., max + 0.1)
+    if (!probeOdValues.value.length) return 0.1;
+    const max = Math.max(...probeOdValues.value);
+    return parseFloat((max + 0.1).toFixed(2));
+  }
+
+  async function addODProbe() {
+    const newOD = getNextODValue();
+    // Add the new OD value to all vials in the calibration dict
+    for (const vial of vials) {
+      if (!ods.value.calibration[vial]) ods.value.calibration[vial] = {};
+      ods.value.calibration[vial][newOD] = 0; // Default signal value
+      // Update backend for each vial
+      await deviceStore.setPartCalibrationAction({ devicePart: 'ods', partIndex: vial, newCalibration: ods.value.calibration[vial] });
+    }
+    await deviceStore.fetchDeviceData();
+  }
+  
+  async function deleteODRow(idx) {
+    const odToDelete = allOdValues.value[idx];
+    deletingRows.value.add(odToDelete);
+    for (const vial of vials) {
+      if (ods.value.calibration[vial]) {
+        delete ods.value.calibration[vial][odToDelete];
+        await deviceStore.setPartCalibrationAction({ devicePart: 'ods', partIndex: vial, newCalibration: ods.value.calibration[vial] });
+      }
+    }
+    await deviceStore.fetchDeviceData();
+    deletingRows.value.delete(odToDelete);
+  }
   
   </script>
   
@@ -575,6 +709,11 @@ function updateSignalValue(vial, odValue) {
   
   .load {
     background-color: #2196f3;
+  }
+  
+  .calibration-table-wrapper {
+    position: relative;
+    width: 100%;
   }
   
   .calibration-table {
@@ -869,8 +1008,9 @@ function updateSignalValue(vial, odValue) {
     gap: 10px;
     margin-top: 10px;
     margin-bottom: 20px;
-    justify-content: center;
+    justify-content: flex-start;
     flex-wrap: wrap;
+    align-items: center;
   }
   
   .bottom-controls {
@@ -886,6 +1026,9 @@ function updateSignalValue(vial, odValue) {
     cursor: pointer;
     font-size: 14px;
     transition: all 0.2s;
+    height: 32px;
+    display: flex;
+    align-items: center;
   }
   
   .control-button:hover {
@@ -919,13 +1062,14 @@ function updateSignalValue(vial, odValue) {
   
   .measure-inline {
     width: 100%;
-    padding: 3px 5px;
-    font-size: 12px;
+    padding: 12px 5px;
+    font-size: 14px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     margin: 0;
-    height: 100%;
+    height: 64px;
+    background-color: rgba(168, 92, 92, 0.8);
   }
   
   .state-row-label .control-button {
@@ -951,6 +1095,214 @@ function updateSignalValue(vial, odValue) {
   label {
     font-size: 14px;
     color: rgba(255, 255, 255, 0.8);
+  }
+  
+  .control-button.mode-toggle.edit-on {
+    background-color: #2196f3;
+    color: #fff;
+    border: 2px solid #2196f3;
+    font-weight: bold;
+  }
+  
+  .segmented-toggle {
+    display: inline-flex;
+    border-radius: 999px;
+    overflow: hidden;
+    border: 2px solid #444;
+    background: #222;
+    margin-right: 18px;
+    height: 32px;
+    align-items: center;
+  }
+  
+  .toggle-segment {
+    padding: 7px 18px;
+    border: none;
+    background: none;
+    color: #bbb;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    outline: none;
+    font-size: 14px;
+    height: 28px;
+    line-height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .toggle-segment.active {
+    background: rgba(42, 140, 147, 0.8);  
+    color: #fff;
+    font-weight: bold;
+  }
+  
+  .autofill-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0;
+    border-radius: 8px;
+    background: none;
+    border: none;
+    margin: 0 10px;
+  }
+  
+  .help-button {
+    background: none;
+    color: #bbb;
+    border: none;
+    font-size: 22px;
+    padding: 0 8px;
+    margin-left: 6px;
+    cursor: pointer;
+    transition: color 0.2s, box-shadow 0.2s;
+  }
+  
+  .help-button:hover {
+    color: #2ac0c7;
+    box-shadow: 0 0 6px #2ac0c7;
+  }
+  
+  .add-od-probe {
+    background: #388e3c;
+    color: #fff;
+    font-weight: bold;
+    margin-left: 6px;
+    transition: background 0.2s, color 0.2s;
+  }
+  
+  .add-od-probe:disabled {
+    background: #bbb;
+    color: #eee;
+    cursor: not-allowed;
+  }
+  
+  .add-od-probe-table {
+    background: #388e3c;
+    color: #fff;
+    font-weight: bold;
+    border-radius: 6px;
+    border: none;
+    padding: 4px 14px;
+    font-size: 15px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    transition: background 0.2s, color 0.2s;
+  }
+  
+  .add-od-probe-table:hover {
+    background: #2e7031;
+  }
+  
+  .add-od-row-wrapper {
+    position: absolute;
+    left: 0;
+    top: 100%;
+    margin-top: 8px;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: flex-start;
+    z-index: 2;
+  }
+  
+  .delete-od-row {
+    background: #f26b6b;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 2px 2px;
+    cursor: pointer;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    margin: 0 auto;
+    min-width: 0;
+  }
+  
+  .delete-od-row:hover {
+    background: #b71c1c;
+  }
+  
+  .disabled-measure {
+    background-color: #bbb !important;
+    color: #eee !important;
+    border: none !important;
+    cursor: not-allowed !important;
+    opacity: 0.7;
+  }
+  
+  .measure-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    /* cursor: pointer; */
+    cursor: not-allowed;
+    background: transparent;
+  }
+  
+  /* Add styles for scaling factor row */
+  .scaling-factor-row {
+    background: #23272e;
+  }
+  .scaling-factor-label {
+    background: #23272e;
+    color: #90caf9;
+    font-weight: 700;
+    border: 1px solid #444;
+    text-align: center;
+  }
+  .scaling-factor-cell {
+    background: #23272e;
+    color: #90caf9;
+    font-weight: 500;
+    border: 1px solid #444;
+    text-align: center;
+  }
+  
+  .auto-round {
+    border-radius: 50%;
+    width: 54px;
+    height: 54px;
+    min-width: 54px;
+    min-height: 54px;
+    max-width: 54px;
+    max-height: 54px;
+    padding: 0;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    background: #43a047;
+    color: #fff;
+    border: none;
+    box-shadow: 0 2px 8px rgba(67,160,71,0.08);
+    transition: background 0.2s, color 0.2s;
+  }
+  .auto-round:hover:not(:disabled) {
+    background: #388e3c;
+    color: #fff;
+  }
+  
+  .next-button {
+    min-width: 64px;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  
+  .od-zero-row th, .od-zero-row td {
+    font-weight: bold;
+    color: #fff;
   }
   </style>
   
