@@ -14,10 +14,12 @@ import asyncio
 
 @asynccontextmanager
 async def lifespan(app):
-    # Startup logic
+    try:
+        experiment_manager.main_event_loop = asyncio.get_running_loop()
+    except Exception as e:
+        logger.error(f"Error getting event loop: {e}")
     try:
         experiment_manager.connect_device()
-        experiment_manager.main_event_loop = asyncio.get_event_loop()
     except Exception as e:
         logger.error(f"Error connecting device: {e}")
     yield

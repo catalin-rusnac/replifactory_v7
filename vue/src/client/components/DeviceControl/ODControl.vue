@@ -135,12 +135,14 @@
                   v-if="idx < probeOdValues.length"
                   :value="tempProbeValues[idx] !== undefined ? tempProbeValues[idx] : probeOdValues[idx]"
                   @input="handleProbeValueInput($event, idx)"
-                  @blur="updateProbeValue(odValue, idx)"
-                  @keyup.enter="updateProbeValue(odValue, idx)"
+                  @blur="(e) => updateProbeValue(odValue, idx, e)"
+                  @keyup.enter="(e) => { e.preventDefault(); updateProbeValue(odValue, idx, e); }"
                   type="number"
                   step="0.1"
                   class="property-value"
-                  style="text-align: center;" />
+                  style="text-align: center;"
+                  :ref="'probeInput' + idx"
+                />
                 <input
                   v-else
                   :value="odValue"
@@ -492,20 +494,48 @@ function updateSignalValue(vial, odValue) {
     isAutofilling.value = false
   }
   
-  function updateProbeValue(odValue, idx) {
+  async function updateProbeValue(odValue, idx, event) {
     if (tempProbeValues.value[idx] !== undefined) {
-      probeOdValues.value[idx] = tempProbeValues.value[idx]
-      delete tempProbeValues.value[idx]
+      const newValue = tempProbeValues.value[idx];
+      // Check if newValue already exists in probeOdValues (excluding current idx)
+      const exists = probeOdValues.value.some((v, i) => i !== idx && parseFloat(v) === parseFloat(newValue));
+      let proceed = true;
+      if (exists) {
+        proceed = await openDialog({
+          title: 'Duplicate OD Value',
+          message: `An OD probe value of ${newValue} already exists. Are you sure you want to overwrite?`,
+          showCancel: true
+        });
+      }
+      if (!proceed) {
+        // Reset temp value and do not update
+        delete tempProbeValues.value[idx];
+        // Refocus the input if event is available
+        if (event && event.target) {
+          setTimeout(() => {
+            event.target.focus();
+          }, 0);
+        }
+        return;
+      }
+      // Store the value to refocus after update
+      const valueToRefocus = newValue;
+      probeOdValues.value[idx] = newValue;
+      delete tempProbeValues.value[idx];
       for (let vial in ods.value.calibration) {
-        console.log("changing od value for vial", vial, "from", odValue, "to", probeOdValues.value[idx])  
-        console.log("old_calibration", ods.value.calibration[vial])
         const old_calibration = ods.value.calibration[vial]
         const new_calibration = JSON.parse(JSON.stringify(old_calibration))
         delete new_calibration[odValue]
         new_calibration[probeOdValues.value[idx]] = old_calibration[odValue]
-        console.log("new_calibration", new_calibration)
-        deviceStore.setPartCalibrationAction({ devicePart: 'ods', partIndex: vial, newCalibration: new_calibration })
+        await deviceStore.setPartCalibrationAction({ devicePart: 'ods', partIndex: vial, newCalibration: new_calibration })
       }
+      // After update, find the new index and refocus
+      setTimeout(() => {
+        const newIdx = probeOdValues.value.findIndex(v => parseFloat(v) === parseFloat(valueToRefocus));
+        const refName = 'probeInput' + newIdx;
+        const input = refs[refName] || (Array.isArray(refs[refName]) ? refs[refName][0] : null);
+        if (input) input.focus();
+      }, 0);
     }
   }
   

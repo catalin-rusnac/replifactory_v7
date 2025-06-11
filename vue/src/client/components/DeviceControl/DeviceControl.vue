@@ -41,6 +41,7 @@ import ODControl from './ODControl.vue';
 import LEDControl from "./LEDControl.vue";
 import DeviceConfigs from "./DeviceConfigs.vue";
 import { useDialog } from '@/client/composables/useDialog'
+import { toast } from 'vue3-toastify';
 
 const deviceStore = useDeviceStore()
 const {
@@ -67,10 +68,12 @@ async function onReconnectClick() {
   const result = await openDialog({
     title: 'Reconnect Device?',
     message: 'Are you sure you want to reconnect the device?',
-    showCancel: true
   })
-  if (result === 'yes') {
+  if (result) {
+    toast.success('Reconnecting device...')
     deviceStore.connectDevice()
+  } else {
+    toast.error('Reconnect cancelled')
   }
 }
 

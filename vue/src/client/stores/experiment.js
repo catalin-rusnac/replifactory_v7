@@ -118,7 +118,10 @@ export const useExperimentStore = defineStore('experiment', {
         console.log('WebSocket already connected');
         return;
       }
-      this.ws = new WebSocket('ws://localhost:5000/ws');
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsHost = window.location.host;
+      const wsPath = '/api/ws';
+      this.ws = new WebSocket(`${wsProtocol}//${wsHost}${wsPath}`);
       this.ws.onopen = () => {
         console.log('WebSocket connected');
       };

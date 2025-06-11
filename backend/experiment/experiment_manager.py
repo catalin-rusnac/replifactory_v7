@@ -300,6 +300,7 @@ class ExperimentManager:
 
     def emit_ws_message(self, message):
         future = asyncio.run_coroutine_threadsafe(self.broadcast(message), self.main_event_loop)
+        logger.info(f"Emitting ws message: {message}")
         def log_if_exception(fut):
             try:
                 fut.result()
