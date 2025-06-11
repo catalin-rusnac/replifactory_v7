@@ -169,6 +169,7 @@ class OdSensor:
             blank_bounds = (blank_signal - 0.00001, blank_signal + 0.00001)
         except:
             logger.info(f"no 0.0 in calibration for vial {self.vial_number}, using default bounds")
+            blank_signal = 50
             blank_bounds = (0.5, 200)
 
         if len(calibration_mv.shape)==1:
