@@ -39,7 +39,18 @@
               </tr>
               <tr>
                 <th class="state-row-label" style="position: relative;">
-                  <button class="control-button measure-inline" @click=measureAllODSignals :disabled="!editMode || isRemeasuring" :class="{ 'disabled-measure': !editMode }">
+                  <button class="control-button measure-inline" 
+                    @click=measureAllODSignals 
+                    :disabled="isRemeasuring || currentMode !== TABLE_MODES.MEASURE" 
+                    :class="{ 'disabled-measure': currentMode !== TABLE_MODES.MEASURE }"
+                    :title="highlightMode === 'diagonal' 
+                      ? `Measure Diagonal ${highlightIndex + 1}: ${vials.map((vial, idx) => {
+                          const odValue = getHighlightedOdValue(vial);
+                          return `Vial ${vial} (OD ${parseFloat(odValue).toFixed(2)})`;
+                        }).join(', ')}`
+                      : `Measure OD ${parseFloat(allOdValues[highlightIndex]).toFixed(2)}: ${vials.map(vial => 
+                          `Vial ${vial}`
+                        ).join(', ')}`">
                     <span v-if="isRemeasuring">
                       <span class="loading-spinner"></span> Measuring...
                     </span>
@@ -48,7 +59,7 @@
                       {{ highlightMode === 'diagonal' ? 'Measure Diagonal ' + (highlightIndex + 1) : 'Measure OD ' + allOdValues[highlightIndex] + ' signals' }}
                     </span>
                   </button>
-                  <div v-if="!editMode" class="measure-overlay" @click="toast.error('Enable edit mode to measure calibration signals')"></div>
+                  <div v-if="currentMode !== TABLE_MODES.MEASURE" class="measure-overlay" @click="toast.error('Enable measure mode to measure calibration signals')"></div>
                 </th>
                 <td v-for="(vial, idx) in vials" :key="'signal-' + vial" class="state-signal-cell"
                     :class="{'highlighted': isHighlightedCell(getHighlightedOdValue(vial), vial)}"
@@ -94,10 +105,15 @@
             </button>
           </div>
           <div style="flex:1"></div>
-          <button class="control-button mode-toggle" :class="{ 'edit-on': editMode }" @click="editMode = !editMode">
-            <v-icon>{{ editMode ? 'mdi-pencil' : 'mdi-pencil-outline' }}</v-icon>
-            Edit
-          </button>
+          <div class="mode-controls">
+            <button 
+              class="control-button mode-toggle" 
+              :class="{ 'active': currentMode === TABLE_MODES.MEASURE }"
+              @click="currentMode = currentMode === TABLE_MODES.MEASURE ? TABLE_MODES.VIEW : TABLE_MODES.MEASURE">
+              <v-icon>mdi-camera-metering-center</v-icon>
+              Measure Mode
+            </button>
+          </div>
           <button class="control-button help-button" @click="openODGuide">
             <v-icon>mdi-help-circle-outline</v-icon>
           </button>
@@ -158,31 +174,61 @@
                     'diagonal-cell': isHighlightedCell(odValue, vial)
                   }"
                   :style="{ 'background': isHighlightedCell(odValue, vial) ? 'rgba(100, 149, 237, 0.15)' : getSignalBackgroundStyle(vial, odValue).background }">
-                <template v-if="editMode">
-                  <input 
-                    :value="getCalibrationInputValue(vial, odValue)"
-                    @input="handleSignalInput($event, vial, odValue)"
-                    @blur="updateSignalValue(vial, odValue)"
-                    @keyup.enter="updateSignalValue(vial, odValue)"
-                    type="number" 
-                    class="calibration-signal" />
-                </template>
-                <template v-else>
+                <!-- View Mode -->
+                <template v-if="currentMode === TABLE_MODES.VIEW">
                   <span v-if="ods.calibration && ods.calibration[vial] && ods.calibration[vial][odValue] !== undefined" class="signal-value">
                     {{ parseFloat(ods.calibration[vial][odValue]).toFixed(2) }}mV
                   </span>
-                  <span v-else>
-                    <!-- Removed the little measure button as requested -->
-                  </span>
+                </template>
+                
+                <!-- Measure Mode -->
+                <template v-else-if="currentMode === TABLE_MODES.MEASURE">
+                  <div class="measure-cell-container">
+                    <span v-if="ods.calibration && ods.calibration[vial] && ods.calibration[vial][odValue] !== undefined" 
+                          class="signal-value measure-background-value"
+                          @dblclick="startEditing(vial, odValue)"
+                          title="Double click to edit">
+                      {{ parseFloat(ods.calibration[vial][odValue]).toFixed(2) }}mV
+                    </span>
+                    <span v-else
+                          class="signal-value measure-background-value empty-value"
+                          @dblclick="startEditing(vial, odValue)"
+                          title="Double click to edit">
+                      ———
+                    </span>
+                    <input v-if="editingCell && editingCell.vial === vial && editingCell.odValue === odValue"
+                           :value="getCalibrationInputValue(vial, odValue)"
+                           @input="handleSignalInput($event, vial, odValue)"
+                           @blur="finishEditing(vial, odValue)"
+                           @keyup.enter="finishEditing(vial, odValue)"
+                           @keyup.esc="cancelEditing"
+                           type="number" 
+                           class="calibration-signal"
+                           ref="editingInput" />
+                    <button 
+                      class="measure-cell-button"
+                      @click="handleCellMeasure(vial, odValue)"
+                      :disabled="isRemeasuring"
+                      :title="`Measure signal in vial ${vial} for OD ${parseFloat(odValue).toFixed(2)}`">
+                      <span v-if="isRemeasuring" class="measure-button-content">
+                        <span class="loading-spinner"></span>
+                      </span>
+                      <span v-else class="measure-button-content">
+                        <v-icon>mdi-camera-metering-center</v-icon>
+                      </span>
+                    </button>
+                  </div>
                 </template>
               </td>
-              <td v-if="editMode" style="text-align: center; width: 36px; padding: 4px;">
+              <!-- Delete button column - visible in measure mode -->
+              <td v-if="currentMode === TABLE_MODES.MEASURE" style="text-align: center; width: 36px; padding: 4px;">
                 <button class="delete-od-row" @click="deleteODRow(idx)" :disabled="deletingRows.has(allOdValues[idx])">
                   <v-icon>mdi-delete</v-icon>
                 </button>
               </td>
             </tr>
-            <tr v-if="editMode">
+            <!-- Add row button - visible in measure mode -->
+            <tr v-if="currentMode === TABLE_MODES.MEASURE">
               <td>
                 <button class="add-od-probe-table" @click="addODProbe">
                   <v-icon>mdi-plus</v-icon> Add
@@ -203,7 +249,7 @@
   </template>
   
   <script setup>
-  import { ref, computed, watch, onMounted } from 'vue'
+  import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
   import { storeToRefs } from 'pinia'
   import { useDeviceStore } from '../../stores/device'
   import ODChart from './ODChart.vue'
@@ -284,14 +330,39 @@
 
   onMounted(() => {
     deviceStore.fetchDeviceData();
+    // Add document click handler
+    document.addEventListener('click', handleDocumentClick);
   });
 
+  onUnmounted(() => {
+    // Remove document click handler
+    document.removeEventListener('click', handleDocumentClick);
+  });
+
+  function handleDocumentClick(event) {
+    // If we're editing and the click is outside the input
+    if (editingCell.value && !event.target.closest('.calibration-signal')) {
+      finishEditing(editingCell.value.vial, editingCell.value.odValue);
+    }
+  }
+
   async function handleOdClick(odIndex) {
-    await deviceStore.measureDevicePart({
-      devicePart: "ods",
-      partIndex: odIndex,
-    })
-    await deviceStore.fetchDeviceData()
+    try {
+      const result = await deviceStore.measureDevicePart({
+        devicePart: "ods",
+        partIndex: odIndex,
+      });
+
+      if (!result || result.error) {
+        throw new Error(result?.error || 'Measurement failed');
+      }
+
+      await deviceStore.fetchDeviceData();
+    } catch (error) {
+      console.error('Error measuring OD:', error);
+      toast.error(error.message || 'Failed to measure OD. Please try again.');
+      throw error;
+    }
   }
   
   function handleSignalInput(event, vial, odValue) {
@@ -476,7 +547,7 @@ function updateSignalValue(vial, odValue) {
         }
       }
       if (blank === null) {
-        blank = 500;
+        blank = null;
       }
       newCalibration[vial] = {};
       newCalibration[vial]["0"] = blank;
@@ -497,45 +568,50 @@ function updateSignalValue(vial, odValue) {
   async function updateProbeValue(odValue, idx, event) {
     if (tempProbeValues.value[idx] !== undefined) {
       const newValue = tempProbeValues.value[idx];
+      
       // Check if newValue already exists in probeOdValues (excluding current idx)
       const exists = probeOdValues.value.some((v, i) => i !== idx && parseFloat(v) === parseFloat(newValue));
-      let proceed = true;
+      
       if (exists) {
-        proceed = await openDialog({
+        const proceed = await openDialog({
           title: 'Duplicate OD Value',
           message: `An OD probe value of ${newValue} already exists. Are you sure you want to overwrite?`,
           showCancel: true
         });
-      }
-      if (!proceed) {
-        // Reset temp value and do not update
-        delete tempProbeValues.value[idx];
-        // Refocus the input if event is available
-        if (event && event.target) {
-          setTimeout(() => {
-            event.target.focus();
-          }, 0);
+        
+        if (!proceed) {
+          // Reset temp value and do not update
+          delete tempProbeValues.value[idx];
+          return;
         }
-        return;
       }
-      // Store the value to refocus after update
-      const valueToRefocus = newValue;
+
+      // Update the probe value
       probeOdValues.value[idx] = newValue;
       delete tempProbeValues.value[idx];
-      for (let vial in ods.value.calibration) {
-        const old_calibration = ods.value.calibration[vial]
-        const new_calibration = JSON.parse(JSON.stringify(old_calibration))
-        delete new_calibration[odValue]
-        new_calibration[probeOdValues.value[idx]] = old_calibration[odValue]
-        await deviceStore.setPartCalibrationAction({ devicePart: 'ods', partIndex: vial, newCalibration: new_calibration })
+
+      // Update calibration data for all vials
+      try {
+        for (let vial in ods.value.calibration) {
+          const old_calibration = ods.value.calibration[vial];
+          const new_calibration = JSON.parse(JSON.stringify(old_calibration));
+          
+          // Only update if the old value exists
+          if (old_calibration[odValue] !== undefined) {
+            delete new_calibration[odValue];
+            new_calibration[newValue] = old_calibration[odValue];
+            
+            await deviceStore.setPartCalibrationAction({ 
+              devicePart: 'ods', 
+              partIndex: vial, 
+              newCalibration: new_calibration 
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error updating calibration:', error);
+        toast.error('Failed to update calibration values');
       }
-      // After update, find the new index and refocus
-      setTimeout(() => {
-        const newIdx = probeOdValues.value.findIndex(v => parseFloat(v) === parseFloat(valueToRefocus));
-        const refName = 'probeInput' + newIdx;
-        const input = refs[refName] || (Array.isArray(refs[refName]) ? refs[refName][0] : null);
-        if (input) input.focus();
-      }, 0);
     }
   }
   
@@ -620,13 +696,11 @@ function updateSignalValue(vial, odValue) {
 
   async function addODProbe() {
     const newOD = getNextODValue();
-    // Add the new OD value to all vials in the calibration dict
-    for (const vial of vials) {
-      if (!ods.value.calibration[vial]) ods.value.calibration[vial] = {};
-      ods.value.calibration[vial][newOD] = 0; // Default signal value
-      // Update backend for each vial
-      await deviceStore.setPartCalibrationAction({ devicePart: 'ods', partIndex: vial, newCalibration: ods.value.calibration[vial] });
-    }
+    // Add the new OD value only to vial 1
+    if (!ods.value.calibration[1]) ods.value.calibration[1] = {};
+    ods.value.calibration[1][newOD] = 0; // Default signal value
+    // Update backend for vial 1
+    await deviceStore.setPartCalibrationAction({ devicePart: 'ods', partIndex: 1, newCalibration: ods.value.calibration[1] });
     await deviceStore.fetchDeviceData();
   }
   
@@ -641,6 +715,89 @@ function updateSignalValue(vial, odValue) {
     }
     await deviceStore.fetchDeviceData();
     deletingRows.value.delete(odToDelete);
+  }
+  
+  // Replace the TypeScript code with JavaScript version
+  const TABLE_MODES = {
+    VIEW: 'view',
+    MEASURE: 'measure'
+  };
+
+  // Replace the editMode ref with a mode ref
+  const currentMode = ref(TABLE_MODES.VIEW);
+
+  // Add a computed property for mode-specific classes
+  const modeClasses = computed(() => ({
+    'view-mode': currentMode.value === TABLE_MODES.VIEW,
+    'measure-mode': currentMode.value === TABLE_MODES.MEASURE
+  }));
+
+  // Add a function to handle cell clicks in measure mode
+  async function handleCellMeasure(vial, odValue) {
+    if (currentMode.value !== TABLE_MODES.MEASURE) return;
+    
+    try {
+      const result = await deviceStore.measureDevicePart({
+        devicePart: "ods",
+        partIndex: vial - 1, // Convert vial number to 0-based index
+      });
+      
+      if (!result || result.error) {
+        throw new Error(result?.error || 'Measurement failed');
+      }
+      
+      // Update the calibration value with the new measurement
+      if (!ods.value.calibration[vial]) {
+        ods.value.calibration[vial] = {};
+      }
+      
+      const newSignal = ods.value.odsignals[vial - 1];
+      if (newSignal !== undefined) {
+        await deviceStore.updateODCalibrationValueAction({
+          od: odValue,
+          vial: vial,
+          newValue: newSignal
+        });
+      }
+      
+      await deviceStore.fetchDeviceData();
+    } catch (error) {
+      console.error('Error measuring cell:', error);
+      toast.error(error.message || 'Failed to measure signal. Please try again.');
+      throw error; // Re-throw to ensure the error is propagated
+    }
+  }
+  
+  const editingCell = ref(null);
+  const editingInput = ref(null);
+
+  function startEditing(vial, odValue) {
+    editingCell.value = { vial, odValue };
+    // Wait for the input to be rendered before focusing
+    nextTick(() => {
+      const input = document.querySelector('.calibration-signal');
+      if (input) {
+        input.focus();
+      }
+    });
+  }
+
+  function finishEditing(vial, odValue) {
+    if (tempCalibrationValues.value[vial] && tempCalibrationValues.value[vial][odValue] !== undefined) {
+      updateSignalValue(vial, odValue);
+    }
+    editingCell.value = null;
+  }
+
+  function cancelEditing() {
+    editingCell.value = null;
+    // Reset any temporary values
+    if (editingCell.value) {
+      const { vial, odValue } = editingCell.value;
+      if (tempCalibrationValues.value[vial]) {
+        delete tempCalibrationValues.value[vial][odValue];
+      }
+    }
   }
   
   </script>
@@ -794,7 +951,12 @@ function updateSignalValue(vial, odValue) {
     text-align: center;
     padding: 5px;
     border-radius: 4px;
-    border: 1px solid #ccc;
+    border: 1px solid #444;
+    background: rgba(52, 52, 52, 0.9);
+    color: #fff;
+    position: absolute;
+    left: 4px;
+    z-index: 3;
   }
   
   .measure-button {
@@ -1026,11 +1188,11 @@ function updateSignalValue(vial, odValue) {
   }
   
   .icon-button.mode-toggle {
-    background-color: rgba(150, 150, 150, 0.8);
+    background-color: rgba(52, 52, 52, 0.8);
   }
   
   .icon-button.mode-toggle:hover {
-    background-color: rgba(150, 150, 150, 1);
+    background-color: rgba(76, 76, 76, 0.9);
   }
   
   .table-controls {
@@ -1071,11 +1233,30 @@ function updateSignalValue(vial, odValue) {
   }
   
   .control-button.mode-toggle {
-    background-color: rgba(150, 150, 150, 0.8);
+    background-color: rgba(52, 52, 52, 0.8);
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
   
   .control-button.mode-toggle:hover {
-    background-color: rgba(150, 150, 150, 1);
+    background-color: rgba(76, 76, 76, 0.9);
+  }
+  
+  .control-button.mode-toggle.active {
+    background-color: #2196f3;
+    font-weight: bold;
+  }
+  
+  .control-button.mode-toggle.active:hover {
+    background-color: #1976d2;
   }
   
   /* Make calibration table OD value styling match state table */
@@ -1125,13 +1306,6 @@ function updateSignalValue(vial, odValue) {
   label {
     font-size: 14px;
     color: rgba(255, 255, 255, 0.8);
-  }
-  
-  .control-button.mode-toggle.edit-on {
-    background-color: #2196f3;
-    color: #fff;
-    border: 2px solid #2196f3;
-    font-weight: bold;
   }
   
   .segmented-toggle {
@@ -1333,6 +1507,70 @@ function updateSignalValue(vial, odValue) {
   .od-zero-row th, .od-zero-row td {
     font-weight: bold;
     color: #fff;
+  }
+  
+  .mode-controls {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 15px;
+  }
+  
+  .measure-cell-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .measure-background-value {
+    position: absolute;
+    color: rgba(200, 200, 200, 0.4);
+    z-index: 1;
+    left: 1px;
+  }
+  
+  .measure-cell-button {
+    position: relative;
+    background: rgba(168, 92, 92, 0.6);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    width: 28px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    z-index: 2;
+    margin-left: auto;
+  }
+  
+  .measure-button-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .measure-cell-button:hover:not(:disabled) {
+    background: rgba(168, 92, 92, 0.8);
+  }
+  
+  .measure-cell-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  .empty-value {
+    color: rgba(200, 200, 200, 0.3);
+    cursor: pointer;
+    letter-spacing: 2px;
+  }
+  
+  .empty-value:hover {
+    color: rgba(200, 200, 200, 0.5);
   }
   </style>
   
