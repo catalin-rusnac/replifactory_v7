@@ -47,11 +47,15 @@ export const useDeviceStore = defineStore('device', {
         const response = await api.post(`/set-${devicePart}-state`, { partIndex, newState, input })
         if (response.data.success) {
           await this.fetchDeviceData()
+          return response.data
         } else {
-          this.errorMessage = `Failed to set ${devicePart} state.`
+          const error = new Error(response.data.message || `Failed to set ${devicePart} state.`)
+          this.errorMessage = error.message
+          throw error
         }
       } catch (error) {
-        this.errorMessage = `Failed to set ${devicePart} state.`
+        this.errorMessage = `Failed to set ${devicePart} state: ${error.message}`
+        throw error
       }
     },
     async setLedColor(vial, red, green, blue) {
