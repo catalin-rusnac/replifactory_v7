@@ -47,15 +47,19 @@ from logger.logger import logger
 
 def BeerLambertScaled(sig, blank, scaling):
     """convert signal to optical density using Beer-Lambert law and scaling factor"""
-    if blank == 0:
-        blank = 0.00001
-    return -np.log10(sig / blank) * scaling
+    try:
+        return -np.log10(sig / blank) * scaling
+    except:
+        logger.error(f"error converting signal {sig} to od with blank {blank} and scaling {scaling}")
+        return 0
 
 def BeerLambertScaledInverse(od, blank, scaling):
     """convert optical density to signal using Beer-Lambert law and scaling factor"""
-    if blank == 0:
-        blank = 0.00001
-    return blank * 10**(-od / scaling)
+    try:
+        return blank * 10**(-od / scaling)
+    except:
+        logger.error(f"error converting od {od} to signal with blank {blank} and scaling {scaling}")
+        return 0
 
 
 class OdSensor:
