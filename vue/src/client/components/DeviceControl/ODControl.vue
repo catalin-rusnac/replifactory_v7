@@ -629,7 +629,7 @@ function updateSignalValue(vial, odValue) {
     try {
       const result = await deviceStore.measureDevicePart({
         devicePart: "ods",
-        partIndex: vial - 1, // Convert vial number to 0-based index
+        partIndex: vial, // Convert vial number to 0-based index
       });
       
       // The measurement succeeded if we got here
