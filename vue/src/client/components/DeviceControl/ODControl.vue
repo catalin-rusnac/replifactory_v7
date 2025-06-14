@@ -285,7 +285,7 @@
     try {
       const result = await deviceStore.measureDevicePart({
         devicePart: "ods",
-        partIndex: odIndex+1
+        partIndex: odIndex
       });
       await deviceStore.fetchDeviceData();
     } catch (error) {
@@ -632,8 +632,6 @@ function updateSignalValue(vial, odValue) {
         partIndex: vial, // Convert vial number to 0-based index
       });
       
-      // The measurement succeeded if we got here
-      
       // Update the calibration value with the new measurement
       if (!ods.value.calibration[vial]) {
         ods.value.calibration[vial] = {};
@@ -641,6 +639,7 @@ function updateSignalValue(vial, odValue) {
       
       const newSignal = ods.value.odsignals[vial - 1];
       if (newSignal !== undefined) {
+        // Always update the calibration value with the new measurement
         await deviceStore.updateODCalibrationValueAction({
           od: odValue,
           vial: vial,
