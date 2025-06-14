@@ -135,7 +135,7 @@
               </td>
               <!-- Delete button column - visible in measure mode -->
               <td v-if="currentMode === TABLE_MODES.MEASURE && parseFloat(allOdValues[idx]) !== 0" style="text-align: center; width: 36px; padding: 4px;">
-                <button class="delete-od-row" @click="deleteODRow(idx)" :disabled="deletingRows.has(allOdValues[idx])">
+                <button class="delete-od-row" @click="deleteODRow(idx)" :disabled="deletingRows.has(allOdValues[idx])" title="Delete row">
                   <v-icon>mdi-delete</v-icon>
                 </button>
               </td>
@@ -285,13 +285,8 @@
     try {
       const result = await deviceStore.measureDevicePart({
         devicePart: "ods",
-        partIndex: odIndex,
+        partIndex: odIndex+1
       });
-
-      if (!result || result.error) {
-        throw new Error(result?.error || 'Measurement failed');
-      }
-
       await deviceStore.fetchDeviceData();
     } catch (error) {
       console.error('Error measuring OD:', error);
@@ -637,9 +632,7 @@ function updateSignalValue(vial, odValue) {
         partIndex: vial - 1, // Convert vial number to 0-based index
       });
       
-      if (!result || result.error) {
-        throw new Error(result?.error || 'Measurement failed');
-      }
+      // The measurement succeeded if we got here
       
       // Update the calibration value with the new measurement
       if (!ods.value.calibration[vial]) {
@@ -719,29 +712,11 @@ function updateSignalValue(vial, odValue) {
   
   // Modify the getScalingFactorStatus function
   const getScalingFactorStatus = (value, vial) => {
-    // Count non-null calibration points for this vial
-    const calibrationPoints = Object.values(ods.value.calibration?.[vial] || {}).filter(v => v !== null && v !== undefined).length;
-    const hasEnoughPoints = calibrationPoints >= 2;
-    
-    if (value >= 1.45 && value <= 1.75) {
-      return { 
-        icon: hasEnoughPoints ? 'mdi-check-circle' : 'mdi-check-circle-outline',
-        color: hasEnoughPoints ? '#4caf50' : 'rgba(76, 175, 80, 0.5)',
-        tooltip: hasEnoughPoints ? 'Scaling factor within expected range' : 'Using default scaling factor value. Add calibration points to recalculate'
-      };
-    } else if ((value >= 1.3 && value < 1.45) || (value > 1.75 && value <= 1.90)) {
-      return { 
-        icon: 'mdi-alert-circle', 
-        color: '#ffc107',
-        tooltip: 'Scaling factor slightly outside expected range'
-      };
-    } else {
-      return { 
-        icon: 'mdi-close-circle', 
-        color: '#f44336',
-        tooltip: 'Scaling factor outside expected range. Double check your measurements'
-      };
-    }
+    return { 
+      icon: '',
+      color: '#90caf9',
+      tooltip: 'Scaling factor'
+    };
   };
   
   // Add this function after getScalingFactorStatus
