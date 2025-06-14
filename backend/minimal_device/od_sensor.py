@@ -47,10 +47,14 @@ from logger.logger import logger
 
 def BeerLambertScaled(sig, blank, scaling):
     """convert signal to optical density using Beer-Lambert law and scaling factor"""
+    if blank == 0:
+        blank = 0.00001
     return -np.log10(sig / blank) * scaling
 
 def BeerLambertScaledInverse(od, blank, scaling):
     """convert optical density to signal using Beer-Lambert law and scaling factor"""
+    if blank == 0:
+        blank = 0.00001
     return blank * 10**(-od / scaling)
 
 
@@ -187,7 +191,7 @@ class OdSensor:
         calibration_mv_err += 0.01  # allows curve fit with single measurements
         # coefficients for fitting beer lambert scaled are blank and scaling factor
         # blank bounds are 0.5-200, scaling factor bounds are 1-3
-        # initial guess is 50mV for blank and 1.6 for scaling factor
+        # initial guess is 50mV for blank and 1.0 for scaling factor
         
         
         coefs, _ = curve_fit(
@@ -195,7 +199,7 @@ class OdSensor:
             calibration_od,
             calibration_mv,
             maxfev=5000,
-            p0=(blank_signal, 1.6),
+            p0=(blank_signal, 1.0),
             bounds=[(blank_bounds[0], 0.1), (blank_bounds[1], 5)],
             sigma=calibration_mv_err,
         )
