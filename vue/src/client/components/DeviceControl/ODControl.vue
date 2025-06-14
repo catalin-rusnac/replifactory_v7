@@ -503,50 +503,6 @@ function updateSignalValue(vial, odValue) {
     console.log("handleProbeValueInput", event.target.value)
     tempProbeValues.value[idx] = parseFloat(event.target.value)
   }
-
-  async function saveCalibration() {
-      try {
-        await deviceStore.saveCalibrationToBackend();
-        console.log('Device calibration saved successfully');
-      } catch (error) {
-        console.error('Error saving device calibration:', error);
-        // Show a more user-friendly error message
-        const errorMessage = typeof error === 'string' ? error : 
-                           error.response?.data?.message || 
-                           error.message || 
-                           'Failed to save calibration. Please try again.';
-        alert('Failed to save calibration: ' + errorMessage);
-      }
-    }
-    
-    
-    function onFileSelected(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try {
-          const data = JSON.parse(e.target.result);
-          
-          // Check if we have proper calibration data
-          if (!data.calibration) {
-            throw new Error('Invalid calibration format: missing calibration data');
-          }
-          
-          // Set the calibration data in our local state first
-          ods.value.calibration = { ...data.calibration };
-          
-          // Then update the calibration curves
-          await deviceStore.setAllODCalibrationsAction(data.calibration);
-          
-        } catch (error) {
-          console.error('Error parsing calibration file:', error);
-          alert('Invalid calibration file format: ' + error.message);
-        }
-      };
-      reader.readAsText(file);
-    }
   
   function openODGuide() {
     showODGuide.value = true;
@@ -554,21 +510,6 @@ function updateSignalValue(vial, odValue) {
   
   function closeODGuide() {
     showODGuide.value = false;
-  }
-  
-  async function clearTable() {
-    const confirmed = await openDialog({
-      title: 'Clear Calibration Table',
-      message: 'Are you sure you want to clear all calibration values? This action cannot be undone unless you saved a checkpoint.',
-      showCancel: true
-    });
-    if (confirmed) {
-      // Clear all calibration values for all vials
-      for (const vial in ods.value.calibration) {
-        deviceStore.setPartCalibrationAction({ devicePart: 'ods', partIndex: vial, newCalibration: {} });
-      }
-      await deviceStore.fetchDeviceData();
-    }
   }
   
   function getNextODValue() {
@@ -624,34 +565,27 @@ function updateSignalValue(vial, odValue) {
 
   // Add a function to handle cell clicks in measure mode
   async function handleCellMeasure(vial, odValue) {
-    if (currentMode.value !== TABLE_MODES.MEASURE) return;
-    
     try {
-      const result = await deviceStore.measureDevicePart({
-        devicePart: "ods",
-        partIndex: vial, // Convert vial number to 0-based index
+      // First measure the signal
+      await deviceStore.measureDevicePart({
+        devicePart: 'ods',
+        partIndex: vial
       });
+
+      // Get the new signal value from the ods ref
+      const newSignal = ods.value.odsignals[vial];
       
       // Update the calibration value with the new measurement
-      if (!ods.value.calibration[vial]) {
-        ods.value.calibration[vial] = {};
-      }
-      
-      const newSignal = ods.value.odsignals[vial - 1];
-      if (newSignal !== undefined) {
-        // Always update the calibration value with the new measurement
-        await deviceStore.updateODCalibrationValueAction({
-          od: odValue,
-          vial: vial,
-          newValue: newSignal
-        });
-      }
-      
+      await deviceStore.updateODCalibrationValueAction({
+        od: odValue,
+        vial: vial,
+        newValue: newSignal
+      });
+
+      // Refresh the device data to show the updated values
       await deviceStore.fetchDeviceData();
     } catch (error) {
       console.error('Error measuring cell:', error);
-      toast.error(error.message || 'Failed to measure signal. Please try again.');
-      throw error; // Re-throw to ensure the error is propagated
     }
   }
   
