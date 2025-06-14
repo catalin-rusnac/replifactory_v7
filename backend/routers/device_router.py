@@ -244,3 +244,17 @@ def stirrer_test(device: BaseDevice = Depends(get_device)):
     device.stirrers.get_all_calibration_curves()
     data = device.device_data["stirrers"]["speed_profiles"]
     return {"success": True, "speed_profiles": data}
+
+@router.post("/set-valve-duty-cycle-open")
+def set_valve_duty_cycle(payload: dict, device: BaseDevice = Depends(get_device)):
+    valve = payload['valve']
+    duty_cycle = payload['duty_cycle']
+    device.valves.set_duty_cycle_open(valve, duty_cycle)
+    return {"success": True}
+
+@router.post("/set-valve-duty-cycle-closed")
+def set_valve_duty_cycle_closed(payload: dict, device: BaseDevice = Depends(get_device)):
+    valve = payload['valve']
+    duty_cycle = payload['duty_cycle']
+    device.valves.set_duty_cycle_closed(valve, duty_cycle)
+    return {"success": True}

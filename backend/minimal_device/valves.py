@@ -15,12 +15,46 @@ class Valves:
 
     def connect(self):
         self.set_frequency_multiplier()
+        print("setting duty cycle open and closed")
+        self.set_default_duty_cycle_open_all()
+        self.set_default_duty_cycle_closed_all()
         for valve in range(1, 8):
+            self.set_duty_cycle_open(valve)
+            self.set_duty_cycle_closed(valve)
             if self.device.device_data["valves"]["states"][valve] == "open":
                 self.open(valve)
             elif self.device.device_data["valves"]["states"][valve] == "closed":
                 self.close(valve)
-
+    
+    def set_duty_cycle_open(self, valve, duty_cycle=None):
+        # change the default value of duty_cycle_open and save device config to eeprom
+        if duty_cycle is None:
+            if "duty_cycle_open" not in self.device.device_data["valves"]:
+                duty_cycle = self.DUTY_CYCLE_OPEN
+                self.device.device_data["valves"]["duty_cycle_open"] = {vial: duty_cycle for vial in range(1, 8)}
+                #save to eeprom
+                self.device.eeprom.save_config_to_eeprom()
+            duty_cycle = self.device.device_data["valves"]["duty_cycle_open"][valve]
+        else:
+            self.device.device_data["valves"]["duty_cycle_open"][valve] = duty_cycle
+            self.device.eeprom.save_config_to_eeprom()
+        self.DUTY_CYCLE_OPEN = duty_cycle
+    
+    def set_duty_cycle_closed(self, valve, duty_cycle=None):
+        # change the default value of duty_cycle_closed and save device config to eeprom
+        if duty_cycle is None:
+            if "duty_cycle_closed" not in self.device.device_data["valves"]:
+                duty_cycle = self.DUTY_CYCLE_CLOSED
+                self.device.device_data["valves"]["duty_cycle_closed"] = {vial: duty_cycle for vial in range(1, 8)}
+                #save to eeprom
+                self.device.eeprom.save_config_to_eeprom()
+            duty_cycle = self.device.device_data["valves"]["duty_cycle_closed"][valve]
+        else:
+            self.device.device_data["valves"]["duty_cycle_closed"][valve] = duty_cycle
+            self.device.eeprom.save_config_to_eeprom()
+        self.DUTY_CYCLE_CLOSED = duty_cycle
+    
+    
     def set_frequency_multiplier(self, frequency_multiplier=None):
         if frequency_multiplier is None:
             if "frequency_multiplier" not in self.device.device_data:

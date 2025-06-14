@@ -214,6 +214,11 @@ class BaseDevice:
         except Exception as e:
             warnings.warn(f"Failed to connect eeprom: {e}")
 
+        try:
+            self.valves.connect()
+        except Exception as e:
+            warnings.warn(f"Failed to connect valves: {e}")
+
         self.dilution_worker = QueueWorker(device=self, worker_name="dilution")
         self.od_worker = QueueWorker(device=self, worker_name="od")
         self.hard_stop_trigger = False
@@ -327,7 +332,6 @@ class BaseDevice:
         self.pwm_controller.play_turn_on_sound()
         self.lasers.blink()
         self.rgb_leds.blink_hello()
-        self.valves.connect()
         logger.info("Said hello from device")
     
     def hello_quick(self):

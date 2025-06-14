@@ -9,7 +9,7 @@
       }"
       v-for="i in 7"
       :key="i"
-      @click="toggleValve(i)"
+      @click="handleValveClick(i, $event)"
       :disabled="togglingValves[i]"
     >
       <!-- Conditionally render spinner or valve number -->
@@ -17,12 +17,22 @@
       <span v-else>Valve {{i}}</span>
     </button>
   </div>
+
+  <!-- Add ValveCalibration dialog -->
+  <v-dialog v-model="showCalibration" max-width="600">
+    <ValveCalibration
+      v-if="showCalibration"
+      :valveId="selectedValve"
+      @close="showCalibration = false"
+    />
+  </v-dialog>
 </template>
 
 <script setup>
 import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useDeviceStore } from '../../stores/device'
+import ValveCalibration from './ValveCalibration.vue'
 
 const deviceStore = useDeviceStore()
 const { valves } = storeToRefs(deviceStore)
@@ -30,6 +40,10 @@ const { valves } = storeToRefs(deviceStore)
 const togglingValves = ref({})
 
 const audioContext = new (window.AudioContext || window.webkitAudioContext)()
+
+// Add new refs for calibration dialog
+const showCalibration = ref(false)
+const selectedValve = ref(null)
 
 function playValveSound(valveState) {
   const startFrequency = valveState === 'open' ? 500 : 300
@@ -75,6 +89,18 @@ async function toggleValve(valveIndex) {
   } finally {
     togglingValves.value = { ...togglingValves.value, [valveIndex]: false }
   }
+}
+
+function handleValveClick(valve, event) {
+  if (event.ctrlKey && event.shiftKey) {
+    // Open calibration dialog
+    selectedValve.value = valve
+    showCalibration.value = true
+    return
+  }
+  
+  // Normal valve toggle
+  toggleValve(valve)
 }
 </script>
 

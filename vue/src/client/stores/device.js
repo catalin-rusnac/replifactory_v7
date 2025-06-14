@@ -274,6 +274,32 @@ export const useDeviceStore = defineStore('device', {
       } finally {
         this.isFetchingCalibration = false;
       }
+    },
+    async setValveDutyCycleAction(payload) {
+      try {
+        const response = await api.post('/set-valve-duty-cycle', payload);
+        if (response.data.success) {
+          await this.fetchDeviceData();
+        } else {
+          this.errorMessage = 'Failed to set valve duty cycle.';
+        }
+      } catch (error) {
+        this.errorMessage = 'Failed to set valve duty cycle.';
+        throw error;
+      }
+    },
+    async setValveCalibrationAction(payload) {
+      try {
+        const response = await api.post('/set-valve-calibration', payload);
+        if (response.data.success) {
+          await this.fetchDeviceData();
+        } else {
+          this.errorMessage = 'Failed to save valve calibration.';
+        }
+      } catch (error) {
+        this.errorMessage = 'Failed to save valve calibration.';
+        throw error;
+      }
     }
   }
 })
