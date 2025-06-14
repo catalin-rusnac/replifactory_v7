@@ -46,7 +46,10 @@ function beerLambertScaled(sig, blank, scaling) {
 
 const chartData = computed(() => {
   if (calibrationData.value && typeof calibrationData.value === 'object' && calibrationCoefs.value) {
-    const dataPoints = Object.entries(calibrationData.value).map(([key, value]) => ({x: Number(value), y: Number(key)})).sort((a, b) => a.x - b.x);
+    const dataPoints = Object.entries(calibrationData.value)
+      .filter(([_, value]) => value !== null)  // Filter out null values
+      .map(([key, value]) => ({x: Number(value), y: Number(key)}))
+      .sort((a, b) => a.x - b.x);
 
     let min_x = Math.min(...dataPoints.map(point => point.x));
     let max_x = Math.max(...dataPoints.map(point => point.x));

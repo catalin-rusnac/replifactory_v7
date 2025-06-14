@@ -171,10 +171,18 @@ def get_stirrer_speed(device: BaseDevice = Depends(get_device)):
 def set_part_calibration(devicePart: str, payload: dict, device: BaseDevice = Depends(get_device)):
     partIndex = int(payload.get('partIndex'))
     newCalibration = payload.get('newCalibration')
+    oldCalibration = device.device_data[devicePart]['calibration'][partIndex]
     device.device_data[devicePart]['calibration'][partIndex] = newCalibration
     logger.info(f"Set {devicePart} {partIndex} calibration to {newCalibration}")
+    
     if devicePart == 'ods':
-        device.od_sensors[partIndex].fit_calibration_function()
+        old_values = {k: v for k, v in oldCalibration.items() if v is not None}
+        new_values = {k: v for k, v in newCalibration.items() if v is not None}
+        # check if entire dictionary of non-null values is different
+        if old_values != new_values:
+            logger.info(f"Recalculating ods {partIndex} calibration because of change in non-null values")
+            device.od_sensors[partIndex].fit_calibration_function()
+            
     if devicePart == 'stirrers':
         speed = device.device_data['stirrers']['states'][partIndex]
         device.stirrers.set_speed(partIndex, speed, accelerate=False)
@@ -184,7 +192,7 @@ def set_part_calibration(devicePart: str, payload: dict, device: BaseDevice = De
     response = {"success": True, "newCalibration": newCalibration}
     if devicePart == 'ods':
         response["coefs"] = device.device_data['ods']['calibration_coefs'][partIndex]
-    return response 
+    return response
 
 @router.post("/start-pump-calibration-sequence")
 def start_pump_calibration_sequence(payload: dict, device: BaseDevice = Depends(get_device)):
