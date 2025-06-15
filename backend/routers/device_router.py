@@ -258,3 +258,8 @@ def set_valve_duty_cycle_closed(payload: dict, device: BaseDevice = Depends(get_
     duty_cycle = payload['duty_cycle']
     device.valves.set_duty_cycle_closed(valve, duty_cycle)
     return {"success": True}
+
+@router.put("/measure-stirrer-speeds")
+def measure_stirrer_speeds(device: BaseDevice = Depends(get_device)):
+    speeds = device.stirrers.measure_all_rpms()
+    return {"success": True, "speeds": speeds}
