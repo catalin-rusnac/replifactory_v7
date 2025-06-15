@@ -84,14 +84,24 @@ class Culture:
     def plot_data(self, *args, **kwargs):
         return plot_culture(self, *args, **kwargs)
 
-    def plot_predicted(self):
+    def plot_predicted(self, rerun=True, simulation_hours=48):
+        if rerun:
+            self.updater = MorbidostatUpdater(**self.parameters.inner_dict)
+            growth_parameters = self.experiment.model.parameters["growth_parameters"][str(self.vial)]
+            self.culture_growth_model = CultureGrowthModel(**growth_parameters)
+            self.culture_growth_model.vial = "%d(simulated)" % self.vial
+            self.culture_growth_model.updater = self.updater
+            self.culture_growth_model.simulate_experiment(simulation_hours=simulation_hours)
+        return plot_culture(self.culture_growth_model)
+    
+    def run_and_save_simulation(self, simulation_hours=48):
         self.updater = MorbidostatUpdater(**self.parameters.inner_dict)
         growth_parameters = self.experiment.model.parameters["growth_parameters"][str(self.vial)]
         self.culture_growth_model = CultureGrowthModel(**growth_parameters)
         self.culture_growth_model.vial = "%d(simulated)" % self.vial
         self.culture_growth_model.updater = self.updater
-        self.culture_growth_model.simulate_experiment()
-        return plot_culture(self.culture_growth_model)
+        self.culture_growth_model.simulate_experiment(simulation_hours=simulation_hours)
+        return True
 
     def export_csv(self, output_directory=""):
         return export_culture_csv(self, output_directory=output_directory)
@@ -172,7 +182,7 @@ class Culture:
 
     def get_data_at_timepoint(self, timepoint):
         self.parameters = AutoCommitDict(
-            experiment_manager=experiment_manager,
+            experiment_manager=self.experiment.manager,
             experiment_id=self.experiment.model.id,
             vial=self.vial)
 
@@ -245,8 +255,7 @@ class Culture:
         parameters = self.experiment.parameters
         parameters["stock_volume_main"] = float(parameters["stock_volume_main"]) - main_pump_volume
         parameters["stock_volume_drug"] = float(parameters["stock_volume_drug"]) - drug_pump_volume
-        parameters["stock_volume_waste"] = float(parameters["stock_volume_waste"]
-                                                 ) - main_pump_volume - drug_pump_volume
+        parameters["stock_volume_waste"] = float(parameters["stock_volume_waste"]) + main_pump_volume - drug_pump_volume
         self.experiment.parameters = parameters
 
     def log_generation(self, generation, concentration):

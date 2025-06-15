@@ -55,6 +55,9 @@ class CultureGrowthModel:
         self.ic50s = [(self.ic50_initial, self.time_current)]
         self.effective_growth_rates = []
         self.adaptation_rates = []
+        self.pump1_volumes = []
+        self.pump2_volumes = []
+        self.waste_medium_created = []
 
     @property
     def growth_rate(self):
@@ -141,20 +144,41 @@ class CultureGrowthModel:
         else:
             current_dose = self.doses[-1][0]
 
+        # Calculate resulting doses for each pump
         only_pump1_resulting_dose = (current_dose * current_volume + stock1_concentration * added_volume) / total_volume
         only_pump2_resulting_dose = (current_dose * current_volume + stock2_concentration * added_volume) / total_volume
-        min_dose, max_dose = min(only_pump1_resulting_dose, only_pump2_resulting_dose), max(only_pump1_resulting_dose, only_pump2_resulting_dose)
+
+        # Ensure target dose is within achievable range
+        min_dose = min(only_pump1_resulting_dose, only_pump2_resulting_dose)
+        max_dose = max(only_pump1_resulting_dose, only_pump2_resulting_dose)
         target_dose = min(max_dose, max(min_dose, target_dose))
 
-        added_dose = target_dose - current_dose
-        new_dose = current_dose + added_dose
+        # Calculate required volumes to achieve target dose
+        if abs(stock1_concentration - stock2_concentration) < 1e-10:
+            # If concentrations are equal, split volume evenly
+            pump1_volume = added_volume / 2
+            pump2_volume = added_volume / 2
+        else:
+            # Calculate volumes based on concentrations
+            pump1_volume = added_volume * (stock2_concentration - target_dose) / (stock2_concentration - stock1_concentration)
+            pump2_volume = added_volume - pump1_volume
+
+        # Ensure volumes are non-negative
+        pump1_volume = max(0, min(pump1_volume, added_volume))
+        pump2_volume = added_volume - pump1_volume
+
+        self.pump1_volumes.append(pump1_volume)
+        self.pump2_volumes.append(pump2_volume)
+        self.waste_medium_created.append(added_volume)
+
+        new_dose = (current_dose * current_volume + stock1_concentration * pump1_volume + stock2_concentration * pump2_volume) / total_volume
         self.doses.append((new_dose, self.time_current))
         self.population[-1] = (self.population[-1][0] / dilution_factor, self.time_current)
         generation_number = np.log2(dilution_factor)
         if self.generations:
             generation_number += self.generations[-1][0]
         self.generations.append((generation_number, self.time_current))
-
+        
     def check_parameters(self):
         if self.initial_population < 0:
             raise ValueError("Initial population cannot be negative")
