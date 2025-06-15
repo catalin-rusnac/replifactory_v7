@@ -72,7 +72,9 @@
 
       <!-- Experiment Parameters -->
       <div v-if="currentExperiment">
-        <ExperimentParameters />
+        <BottleDisplay />
+        <!-- <ExperimentParameters /> -->
+        <ExperimentSimulation />
       </div>
     </div>
   </v-container>
@@ -81,7 +83,9 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useExperimentStore } from '@/client/stores/experiment';
-import ExperimentParameters from './ExperimentParameters.vue';
+// import ExperimentParameters from './ExperimentParameters.vue';
+import ExperimentSimulation from './ExperimentSimulation.vue';
+import BottleDisplay from './BottleDisplay.vue';
 import { toast } from 'vue3-toastify';
 import 'vue3-toastify/dist/index.css';
 

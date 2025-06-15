@@ -6,10 +6,13 @@
           v-if="key !== 'cultures' && key !== 'growth_parameters'"
           class="stock-parameter-field"
           :label="`${key}`"
-          v-model="currentExperiment.parameters[key]"
+          :model-value="currentExperiment.parameters[key]"
           :readonly="currentExperiment.status === 'running'"
-          @blur="handleInputCommit(key, $event.target.value)"
-          @keyup.enter="handleInputCommit(key, $event.target.value)"
+          :min="0"
+          type="number"
+          @update:model-value="(val) => handleInputChange(key, val)"
+          @blur="handleInputCommit(key)"
+          @keyup.enter="handleInputCommit(key)"
         ></v-text-field>
       </template>
 <!--      TODO: arrange pump order-->
@@ -18,16 +21,36 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useExperimentStore } from '@/client/stores/experiment'
 import { toast } from 'vue3-toastify';
 
 const experimentStore = useExperimentStore()
 const currentExperiment = computed(() => experimentStore.currentExperiment || {})
+const pendingChanges = ref({})
+console.log(currentExperiment.parameters)
+function handleInputChange(key, value) {
+  pendingChanges.value[key] = value
+}
 
-async function handleInputCommit(key, value) {
-  if (value !== '' && value !== null && value !== undefined) {
-    currentExperiment.value.parameters[key] = value
+async function handleInputCommit(key) {
+  const newValue = pendingChanges.value[key]
+  const currentValue = currentExperiment.value.parameters[key]
+
+  console.log('Input commit:', {
+    key,
+    newValue,
+    currentValue,
+    type: typeof newValue,
+    currentType: typeof currentValue
+  })
+
+  // Convert both values to numbers for comparison if they are numeric
+  const parsedNewValue = !isNaN(newValue) ? Number(newValue) : newValue
+  const parsedCurrentValue = !isNaN(currentValue) ? Number(currentValue) : currentValue
+
+  if (newValue !== '' && newValue !== null && newValue !== undefined && parsedNewValue !== parsedCurrentValue) {
+    currentExperiment.value.parameters[key] = parsedNewValue
     try {
       await experimentStore.updateCurrentExperimentParameters(currentExperiment.value.parameters)
       toast('Parameter updated', { type: 'success' })
@@ -35,6 +58,8 @@ async function handleInputCommit(key, value) {
       toast('Failed to update parameter', { type: 'error' })
     }
   }
+  // Clear the pending change
+  delete pendingChanges.value[key]
 }
 </script>
 

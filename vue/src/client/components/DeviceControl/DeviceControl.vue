@@ -17,6 +17,7 @@
       <PumpControl />
       <ValveControl />
       <StirrerControl />
+      <!-- <StirrerSpeeds /> -->
       <ODControl />
       <LEDControl />
       <template v-if="calibrationModeEnabled">
@@ -40,6 +41,7 @@ import StirrerControl from './StirrerControl.vue';
 import ODControl from './ODControl.vue';
 import LEDControl from "./LEDControl.vue";
 import DeviceConfigs from "./DeviceConfigs.vue";
+// import StirrerSpeeds from "./StirrerSpeeds.vue";
 import { useDialog } from '@/client/composables/useDialog'
 import { toast } from 'vue3-toastify';
 

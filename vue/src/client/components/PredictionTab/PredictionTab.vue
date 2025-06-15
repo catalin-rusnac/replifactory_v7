@@ -3,10 +3,13 @@
     <div class="container-wrapper">
       <div class="tables-container">
         <div class="table-wrapper">
-          <ControlParameters />
+          <ControlParameters :key="controlParamsKey" />
         </div>
         <div class="table-wrapper">
           <GrowthParameters />
+        </div>
+        <div class="table-wrapper">
+          <DilutionControls @settings-updated="refreshControlParams" />
         </div>
       </div>
     </div>
@@ -56,17 +59,23 @@ import { ref, computed } from 'vue';
 import { useExperimentStore } from '@/client/stores/experiment';
 import ControlParameters from './ControlParameters.vue';
 import GrowthParameters from './GrowthParameters.vue';
+import DilutionControls from './DilutionControls.vue';
 import VialPlot from "@/client/components/ExperimentTab/VialPlot.vue";
 
 const experimentStore = useExperimentStore();
 
 const vials = Array.from({ length: 7 }, (_, i) => i + 1); // Example: 7 vials
 const selectedVial = ref(1);
+const controlParamsKey = ref(0);
 
 const currentExperiment = computed(() => experimentStore.currentExperiment || {});
 const simulation_data = computed(() => experimentStore.simulation_data || {});
 
 const isPlotting = ref(false);
+
+function refreshControlParams() {
+  controlParamsKey.value = Date.now();
+}
 
 async function plotSelectedVial() {
   if (!currentExperiment.value || !selectedVial.value) {
@@ -133,5 +142,17 @@ async function plotSelectedVial() {
   flex: 1;
   min-width: 724px;
   max-height: 100%;
+}
+
+.dilution-controls {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 20px;
+  padding: 0 20px;
+}
+
+.dilution-button {
+  width: 130px; /* Match the column width from TableComponent */
 }
 </style>
