@@ -82,9 +82,9 @@ export const useExperimentStore = defineStore('experiment', {
     async updateExperimentParameters({ parameters }) {
       await this.updateCurrentExperimentParameters(parameters)
     },
-    async fetchSimulationPlot(vial) {
+    async fetchSimulationPlot(vial, simulationHours = 24) {
       try {
-        const response = await api.get(`/plot/${vial}/simulation`)
+        const response = await api.get(`/plot/${vial}/simulation?simulation_hours=${simulationHours}`)
         if (!this.simulation_data) this.simulation_data = {};
         this.simulation_data[vial] = response.data.data;
       } catch (error) {
