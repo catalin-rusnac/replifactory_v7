@@ -103,8 +103,8 @@ class Stirrers:
             estimated_rpm = self.rpms[vial_number]
         if estimated_rpm is None:
             duty_cycle = self.get_stirrer_duty_cycle(vial_number)  # ftdi lock is checked here
-            estimated_rpm = 10000 * duty_cycle
-        if estimated_rpm < 10:
+            estimated_rpm = 8000 * duty_cycle
+        if estimated_rpm < 80:
             return 0
         ms_per_rotation = 60 / estimated_rpm * 1000
         bits_per_minute = self.freq * 60
@@ -161,6 +161,9 @@ class Stirrers:
         return rpm
 
     def measure_rpm(self, vial_number=7, estimated_rpm=None):
+        # current stirrer pwm
+        duty_cycle = self.get_stirrer_duty_cycle(vial_number)
+
         # if file db/skip_stirrer_speed_measurement exists, return 0
         if os.path.exists("db/skip_stirrer_speed_measurement"):
             return 0
