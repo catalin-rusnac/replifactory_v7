@@ -101,12 +101,48 @@ def update_current_experiment_growth_parameters(growth_parameters: dict = Body(.
     except ExperimentNotFound as e:
         raise HTTPException(status_code=404, detail=str(e))
 
+@router.put("/cultures/{vial}/run-simulation")
+def run_simulation(vial: int, simulation_hours: int = 48, db_session: Session = Depends(get_db)):
+    """Run a simulation of the current experiment"""
+    try:
+        experiment = experiment_manager.experiment
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    try:
+        experiment.cultures[vial].run_and_save_simulation(simulation_hours=simulation_hours)
+        culture = experiment.cultures[vial]
+        pump1_volume_used = sum(culture.culture_growth_model.pump1_volumes)
+        pump2_volume_used = sum(culture.culture_growth_model.pump2_volumes)
+        waste_medium_volume_created = sum(culture.culture_growth_model.waste_medium_created)
+        summary_data = {
+            "initial_population": culture.culture_growth_model.initial_population,
+            "final_population": culture.culture_growth_model.population[-1] if culture.culture_growth_model.population else None,
+            "final_effective_growth_rate": culture.culture_growth_model.effective_growth_rates[-1][0] if culture.culture_growth_model.effective_growth_rates else None,
+            "final_dose": culture.culture_growth_model.doses[-1][0] if culture.culture_growth_model.doses else None,
+            "final_generation": culture.culture_growth_model.generations[-1][0] if culture.culture_growth_model.generations else None,
+            "initial_ic50": culture.culture_growth_model.ic50_initial,
+            "final_ic50": culture.culture_growth_model.ic50s[-1][0] if culture.culture_growth_model.ic50s else None,
+            "pump1_volume_used": pump1_volume_used,
+            "pump2_volume_used": pump2_volume_used,
+            "waste_medium_volume_created": waste_medium_volume_created,
+        }
+        return {"message": "Simulation run", "summary_data": summary_data}
+    except Exception as e:
+        logger.error(f"Error running simulation for culture {vial}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "Simulation failed",
+                "message": str(e),
+                "type": "simulation_error"
+            }
+        )
 @router.get("/plot/{vial}/simulation")
-def get_culture_predicted_plot(vial: int, db_session: Session = Depends(get_db)):
+def get_culture_predicted_plot(vial: int, simulation_hours: int = 48, db_session: Session = Depends(get_db)):
     try:
         experiment = experiment_manager.experiment
         logger.info(f"Plotting predicted plot for culture {vial}")
-        fig = experiment.cultures[vial].plot_predicted()
+        fig = experiment.cultures[vial].plot_predicted(rerun=True, simulation_hours=simulation_hours)
         return fig.to_plotly_json()
     except ExperimentNotFound as e:
         raise HTTPException(status_code=404, detail=str(e))
