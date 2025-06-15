@@ -60,8 +60,9 @@ def mu_effective(dose, mu_min, mu_max, ic10_ic50_ratio, ic50, population, carryi
 
 def adaptation_rate(dose, adaptation_rate_max, ic50, ic10_ic50_ratio, adaptation_rate_ic10_ic50_ratio):
     """
-    Calculate the adaptation rate as a function of the drug dose using a Gaussian curve modified by a
-    coefficient representing the height of the curve at a dose equal to 50% of ic50.
+    Calculate the adaptation rate as a function of the drug dose using a modified Gaussian curve.
+    The adaptation rate naturally decays faster at low doses to prevent unrealistic adaptation
+    at very low drug concentrations.
 
     Parameters:
     - dose: Antibiotic dose.
@@ -76,8 +77,11 @@ def adaptation_rate(dose, adaptation_rate_max, ic50, ic10_ic50_ratio, adaptation
     """
 
     # Calculate k_adapt dynamically based on height_at_50
-    # We solve for k_adapt such that the Gaussian formula equals height_at_50 * adaptation_rate_max at dose = ic50 / 2
     ic10 = ic50 * ic10_ic50_ratio
     k_adapt = -np.log(adaptation_rate_ic10_ic50_ratio) / ((ic10 - ic50) ** 2)
-    adapt_rate = adaptation_rate_max * np.exp(-k_adapt * ((dose - ic50) ** 2))
+    
+    # Use a modified Gaussian that decays faster at low doses
+    # The dose/ic50 term ensures faster decay when dose << ic50
+    adapt_rate = adaptation_rate_max * np.exp(-k_adapt * ((dose - ic50) ** 2)) * (dose/ic50) ** 2
+    
     return adapt_rate
