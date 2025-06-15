@@ -304,6 +304,28 @@ export const useDeviceStore = defineStore('device', {
         this.errorMessage = 'Failed to save valve calibration.';
         throw error;
       }
+    },
+    async measureStirrerSpeeds() {
+      try {
+        const response = await api.put('/measure-stirrer-speeds');
+        if (response.data.success) {
+          return response.data;
+        } else {
+          throw new Error(response.data.message || 'Failed to measure stirrer speeds');
+        }
+      } catch (error) {
+        this.errorMessage = error.message || 'Failed to measure stirrer speeds';
+        throw error;
+      }
+    },
+    async runSimulation(vial, simulationHours = 24) {
+      try {
+        const response = await api.put(`/cultures/${vial}/run-simulation?simulation_hours=${simulationHours}`);
+        return response.data;
+      } catch (error) {
+        this.errorMessage = error.message || `Failed to run simulation for vial ${vial}`;
+        throw error;
+      }
     }
   }
 })
