@@ -459,6 +459,93 @@ class Culture:
             "updater_status": self.updater.status_dict,
         }
         return culture_info
+    
+    def get_latest_od(self):
+        """Get the latest OD measurement with timestamp"""
+        if self.od is not None:
+            od_dict, _, _ = self.get_last_ods_and_rpms(limit=1)
+            if od_dict:
+                latest_timestamp = max(od_dict.keys())
+                return {
+                    'value': self.od,
+                    'timestamp': latest_timestamp
+                }
+        return None
+    
+    def get_current_growth_rate(self):
+        """Get the current growth rate"""
+        return self.growth_rate
+    
+    def get_total_dilution_count(self):
+        """Get the total number of dilutions performed"""
+        with self.experiment.manager.get_session() as db:
+            count = db.query(PumpData).filter(
+                PumpData.experiment_id == self.experiment.model.id,
+                PumpData.vial_number == self.vial
+            ).count()
+            return count
+    
+    def get_last_dilution_time(self):
+        """Get time since last dilution in human readable format"""
+        if self.last_dilution_time is None:
+            return None
+        
+        from datetime import datetime
+        time_diff = datetime.now() - self.last_dilution_time
+        hours = int(time_diff.total_seconds() // 3600)
+        minutes = int((time_diff.total_seconds() % 3600) // 60)
+        
+        if hours > 0:
+            return f"{hours}h {minutes}m ago"
+        else:
+            return f"{minutes}m ago"
+    
+    def get_runtime(self):
+        """Get the runtime of this vial since first OD measurement"""
+        first_timestamp = self.get_first_od_timestamp()
+        if first_timestamp is None:
+            return None
+            
+        from datetime import datetime
+        time_diff = datetime.now() - first_timestamp
+        hours = int(time_diff.total_seconds() // 3600)
+        minutes = int((time_diff.total_seconds() % 3600) // 60)
+        
+        return f"{hours}h {minutes}m"
+    
+    def get_volume_usage_1h(self):
+        """Get medium and drug volume usage in the past hour"""
+        from datetime import datetime, timedelta
+        one_hour_ago = datetime.now() - timedelta(hours=1)
+        
+        with self.experiment.manager.get_session() as db:
+            pump_data = db.query(PumpData).filter(
+                PumpData.experiment_id == self.experiment.model.id,
+                PumpData.vial_number == self.vial,
+                PumpData.timestamp >= one_hour_ago
+            ).all()
+            
+            medium_total = sum(p.volume_main for p in pump_data if p.volume_main)
+            drug_total = sum(p.volume_drug for p in pump_data if p.volume_drug)
+            
+            return medium_total, drug_total
+    
+    def get_volume_usage_24h(self):
+        """Get medium and drug volume usage in the past 24 hours"""
+        from datetime import datetime, timedelta
+        twenty_four_hours_ago = datetime.now() - timedelta(hours=24)
+        
+        with self.experiment.manager.get_session() as db:
+            pump_data = db.query(PumpData).filter(
+                PumpData.experiment_id == self.experiment.model.id,
+                PumpData.vial_number == self.vial,
+                PumpData.timestamp >= twenty_four_hours_ago
+            ).all()
+            
+            medium_total = sum(p.volume_main for p in pump_data if p.volume_main)
+            drug_total = sum(p.volume_drug for p in pump_data if p.volume_drug)
+            
+            return medium_total, drug_total
 
 
 

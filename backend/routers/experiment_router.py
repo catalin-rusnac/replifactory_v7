@@ -104,6 +104,12 @@ def update_current_experiment_growth_parameters(growth_parameters: dict = Body(.
 @router.put("/cultures/{vial}/run-simulation")
 def run_simulation(vial: int, simulation_hours: int = 48, db_session: Session = Depends(get_db)):
     """Run a simulation of the current experiment"""
+    # Validate simulation hours
+    if simulation_hours < 1:
+        raise HTTPException(status_code=400, detail="Simulation hours must be at least 1")
+    if simulation_hours > 240:
+        raise HTTPException(status_code=400, detail="Simulation hours cannot exceed 240 (10 days)")
+    
     try:
         experiment = experiment_manager.experiment
     except Exception as e:
@@ -128,17 +134,38 @@ def run_simulation(vial: int, simulation_hours: int = 48, db_session: Session = 
         }
         return {"message": "Simulation run", "summary_data": summary_data}
     except Exception as e:
+        # Format error message nicely with full traceback
+        error_type = type(e).__name__
+        full_traceback = traceback.format_exc()
+        # Extract the relevant line from traceback
+        traceback_lines = full_traceback.split('\n')
+        code_line = ""
+        error_line = ""
+        
+        for i, line in enumerate(traceback_lines):
+            if "only_pump1_resulting_dose" in line and "=" in line:
+                code_line = line  # Don't strip to preserve alignment
+                # Get the next line if it has the caret
+                if i + 1 < len(traceback_lines) and "^" in traceback_lines[i + 1]:
+                    error_line = traceback_lines[i + 1]
+                break
+        
+        if code_line and error_line:
+            error_msg = f"Simulation Error ({error_type})\n\n{code_line}\n{error_line}\n{error_type}: {str(e)}\n\nPlease adjust parameters and try again."
+        else:
+            error_msg = f"Simulation Error ({error_type})\n\n{str(e)}\n\nPlease adjust parameters and try again."
+            
         logger.error(f"Error running simulation for culture {vial}: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "error": "Simulation failed",
-                "message": str(e),
-                "type": "simulation_error"
-            }
-        )
+        logger.error(full_traceback)
+        raise HTTPException(status_code=500, detail=error_msg)
 @router.get("/plot/{vial}/simulation")
 def get_culture_predicted_plot(vial: int, simulation_hours: int = 48, db_session: Session = Depends(get_db)):
+    # Validate simulation hours
+    if simulation_hours < 1:
+        raise HTTPException(status_code=400, detail="Simulation hours must be at least 1")
+    if simulation_hours > 240:
+        raise HTTPException(status_code=400, detail="Simulation hours cannot exceed 240 (10 days)")
+    
     try:
         experiment = experiment_manager.experiment
         logger.info(f"Plotting predicted plot for culture {vial}")
@@ -147,9 +174,30 @@ def get_culture_predicted_plot(vial: int, simulation_hours: int = 48, db_session
     except ExperimentNotFound as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
+        # Format error message nicely with full traceback
+        error_type = type(e).__name__
+        full_traceback = traceback.format_exc()
+        # Extract the relevant line from traceback
+        traceback_lines = full_traceback.split('\n')
+        code_line = ""
+        error_line = ""
+        
+        for i, line in enumerate(traceback_lines):
+            if "only_pump1_resulting_dose" in line and "=" in line:
+                code_line = line  # Don't strip to preserve alignment
+                # Get the next line if it has the caret
+                if i + 1 < len(traceback_lines) and "^" in traceback_lines[i + 1]:
+                    error_line = traceback_lines[i + 1]
+                break
+        
+        if code_line and error_line:
+            error_msg = f"Plot Error ({error_type})\n\n{code_line}\n{error_line}\n{error_type}: {str(e)}\n\nPlease adjust parameters and try again."
+        else:
+            error_msg = f"Plot Error ({error_type})\n\n{str(e)}\n\nPlease adjust parameters and try again."
+            
         logger.error(f"Error plotting predicted plot for culture {vial}: {e}")
-        logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(full_traceback)
+        raise HTTPException(status_code=500, detail=error_msg)
 
 @router.get("/plot/{vial}")
 def get_culture_plot(vial: int, db_session: Session = Depends(get_db)):
@@ -160,6 +208,67 @@ def get_culture_plot(vial: int, db_session: Session = Depends(get_db)):
     except ExperimentNotFound as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/experiments/current/summary")
+def get_experiment_summary(db_session: Session = Depends(get_db)):
+    """Get a summary of the current experiment status and recent activity"""
+    try:
+        if experiment_manager.experiment is None:
+            raise HTTPException(status_code=404, detail="No current experiment selected")
+        
+        experiment = experiment_manager.experiment
+        summary_data = {}
+        
+        # Calculate summary for each vial (1-7)
+        for vial_id in range(1, 8):
+            if vial_id not in experiment.cultures:
+                # Vial not configured
+                summary_data[f'vial{vial_id}'] = {
+                    'last_od': None,
+                    'od_timestamp': None,
+                    'growth_rate': None,
+                    'medium_used_1h': None,
+                    'medium_used_24h': None,
+                    'drug_used_1h': None,
+                    'drug_used_24h': None,
+                    'total_dilutions': None,
+                    'last_dilution': None,
+                    'runtime': None
+                }
+                continue
+                
+            culture = experiment.cultures[vial_id]
+            
+            # Get latest data from culture
+            latest_od = culture.get_latest_od()
+            growth_rate = culture.get_current_growth_rate()
+            dilution_count = culture.get_total_dilution_count()
+            last_dilution_time = culture.get_last_dilution_time()
+            runtime = culture.get_runtime()
+            medium_1h, drug_1h = culture.get_volume_usage_1h()
+            medium_24h, drug_24h = culture.get_volume_usage_24h()
+            
+            summary_data[f'vial{vial_id}'] = {
+                'last_od': latest_od['value'] if latest_od else None,
+                'od_timestamp': latest_od['timestamp'] if latest_od else None,
+                'growth_rate': growth_rate,
+                'medium_used_1h': medium_1h,
+                'medium_used_24h': medium_24h,
+                'drug_used_1h': drug_1h,
+                'drug_used_24h': drug_24h,
+                'total_dilutions': dilution_count,
+                'last_dilution': last_dilution_time,
+                'runtime': runtime
+            }
+        
+        return {"summary": summary_data}
+        
+    except ExperimentNotFound as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error getting experiment summary: {e}")
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 

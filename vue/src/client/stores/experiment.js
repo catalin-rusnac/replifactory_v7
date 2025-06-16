@@ -13,6 +13,7 @@ export const useExperimentStore = defineStore('experiment', {
     selectedVials: {},
     ws: null,
     progressMessages: [],
+    simulationHours: 24,
   }),
   actions: {
     async fetchExperiments() {
@@ -57,6 +58,9 @@ export const useExperimentStore = defineStore('experiment', {
     setErrorMessage(message) {
       this.errorMessage = message
     },
+    setSimulationHours(hours) {
+      this.simulationHours = hours
+    },
     async fetchCurrentExperimentParameters() {
       const response = await api.get('/experiments/current/parameters')
       if (this.currentExperiment) {
@@ -88,7 +92,21 @@ export const useExperimentStore = defineStore('experiment', {
         if (!this.simulation_data) this.simulation_data = {};
         this.simulation_data[vial] = response.data.data;
       } catch (error) {
-        this.errorMessage = 'Failed to fetch simulation plot.';
+        // Extract detailed error message from backend
+        let errorMessage = 'Failed to fetch simulation plot.';
+        
+        if (error.response && error.response.data) {
+          // If there's a detail field, use it
+          if (typeof error.response.data.detail === 'string') {
+            errorMessage = error.response.data.detail;
+          }
+          // If data is a string, use it directly
+          else if (typeof error.response.data === 'string') {
+            errorMessage = error.response.data;
+          }
+        }
+        
+        this.errorMessage = errorMessage;
       }
     },
     async fetchCulturePlot(vial) {
@@ -155,6 +173,15 @@ export const useExperimentStore = defineStore('experiment', {
       if (this.ws) {
         this.ws.close();
         this.ws = null;
+      }
+    },
+    async fetchExperimentSummary() {
+      try {
+        const response = await api.get('/experiments/current/summary')
+        return response.data.summary
+      } catch (error) {
+        console.error('Failed to fetch experiment summary:', error)
+        throw new Error(error.response?.data?.detail || 'Failed to fetch experiment summary')
       }
     },
   }

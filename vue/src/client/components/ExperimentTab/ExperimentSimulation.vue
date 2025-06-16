@@ -33,7 +33,7 @@ def run_simulation(vial: int, simulation_hours: int = 48, db_session: Session = 
       <v-btn
         color="primary"
         :loading="isSimulating"
-        :disabled="isSimulating"
+        :disabled="isSimulating || !!simulationHoursError"
         @click="runSimulation"
       >
         <v-icon left>mdi-play</v-icon>
@@ -45,9 +45,11 @@ def run_simulation(vial: int, simulation_hours: int = 48, db_session: Session = 
           type="number"
           label="Simulation hours"
           min="1"
-          max="168"
+          max="240"
           density="compact"
-          hide-details
+          :hide-details="!simulationHoursError"
+          :error="!!simulationHoursError"
+          :error-messages="simulationHoursError"
           class="hours-input"
           style="width: 130px;"
         ></v-text-field>
@@ -233,69 +235,14 @@ def run_simulation(vial: int, simulation_hours: int = 48, db_session: Session = 
                   </template>
                 </td>
               </tr>
-              <!-- Add new row for plot buttons -->
-              <tr>
-                <td>
-                  <v-tooltip text="View detailed simulation plots">
-                    <template v-slot:activator="{ props }">
-                      <span v-bind="props">Simulation Plots</span>
-                    </template>
-                  </v-tooltip>
-                </td>
-                <td v-for="vial in 7" :key="vial">
-                  <template v-if="loadingStates[vial]">
-                    <v-progress-circular
-                      indeterminate
-                      size="24"
-                      color="primary"
-                    ></v-progress-circular>
-                  </template>
-                  <template v-else>
-                    <template v-if="getMetricValue(vial, { key: 'name' }) === 'Error'">
-                      <div class="volume-cell error">
-                        <v-icon size="small" color="error" icon="mdi-close-circle"></v-icon>
-                        <span class="text-error">Error</span>
-                      </div>
-                    </template>
-                    <template v-else>
-                      <v-btn
-                        size="small"
-                        color="primary"
-                        variant="outlined"
-                        :disabled="!simulationResults.find(r => r.vial_id === vial)"
-                        @click="plotVialSimulation(vial)"
-                      >
-                        <v-icon left size="small">mdi-chart-line</v-icon>
-                        Plot
-                      </v-btn>
-                    </template>
-                  </template>
-                </td>
-                <td v-if="!isSimulating && simulationResults.length === 7"></td>
-              </tr>
+
             </tbody>
           </v-table>
 
-          <!-- Add plot section inside v-card-text -->
-          <div v-if="selectedVialForPlot" class="plot-section">
-            <div class="plot-wrapper">
-              <div v-if="isPlotting" class="plot-loading">
-                <v-progress-circular
-                  indeterminate
-                  color="primary"
-                  size="64"
-                ></v-progress-circular>
-                <span class="loading-text">Loading simulation data...</span>
-              </div>
-              <VialPlot 
-                v-if="selectedVialForPlot && !isPlotting" 
-                :vial="selectedVialForPlot" 
-                :data="simulationPlotData" 
-              />
-            </div>
-          </div>
         </v-card-text>
       </v-card>
+
+
     </div>
   </div>
 </template>
@@ -305,26 +252,33 @@ import { ref, computed } from 'vue'
 import { useDeviceStore } from '@/client/stores/device'
 import { useExperimentStore } from '@/client/stores/experiment'
 import { toast } from 'vue3-toastify'
-import VialPlot from "@/client/components/ExperimentTab/VialPlot.vue"
+
 
 const deviceStore = useDeviceStore()
 const experimentStore = useExperimentStore()
 const isSimulating = ref(false)
 const simulationResults = ref([])
-const simulationHours = ref(24)
+const simulationHours = computed({
+  get: () => experimentStore.simulationHours,
+  set: (value) => experimentStore.setSimulationHours(value)
+})
+
+// Validation for simulation hours
+const simulationHoursError = computed(() => {
+  const hours = simulationHours.value
+  if (hours < 1) {
+    return 'Simulation hours must be at least 1'
+  }
+  if (hours > 240) {
+    return 'Simulation hours cannot exceed 240 (10 days)'
+  }
+  return null
+})
 const lastSimulatedHours = ref(24)
 const loadingStates = ref({}) // Track loading state for each vial
 const hasFirstResult = ref(false) // Track if first result has arrived
 
-// Add new refs for plotting
-const selectedVialForPlot = ref(null)
-const isPlotting = ref(false)
-const simulationPlotData = computed(() => {
-  if (!selectedVialForPlot.value || !experimentStore.simulation_data) {
-    return []
-  }
-  return experimentStore.simulation_data[selectedVialForPlot.value] || []
-})
+
 
 // Get stock volumes from experiment parameters
 const stockVolumeMain = computed(() => {
@@ -402,6 +356,12 @@ function calculateDoublingTime(growthRate) {
 // Function to run simulation
 async function runSimulation() {
   if (isSimulating.value) return
+  
+  // Check for validation errors
+  if (simulationHoursError.value) {
+    toast.error(simulationHoursError.value)
+    return
+  }
 
   isSimulating.value = true
   simulationResults.value = []
@@ -593,23 +553,7 @@ function getVialDescription(vialId) {
   return culture?.description || '-'
 }
 
-// Update plotVialSimulation function
-async function plotVialSimulation(vialId) {
-  selectedVialForPlot.value = vialId
-  isPlotting.value = true
-  // Clear the plot data while loading
-  simulationPlotData.value = []
-  try {
-    if (experimentStore.fetchSimulationPlot) {
-      await experimentStore.fetchSimulationPlot(vialId, simulationHours.value)
-    }
-  } catch (error) {
-    console.error('Error fetching simulation plot:', error)
-    toast.error('Failed to fetch simulation plot data')
-  } finally {
-    isPlotting.value = false
-  }
-}
+
 
 // Add these new functions
 function getTotalVolumeTooltip(volume, stockVolume, mediumType) {
@@ -835,4 +779,6 @@ function getWasteVolumeTooltip(volume) {
   height: 100% !important;
   margin-top: 0 !important;
 }
+
+
 </style>

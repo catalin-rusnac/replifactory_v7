@@ -275,19 +275,20 @@ export default {
         clearTimeout(this.updateTimeout)
       }
       // Don't update on input, just store the value
-      this.editingValue = Number(this.editingValue)
+      // Only convert to number for numeric fields, leave units as string
+      if (field !== 'units') {
+        this.editingValue = Number(this.editingValue)
+      }
     },
     finishEditing(field) {
       if (this.isUpdating) return
       this.isUpdating = true
       
-      console.log('finishEditing called for field:', field, 'with value:', this.editingValue)
       if (field === 'units' || this.editingValue >= 0) {
         const oldValue = field === 'total' ? this.totalVolume : 
                         field === 'current' ? this.currentVolume :
                         field === 'concentration' ? this.concentration :
                         this.units;
-        console.log('Emitting update event for', field, 'old value:', oldValue, 'new value:', this.editingValue)
         this.$emit('update:' + (field === 'total' ? 'totalVolume' : 
                                field === 'current' ? 'currentVolume' :
                                field === 'concentration' ? 'concentration' :

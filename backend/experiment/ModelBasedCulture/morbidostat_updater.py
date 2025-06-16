@@ -112,11 +112,11 @@ class MorbidostatUpdater:
             if model.doses:
                 target_dose = model.doses[-1][0]
                 self.status_dict["dilution_message"] = "Dilution %d to dose %3f. Drug addition at dilution %d" % (next_dilution_number, target_dose, self.dilution_number_first_drug_addition)
-                logger.info("Vial %s: Dilution %d keeping dose at current vial dose %3f", model.vial, next_dilution_number, target_dose)
+                # logger.info("Vial %s: Dilution %d keeping dose at current vial dose %3f", model.vial, next_dilution_number, target_dose)
             else:
                 target_dose = self.pump1_stock_drug_concentration
                 self.status_dict["dilution_message"] = "Dilution %d to dose %3f. Drug addition at dilution %d" % (next_dilution_number, target_dose, self.dilution_number_first_drug_addition)
-                logger.info("Vial %s: Dilution %d keeping dose at pump1 stock concentration %3f", model.vial, next_dilution_number, target_dose)
+                # logger.info("Vial %s: Dilution %d keeping dose at pump1 stock concentration %3f", model.vial, next_dilution_number, target_dose)
             model.dilute_culture(target_dose)
             return
 
@@ -183,7 +183,7 @@ class MorbidostatUpdater:
             self.status_dict["time_triggered_dilution"] = "Hours since last dilution %.2f < max %.2f, not diluting" % (hours_since_last_dilution, self.delay_dilution_max_hours)
             return
         self.status_dict["time_triggered_dilution"] = "Hours since last dilution %.2f > max %.2f, diluting" % (hours_since_last_dilution, self.delay_dilution_max_hours)
-        logger.info("Vial %s: Diluting because %.2f hours passed since last dilution", model.vial, hours_since_last_dilution)
+        # logger.info("Vial %s: Diluting because %.2f hours passed since last dilution", model.vial, hours_since_last_dilution)
         self.dilute_and_adjust_dose(model)
         return True
 
@@ -198,7 +198,7 @@ class MorbidostatUpdater:
             self.status_dict["od_triggered_dilution"] = "OD %3f < threshold %3f" % (model.population[-1][0], self.od_dilution_threshold)
             return
         self.status_dict["od_triggered_dilution"] = "OD %3f >= threshold %3f, diluting" % (model.population[-1][0], self.od_dilution_threshold)
-        logger.info("Vial %s: Diluting because current OD %3f >= threshold %3f", model.vial, model.population[-1][0], self.od_dilution_threshold)
+        # logger.info("Vial %s: Diluting because current OD %3f >= threshold %3f", model.vial, model.population[-1][0], self.od_dilution_threshold)
         self.dilute_and_adjust_dose(model)
         return True
 

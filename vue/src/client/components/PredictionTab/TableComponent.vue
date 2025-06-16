@@ -4,7 +4,7 @@
       ref="grid"
       :columns="gridColumns"
       :source="gridSource"
-      :readonly="false"
+      :readonly="readonly"
       @afteredit="handleEdit"
       class="hot-table"
       :theme="'material'"
@@ -32,7 +32,8 @@ export default defineComponent({
     updateData: { type: Function, required: true },
     columnHeaders: { type: Array, default: () => [] },
     rowHeaderLabel: { type: String, default: "Row" },
-    rowHeaderWidth: { type: Number, default: 270 }
+    rowHeaderWidth: { type: Number, default: 270 },
+    readonly: { type: Boolean, default: false }
   },
   setup(props) {
     const gridColumns = ref([]);
@@ -67,9 +68,10 @@ export default defineComponent({
       // Map your data into objects with properties matching columns
       gridSource.value = data.map((row, rIdx) => {
         const obj = { rowHeader: keys[rIdx] };
-        row.forEach((cell, cIdx) => {
-          obj[`col${cIdx}`] = cell;
-        });
+        // Only map cells up to the number of column headers to prevent extra columns
+        for (let cIdx = 0; cIdx < Math.min(row.length, props.columnHeaders.length); cIdx++) {
+          obj[`col${cIdx}`] = row[cIdx];
+        }
         return obj;
       });
     };
@@ -86,7 +88,7 @@ export default defineComponent({
       await props.updateData(allData);
     };
 
-    return { gridColumns, gridSource, handleEdit, tableHeight, rowHeight, plugins, grid };
+    return { gridColumns, gridSource, handleEdit, tableHeight, rowHeight, plugins, grid, readonly: props.readonly };
   }
 });
 </script>
@@ -98,6 +100,9 @@ export default defineComponent({
   /* Dark background for the table */
   background: #23272f;
   color: #e0e0e0;
+  /* Add touch-action and other performance optimizations */
+  touch-action: manipulation;
+  -webkit-overflow-scrolling: touch;
 }
 
 .hot-table .rgHeaderCell,
@@ -106,11 +111,15 @@ export default defineComponent({
   color: #737373 !important;
   font-weight: bold;
   font-size: 19px;
+  /* Performance optimizations */
+  touch-action: manipulation;
 }
 .hot-table .rgCell {
   background: #23272f !important;
   color: #c6cfd7 !important;
   font-size: 17px;
+  /* Performance optimizations */
+  touch-action: manipulation;
 }
 
 /* Style the editor's container */
@@ -118,6 +127,10 @@ export default defineComponent({
   background: #282f47 !important;
 }
 
+/* Add passive scroll handling for the grid container */
+.hot-table * {
+  touch-action: manipulation;
+}
 
 </style>
 

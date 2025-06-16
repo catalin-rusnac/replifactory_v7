@@ -1,6 +1,6 @@
 <template>
   <div class="dilution-controls">
-    <h3>Dilution Controls</h3>
+    <h3>Preconfigured</h3>
     <v-table>
       <thead>
         <tr>
@@ -18,6 +18,19 @@
               class="dilution-button"
             >
               Dilutions Off
+            </v-btn>
+          </td>
+        </tr>
+        <tr>
+          <td></td>
+          <td v-for="vial in vials" :key="vial">
+            <v-btn
+              color="secondary"
+              @click="openChemostatSettings(vial)"
+              class="dilution-button"
+            >
+              <v-icon left>mdi-flask</v-icon>
+              Chemostat
             </v-btn>
           </td>
         </tr>
@@ -56,6 +69,16 @@
         @confirm="handleSettingsConfirm"
       />
     </v-dialog>
+
+    <!-- Add ChemostatSettings dialog -->
+    <v-dialog v-model="showChemostatSettings" max-width="600">
+      <ChemostatSettings
+        v-if="showChemostatSettings"
+        :vialId="selectedVial"
+        @close="handleChemostatSettingsClose"
+        @confirm="handleSettingsConfirm"
+      />
+    </v-dialog>
   </div>
 </template>
 
@@ -63,12 +86,14 @@
 import { ref } from 'vue'
 import DilutionSettings from './DilutionSettings.vue'
 import MorbidostatSettings from './MorbidostatSettings.vue'
+import ChemostatSettings from './ChemostatSettings.vue'
 import { useExperimentStore } from '@/client/stores/experiment'
 
 const emit = defineEmits(['settings-updated'])
 const vials = [1, 2, 3, 4, 5, 6, 7]
 const showSettings = ref(false)
 const showMorbidostatSettings = ref(false)
+const showChemostatSettings = ref(false)
 const selectedVial = ref(null)
 const experimentStore = useExperimentStore()
 
@@ -82,6 +107,11 @@ function openMorbidostatSettings(vial) {
   showMorbidostatSettings.value = true
 }
 
+function openChemostatSettings(vial) {
+  selectedVial.value = vial
+  showChemostatSettings.value = true
+}
+
 function handleSettingsClose() {
   showSettings.value = false
 }
@@ -90,9 +120,14 @@ function handleMorbidostatSettingsClose() {
   showMorbidostatSettings.value = false
 }
 
+function handleChemostatSettingsClose() {
+  showChemostatSettings.value = false
+}
+
 async function handleSettingsConfirm() {
   showSettings.value = false
   showMorbidostatSettings.value = false
+  showChemostatSettings.value = false
   // Refresh the experiment data to show updated values
   await experimentStore.fetchCurrentExperiment()
   // Emit event to refresh the control parameters table
@@ -116,17 +151,18 @@ h3 {
 
 :deep(.v-table) {
   background: transparent !important;
-  width: 100%;
+  width: fit-content;
+  margin: 0 auto;
 }
 
 :deep(.v-table__wrapper) {
   background: transparent !important;
-  width: 100%;
+  width: fit-content;
 }
 
 :deep(.v-table__wrapper > table) {
   background: transparent !important;
-  width: 100%;
+  width: fit-content;
 }
 
 :deep(.v-table__wrapper > table > thead > tr > th) {
@@ -138,6 +174,7 @@ h3 {
 :deep(.v-table__wrapper > table > tbody > tr > td) {
   color: #fff !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  padding: 4px 8px !important;
 }
 
 :deep(.v-table__wrapper > table > tbody > tr:hover) {

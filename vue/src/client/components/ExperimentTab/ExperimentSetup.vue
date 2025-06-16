@@ -58,6 +58,9 @@
         </v-btn>
       </div>
 
+      <!-- Experiment Checks -->
+      <ExperimentChecks v-if="currentExperiment" ref="experimentChecks" />
+
       <!-- Create New Experiment -->
       <div v-if="showCreate" class="d-flex">
         <v-text-field
@@ -74,7 +77,6 @@
       <div v-if="currentExperiment">
         <BottleDisplay />
         <!-- <ExperimentParameters /> -->
-        <ExperimentSimulation />
       </div>
     </div>
   </v-container>
@@ -84,15 +86,18 @@
 import { ref, computed, onMounted } from 'vue';
 import { useExperimentStore } from '@/client/stores/experiment';
 // import ExperimentParameters from './ExperimentParameters.vue';
-import ExperimentSimulation from './ExperimentSimulation.vue';
 import BottleDisplay from './BottleDisplay.vue';
+import ExperimentChecks from './ExperimentChecks.vue';
 import { toast } from 'vue3-toastify';
 import 'vue3-toastify/dist/index.css';
+import { useDialog } from '@/client/composables/useDialog';
 
 const experimentStore = useExperimentStore();
+const { openDialog } = useDialog();
 const newExperimentname = ref('');
 const showCreate = ref(false);
 const currentExperimentId = ref(null);
+const experimentChecks = ref(null);
 
 const experiments = computed(() => experimentStore.experiments);
 const currentExperiment = computed(() => experimentStore.currentExperiment || {});
@@ -120,6 +125,36 @@ async function createAndSelectExperiment() {
 }
 
 async function startExperiment() {
+  // Check if all pre-experiment checks have passed
+  if (experimentChecks.value) {
+    const checks = experimentChecks.value.checks;
+    const failedChecks = checks.filter(check => check.status === 'failed');
+    const pendingChecks = checks.filter(check => check.status === 'pending');
+    
+    if (failedChecks.length > 0 || pendingChecks.length > 0) {
+      const failedNames = failedChecks.map(c => c.name);
+      const pendingNames = pendingChecks.map(c => c.name);
+      
+      let message = '';
+      if (failedChecks.length > 0 && pendingChecks.length > 0) {
+        message = 'Some checks failed and some are pending.';
+      } else if (failedChecks.length > 0) {
+        message = 'Some checks failed.';
+      } else {
+        message = 'Some checks are pending.';
+      }
+      message += '\n\nStart experiment anyway?';
+      
+      const confirmed = await openDialog({
+        title: 'Pre-experiment Checks Warning',
+        message: message
+      });
+      if (!confirmed) {
+        return; // Don't start experiment
+      }
+    }
+  }
+  
   try {
     await experimentStore.startExperiment();
     await experimentStore.fetchCurrentExperiment();

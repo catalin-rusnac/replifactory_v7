@@ -1,6 +1,7 @@
 <template>
   <div>
     <ExperimentSetup/>
+    <ExperimentSummary v-if="hasCultures"/>
     <ExperimentChart v-if="hasCultures"/>
   </div>
 </template>
@@ -9,6 +10,7 @@
 import { storeToRefs } from 'pinia'
 import { useExperimentStore } from '../../stores/experiment'
 import ExperimentSetup from './ExperimentSetup.vue'
+import ExperimentSummary from './ExperimentSummary.vue'
 import ExperimentChart from './ExperimentChart.vue'
 import { computed, watch } from 'vue'
 

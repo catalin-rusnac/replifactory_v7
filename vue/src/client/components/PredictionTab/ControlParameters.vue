@@ -25,7 +25,9 @@ import { useExperimentStore } from '@/client/stores/experiment';
 import TableComponent from './TableComponent.vue';
 import { toast } from 'vue3-toastify';
 import 'vue3-toastify/dist/index.css';
+import { useDialog } from '@/client/composables/useDialog';
 
+const emit = defineEmits(['refresh-table']);
 const experimentStore = useExperimentStore();
 const currentExperiment = computed(() => experimentStore.currentExperiment || {});
 
@@ -60,6 +62,39 @@ function fetchCulturesData() {
   const sortedKeys = sortKeys(keys);
   const sortedData = sortedKeys.map(key => Object.keys(cultures).map(vial => cultures[vial][key]));
   return { data: sortedData, keys: sortedKeys };
+}
+
+async function updateStockConcentration(newConcentration) {
+  console.log('updateStockConcentration called with value:', newConcentration)
+  const params = { ...currentExperiment.value.parameters }
+  const oldValue = params.stock_concentration_drug
+  console.log('Current stock concentration:', oldValue, 'New concentration:', newConcentration)
+  
+  // Only update if value actually changed
+  if (oldValue !== newConcentration) {
+    params.stock_concentration_drug = newConcentration
+    // Update pump2_stock_drug_concentration for all cultures to match
+    for (let vial = 1; vial <= 7; vial++) {
+      if (params.cultures[vial]) {
+        params.cultures[vial].pump2_stock_drug_concentration = newConcentration
+      }
+    }
+    
+    try {
+      await experimentStore.updateCurrentExperimentParameters(params)
+      console.log('Stock concentration and vial concentrations updated successfully')
+      
+      // Get units with fallback
+      const units = params.concentration_units || 'units'
+      toast.success(`Stock concentration updated from ${oldValue} to ${newConcentration} ${units}. All vial concentrations synchronized.`)
+      
+      // Trigger table refresh
+      emit('refresh-table')
+    } catch (error) {
+      console.error('Failed to update stock concentration:', error)
+      toast.error('Failed to update stock concentration')
+    }
+  }
 }
 
 async function updateCulturesData(data) {
@@ -129,6 +164,7 @@ async function updateCulturesData(data) {
       const cultures = newParameters.cultures;
       let hasMismatch = false;
       let mismatchedVials = [];
+      let newVialConcentration = null;
       
       for (let vial = 1; vial <= 7; vial++) {
         if (cultures[vial]) {
@@ -137,15 +173,30 @@ async function updateCulturesData(data) {
           if (Math.abs(cultureConcentration - stockConcentration) > 0.0001) {
             hasMismatch = true;
             mismatchedVials.push(vial);
+            // Use the first mismatched vial's concentration as the new target value
+            if (newVialConcentration === null) {
+              newVialConcentration = cultureConcentration;
+            }
           }
         }
       }
       
-      if (hasMismatch) {
-        toast.error(`Warning: Culture pump2_stock_drug_concentration values in vials ${mismatchedVials.join(', ')} do not match the stock bottle concentration (${stockConcentration}). Please update the stock bottle concentration to match.`, {
+      if (hasMismatch && newVialConcentration !== null) {
+        toast.error(`Warning: Culture pump2_stock_drug_concentration values in vials ${mismatchedVials.join(', ')} do not match the stock bottle concentration (${stockConcentration}).`, {
           position: "top-right",
           autoClose: 8000
         });
+        const { openDialog } = useDialog();
+        const confirmed = await openDialog({
+          title: 'Update Stock Concentration',
+          message: `Update stock bottle concentration from ${stockConcentration} to ${newVialConcentration}?`,
+        });
+        
+        if (confirmed) {
+          // update stock concentration to match vial concentration
+          await updateStockConcentration(newVialConcentration);
+        }
+        
       } else {
         toast.success('Control parameters updated');
       }

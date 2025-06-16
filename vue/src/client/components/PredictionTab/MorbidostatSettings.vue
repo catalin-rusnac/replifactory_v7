@@ -7,23 +7,23 @@
 
     <div class="settings-content">
       <p class="settings-description">
-        Configure the following parameters:
+        Apply the following parameters:
       </p>
       
       <div class="parameter-list">
-        <template v-for="key in changedKeys" :key="key">
-          <div class="parameter-item">
-            <span class="parameter-name">{{ getParameterName(key) }}</span>
+        <template v-for="key in parameterOrder" :key="key">
+          <div v-if="changedKeys.includes(key)" class="parameter-item">
+            <span class="parameter-name">{{ key }}</span>
             <div class="parameter-values">
-              <span class="parameter-value">{{ currentValues[key] }}</span>
+              <span class="parameter-value">{{ formatValue(currentValues[key]) }}</span>
               <span class="parameter-arrow">→</span>
               <input
                 type="number"
                 v-model.number="newValues[key]"
                 class="parameter-input"
-                :step="getParameterStep(key)"
                 :min="getParameterMin(key)"
                 :max="getParameterMax(key)"
+                @blur="newValues[key] = Number(newValues[key]).toFixed(5) * 1"
               />
               <v-tooltip v-if="key === 'dose_initialization'" text="1% of drug stock concentration">
                 <template v-slot:activator="{ props }">
@@ -123,24 +123,6 @@ const newValues = ref({
   postfill: 0
 })
 
-const defaultValues = {
-  volume_vial: 12,
-  pump1_stock_drug_concentration: 0,
-  dose_initialization: 0,
-  dilution_factor: 1.6,
-  od_dilution_threshold: 0.3,
-  delay_dilution_max_hours: 4,
-  dilution_number_first_drug_addition: 2,
-  dose_first_drug_addition: 1,
-  dose_increase_factor: 2,
-  dose_increase_amount: 0,
-  delay_stress_increase_min_generations: 2,
-  threshold_od_min_increase_stress: 0.1,
-  threshold_growth_rate_increase_stress: 0.15,
-  threshold_growth_rate_decrease_stress: -0.1,
-  postfill: 0
-}
-
 const changedKeys = computed(() => {
   const current = currentValues.value;
   const proposed = newValues.value;
@@ -148,6 +130,27 @@ const changedKeys = computed(() => {
     key => current[key] !== proposed[key]
   );
 });
+
+const parameterOrder = [
+  'name',
+  'description',
+  'volume_vial',
+  'pump1_stock_drug_concentration',
+  'pump2_stock_drug_concentration',
+  'dose_initialization',
+  'dilution_factor',
+  'od_dilution_threshold',
+  'delay_dilution_max_hours',
+  'dilution_number_first_drug_addition',
+  'dose_first_drug_addition',
+  'dose_increase_factor',
+  'dose_increase_amount',
+  'delay_stress_increase_min_generations',
+  'threshold_od_min_increase_stress',
+  'threshold_growth_rate_increase_stress',
+  'threshold_growth_rate_decrease_stress',
+  'postfill'
+];
 
 function getParameterName(key) {
   const names = {
@@ -168,26 +171,6 @@ function getParameterName(key) {
     postfill: 'Post-fill Volume (mL)'
   }
   return names[key] || key
-}
-
-function getParameterStep(key) {
-  const steps = {
-    volume_vial: 0.1,
-    dose_initialization: 0.1,
-    dilution_factor: 0.1,
-    od_dilution_threshold: 0.01,
-    delay_dilution_max_hours: 1,
-    dilution_number_first_drug_addition: 1,
-    dose_first_drug_addition: 0.1,
-    dose_increase_factor: 0.1,
-    dose_increase_amount: 0.1,
-    delay_stress_increase_min_generations: 1,
-    threshold_od_min_increase_stress: 0.01,
-    threshold_growth_rate_increase_stress: 0.01,
-    threshold_growth_rate_decrease_stress: 0.01,
-    postfill: 0.1
-  }
-  return steps[key] || 1
 }
 
 function getParameterMin(key) {
@@ -226,24 +209,27 @@ function shouldShowParameter(key) {
   return currentValues[key] !== newValues.value[key]
 }
 
+function formatValue(val) {
+  if (typeof val === 'number') {
+    return Number(val).toFixed(5).replace(/\.0+$/, '').replace(/(\.\d*?[1-9])0+$/, '$1');
+  }
+  return val;
+}
+
 async function confirmSettings() {
   try {
-    const params = { ...experimentStore.currentExperiment.parameters }
-    
-    // Update parameters
-    params.cultures[props.vialId] = {
-      ...params.cultures[props.vialId],
-      dose_initialization: newValues.value.dose_initialization,
-      od_dilution_threshold: newValues.value.od_dilution_threshold,
-      delay_dilution_max_hours: newValues.value.delay_dilution_max_hours
-    }
-
-    await experimentStore.updateCurrentExperimentParameters(params)
-    toast.success(`Morbidostat settings updated for Vial ${props.vialId}`)
-    emit('confirm')
+    const params = { ...experimentStore.currentExperiment.parameters };
+    // Copy all keys from newValues to the culture object
+    Object.keys(newValues.value).forEach(key => {
+      params.cultures[props.vialId][key] = newValues.value[key];
+    });
+    console.log('Saving:', newValues.value);
+    await experimentStore.updateCurrentExperimentParameters(params);
+    toast.success(`Morbidostat settings applied to Vial ${props.vialId}`);
+    emit('confirm');
   } catch (error) {
-    console.error('Failed to update morbidostat settings:', error)
-    toast.error('Failed to update morbidostat settings')
+    console.error('Failed to apply morbidostat settings:', error);
+    toast.error('Failed to apply morbidostat settings');
   }
 }
 </script>
