@@ -1,5 +1,5 @@
 import time
-
+from logger.logger import logger
 
 class Valves:
     VALVE_OPEN_TIME = 1.5
@@ -14,10 +14,9 @@ class Valves:
         self.is_open = {1: None, 2: None, 3: None, 4: None, 5: None, 6: None, 7: None}
 
     def connect(self):
+        logger.info("Connecting valves")
         self.set_frequency_multiplier()
         print("setting duty cycle open and closed")
-        self.set_default_duty_cycle_open_all()
-        self.set_default_duty_cycle_closed_all()
         for valve in range(1, 8):
             self.set_duty_cycle_open(valve)
             self.set_duty_cycle_closed(valve)
@@ -34,7 +33,6 @@ class Valves:
             self.device.eeprom.save_config_to_eeprom()
 
     def set_duty_cycle_closed(self, valve, duty_cycle=None):
-        # change the default value of duty_cycle_closed and save device config to eeprom
         self._ensure_duty_cycle_structure("duty_cycle_closed")
         if duty_cycle is None:
             duty_cycle = self.device.device_data["valves"]["duty_cycle_closed"][valve]

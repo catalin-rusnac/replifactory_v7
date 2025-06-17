@@ -20,6 +20,9 @@ async def lifespan(app):
         logger.error(f"Error getting event loop: {e}")
     try:
         experiment_manager.connect_device()
+        # device hello
+        experiment_manager.device.hello()
+        
     except Exception as e:
         logger.error(f"Error connecting device: {e}")
     yield

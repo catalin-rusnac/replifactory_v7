@@ -3,7 +3,7 @@ import time
 import traceback
 import math
 import pyftdi.i2c
-
+from logger.logger import logger
 
 class PwmController:
     """PCA9685 PWM controller"""
@@ -16,7 +16,7 @@ class PwmController:
         if self.device.is_connected():
             self.connect()
 
-    def connect(self):
+    def connect(self, frequency=None):
         """
         Establish I2C connection to the PWM controller.
         :return:
@@ -31,7 +31,8 @@ class PwmController:
                     traceback.print_exc()
                     print("PCA9685 PWM controller connection ERROR:", e)
                     time.sleep(1)
-            print("Connected to PCA9685 PWM controller port", self.port)
+            if frequency is not None:
+                self.frequency = frequency
             self.set_frequency(self.frequency)
             self.stop_all()
             self.write_all_zeros()
@@ -60,6 +61,7 @@ class PwmController:
         :param frequency:
         :return:
         """
+        logger.info(f"Setting frequency to {frequency}")
         pre_scale = math.floor(25000000 / (4096 * frequency)) - 1
 
         ftdi_lock_acquired = self.device.lock_ftdi.acquire(timeout=15)
@@ -105,6 +107,7 @@ class PwmController:
         :param duty_cycle:
         :return:
         """
+        logger.info(f"Setting duty cycle of {led_number} to {duty_cycle}")
         assert 0 <= led_number <= 15
         assert 0 <= duty_cycle <= 1
         msb, lsb = divmod(
