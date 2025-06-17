@@ -18,12 +18,6 @@ def get_device() -> BaseDevice:
 def connect_device():
     device = experiment_manager.device
     try:
-        if device.is_connected():
-            device.hello()
-            return {"success": True, "device_states": device.device_data}
-    except Exception:
-        pass
-    try:
         device.connect()
         device.hello()
         return {"success": True, "device_states": device.device_data}
@@ -94,6 +88,8 @@ def set_device_state(devicePart: str, payload: dict, device: BaseDevice = Depend
                 device.pumps[part_index].move(rotations)
             while device.pumps[part_index].is_pumping():
                 time.sleep(0.2)
+            # Set pump state back to 'stopped' when pumping is complete
+            device.device_data['pumps']['states'][part_index] = 'stopped'
             # Optionally adjust stock volume if needed (implement adjust_stock_volume if required)
         elif new_state == 'stopped':
             if device.pumps[part_index].is_pumping():

@@ -153,14 +153,20 @@ class CultureGrowthModel:
         max_dose = max(only_pump1_resulting_dose, only_pump2_resulting_dose)
         target_dose = min(max_dose, max(min_dose, target_dose))
 
+        # Calculate required concentration in added volume to achieve target dose
+        current_amount = current_dose * current_volume
+        target_amount = target_dose * total_volume
+        added_amount = target_amount - current_amount
+        added_concentration = added_amount / added_volume
+
         # Calculate required volumes to achieve target dose
         if abs(stock1_concentration - stock2_concentration) < 1e-10:
             # If concentrations are equal, split volume evenly
             pump1_volume = added_volume / 2
             pump2_volume = added_volume / 2
         else:
-            # Calculate volumes based on concentrations
-            pump1_volume = added_volume * (stock2_concentration - target_dose) / (stock2_concentration - stock1_concentration)
+            # Calculate volumes based on concentrations needed in added volume
+            pump1_volume = added_volume * (stock2_concentration - added_concentration) / (stock2_concentration - stock1_concentration)
             pump2_volume = added_volume - pump1_volume
 
         # Ensure volumes are non-negative
