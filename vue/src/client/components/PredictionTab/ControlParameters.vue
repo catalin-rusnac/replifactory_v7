@@ -16,6 +16,7 @@
     :columnHeaders="['Vial 1', 'Vial 2', 'Vial 3', 'Vial 4', 'Vial 5', 'Vial 6', 'Vial 7']"
     rowHeaderLabel="Parameter"
     :rowHeaderWidth="270"
+    :rowTooltips="parameterTooltips"
   />
 </template>
 
@@ -30,6 +31,28 @@ import { useDialog } from '@/client/composables/useDialog';
 const emit = defineEmits(['refresh-table']);
 const experimentStore = useExperimentStore();
 const currentExperiment = computed(() => experimentStore.currentExperiment || {});
+
+// Tooltip descriptions for each parameter
+const parameterTooltips = {
+  'name': 'Name of the culture',
+  'description': 'Descriptive text explaining the purpose or conditions of this vial',
+  'volume_vial': 'Volume of liquid below waste needle in vial (mL)',
+  'pump1_stock_drug_concentration': 'Drug concentration in pump1 stock solution (typically 0 for media)',
+  'pump2_stock_drug_concentration': 'Drug concentration in pump2 stock solution (matches stock bottle)',
+  'dose_initialization': 'Initial drug dose (concentration) added at experiment start',
+  'dilution_factor': 'Factor by which culture is diluted during each dilution event',
+  'od_dilution_threshold': 'Optical density threshold that triggers automatic dilution. -1 to disable automatic dilution.',
+  'delay_dilution_max_hours': 'Maximum time delay between dilution events (hours). Useful to trigger dilutions due to time passing. -1 to disable.',
+  'dilution_number_first_drug_addition': 'Index of dilution event when drug is first added (after initialization).',
+  'dose_first_drug_addition': 'Initial drug dose (concentration) when drug is first added',
+  'dose_increase_factor': 'Multiplicative factor for increasing drug dose at drug increase events. 1.1 means 10% increase.',
+  'dose_increase_amount': 'Additive amount for increasing drug dose at drug increase events. 0.1 means 0.1 units increase.',
+  'delay_stress_increase_min_generations': 'Minimum generations to wait before increasing stress. Useful to prevent over-stressing the culture. Decrease this parameter for more stress increase events that reduce growth rate and media consumption.',
+  'threshold_od_min_increase_stress': 'Minimum OD threshold to allow stress increase events. Useful to prevent stressing a small population.',
+  'threshold_growth_rate_increase_stress': 'Growth rate threshold above which stress increase events are allowed. Decrease this parameter for more stress increase events that reduce growth rate and media consumption.',
+  'threshold_growth_rate_decrease_stress': 'Growth rate threshold below which stress decrease events are allowed. Useful to prevent over-stressing the culture.',
+  'postfill': 'Volume added after pumping waste. Useful for phage experiments.'
+};
 
 function fetchCulturesData() {
   const cultures = currentExperiment.value.parameters.cultures;

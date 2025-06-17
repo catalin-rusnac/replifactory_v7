@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div @mouseover="handleMouseOver" @mouseout="handleMouseOut">
     <RevoGrid
       ref="grid"
       :columns="gridColumns"
@@ -16,6 +16,17 @@
       :hideAttribution="true"
       :stretch="false"
     />
+    
+    <!-- Tooltip -->
+    <div
+      v-if="tooltip.show"
+      class="custom-tooltip"
+      :style="{ left: tooltip.x + 'px', top: tooltip.y + 'px' }"
+    >
+      <div class="tooltip-header">{{ tooltip.paramName }}</div>
+      <div class="tooltip-description">{{ tooltip.text }}</div>
+      <div class="tooltip-arrow"></div>
+    </div>
   </div>
 </template>
 
@@ -54,6 +65,7 @@ export default defineComponent({
     const tooltip = ref({
       show: false,
       text: '',
+      paramName: '',
       x: 0,
       y: 0
     });
@@ -62,14 +74,51 @@ export default defineComponent({
     const showTooltip = (event, rowKey) => {
       if (props.rowTooltips[rowKey]) {
         tooltip.value.text = props.rowTooltips[rowKey];
+        tooltip.value.paramName = rowKey;
         tooltip.value.x = event.clientX + 10;
         tooltip.value.y = event.clientY - 10;
         tooltip.value.show = true;
+        
+        // Add highlighting to the target element
+        event.target.classList.add('tooltip-highlighted');
       }
     };
 
-    const hideTooltip = () => {
+    const hideTooltip = (targetElement = null) => {
       tooltip.value.show = false;
+      
+      // Remove highlighting from the target element
+      if (targetElement) {
+        targetElement.classList.remove('tooltip-highlighted');
+      }
+      // Also remove from any elements that might still have the class
+      const highlighted = document.querySelectorAll('.tooltip-highlighted');
+      highlighted.forEach(el => el.classList.remove('tooltip-highlighted'));
+    };
+
+    // Mouse event handlers for the wrapper div
+    const handleMouseOver = (event) => {
+      const target = event.target;
+      if (target && target.textContent) {
+        const paramKey = Object.keys(props.rowTooltips).find(key => 
+          target.textContent.trim() === key
+        );
+        if (paramKey) {
+          showTooltip(event, paramKey);
+        }
+      }
+    };
+
+    const handleMouseOut = (event) => {
+      const target = event.target;
+      if (target && target.textContent) {
+        const paramKey = Object.keys(props.rowTooltips).find(key => 
+          target.textContent.trim() === key
+        );
+        if (paramKey) {
+          hideTooltip(target);
+        }
+      }
     };
 
     // Handle horizontal scrolling with shift+wheel or when no vertical scroll is possible
@@ -128,20 +177,44 @@ export default defineComponent({
       setTimeout(() => {
         const gridElement = grid.value?.$el;
         if (gridElement) {
-          const rowHeaderCells = gridElement.querySelectorAll('.rgRowHeaderCell');
-          rowHeaderCells.forEach((cell, index) => {
-            if (keys[index] && props.rowTooltips[keys[index]]) {
+          // Try multiple selectors to find row header cells
+          let rowHeaderCells = gridElement.querySelectorAll('.rgRowHeaderCell');
+          if (rowHeaderCells.length === 0) {
+            rowHeaderCells = gridElement.querySelectorAll('[data-rgrow]');
+          }
+          if (rowHeaderCells.length === 0) {
+            rowHeaderCells = gridElement.querySelectorAll('revogrid-row-header');
+          }
+          if (rowHeaderCells.length === 0) {
+            // Try looking for cells containing the row header text
+            rowHeaderCells = Array.from(gridElement.querySelectorAll('*')).filter(el => 
+              keys.some(key => el.textContent && el.textContent.includes(key))
+            );
+          }
+          
+          // Instead of relying on index position, match by text content
+          rowHeaderCells.forEach((cell) => {
+            const cellText = cell.textContent?.trim();
+            if (cellText && props.rowTooltips[cellText]) {
               cell.style.cursor = 'help';
-              cell.addEventListener('mouseenter', (e) => showTooltip(e, keys[index]));
-              cell.addEventListener('mouseleave', hideTooltip);
+              cell.addEventListener('mouseenter', (e) => showTooltip(e, cellText));
+              cell.addEventListener('mouseleave', () => hideTooltip(cell));
             }
           });
         }
-      }, 100);
+      }, 500);
     };
 
     // Listen for prop changes
     watch(() => props.columnHeaders, loadTableData, { immediate: true });
+    
+    // Also watch for rowTooltips changes
+    watch(() => props.rowTooltips, () => {
+      const { keys } = props.fetchData();
+      nextTick(() => {
+        setupTooltipListeners(keys);
+      });
+    }, { immediate: true });
 
     // Setup wheel event handling for horizontal scroll
     onMounted(() => {
@@ -150,6 +223,32 @@ export default defineComponent({
         const gridElement = grid.value?.$el;
         if (gridElement) {
           gridElement.addEventListener('wheel', handleWheel, { passive: false });
+          
+          // Alternative approach: listen for mouseover on the entire grid
+          gridElement.addEventListener('mouseover', (e) => {
+            const target = e.target;
+            if (target && target.textContent) {
+              // Check if the target contains any of our parameter names
+              const paramKey = Object.keys(props.rowTooltips).find(key => 
+                target.textContent.trim() === key
+              );
+              if (paramKey) {
+                showTooltip(e, paramKey);
+              }
+            }
+          });
+          
+          gridElement.addEventListener('mouseout', (e) => {
+            const target = e.target;
+            if (target && target.textContent) {
+              const paramKey = Object.keys(props.rowTooltips).find(key => 
+                target.textContent.trim() === key
+              );
+              if (paramKey) {
+                hideTooltip();
+              }
+            }
+          });
         }
       }, 100);
     });
@@ -172,7 +271,7 @@ export default defineComponent({
 
 
 
-    return { gridColumns, gridSource, handleEdit, tableHeight, rowHeight, plugins, grid, readonly: props.readonly };
+    return { gridColumns, gridSource, handleEdit, tableHeight, rowHeight, plugins, grid, readonly: props.readonly, tooltip, handleMouseOver, handleMouseOut };
   }
 });
 </script>
@@ -261,6 +360,56 @@ revo-grid {
 /* Allow proper scrolling within the grid */
 .hot-table revo-grid {
   overflow: auto;
+}
+
+/* Tooltip styles */
+.custom-tooltip {
+  position: fixed;
+  background: #2d3748;
+  color: #e2e8f0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  max-width: 300px;
+  z-index: 10000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  border: 1px solid #4a5568;
+  pointer-events: none;
+}
+
+.tooltip-header {
+  font-weight: bold;
+  font-size: 14px;
+  color: #4a90e2;
+  margin-bottom: 4px;
+  border-bottom: 1px solid #4a5568;
+  padding-bottom: 4px;
+}
+
+.tooltip-description {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.tooltip-arrow {
+  position: absolute;
+  top: -5px;
+  left: 10px;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 5px solid #2d3748;
+}
+
+/* Highlighting for tooltip target */
+.tooltip-highlighted {
+  background-color: #4a90e2 !important;
+  color: #ffffff !important;
+  border-radius: 3px !important;
+  padding: 2px 4px !important;
+  transition: all 0.2s ease-in-out !important;
+  box-shadow: 0 0 8px rgba(74, 144, 226, 0.4) !important;
 }
 
 </style>

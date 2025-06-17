@@ -17,6 +17,7 @@
       :columnHeaders="['Vial 1', 'Vial 2', 'Vial 3', 'Vial 4', 'Vial 5', 'Vial 6', 'Vial 7']"
       rowHeaderLabel="Parameter"
       :rowHeaderWidth="270"
+      :rowTooltips="growthParameterTooltips"
     />
   </div>
 </template>
@@ -30,6 +31,21 @@ import 'vue3-toastify/dist/index.css';
 
 const experimentStore = useExperimentStore();
 const currentExperiment = computed(() => experimentStore.currentExperiment || {});
+
+// Tooltip descriptions for each growth parameter
+const growthParameterTooltips = {
+  'initial_population': 'Initial OD of the culture at the start of the experiment',
+  'doubling_time_mins': 'Time in minutes for the culture to double under optimal conditions',
+  'carrying_capacity': 'Maximum OD the culture can reach under optimal conditions.',
+  'mu_min': 'Minimum growth rate (death rate under stress)',
+  'ic50_initial': 'Initial drug concentration that inhibits growth by 50% (IC50)',
+  'ic10_ic50_ratio': 'Ratio between IC10 and IC50 concentrations. Lower values indicate steeper dose-response curves.',
+  'dose_effective_slope_width_mins': 'Describes how fast the drug can stress the culture.',
+  'time_lag_drug_effect_mins': 'Delay in minutes between drug addition and onset of growth inhibition effects.',
+  'adaptation_rate_max': 'Maximum rate at which the culture can adapt to stress - the model assumes it is at IC50.',
+  'adaptation_rate_ic10_ic50_ratio': 'Ratio of adaptation rate at IC10 to IC50. Higher values indicate more similar adaptation at optimum and suboptimum stress conditions.', 
+  'effective_dose': 'Calculated effective drug dose based on current conditions and adaptation state.'
+};
 
 function fetchCulturesData() {
   const cultures = currentExperiment.value.parameters.growth_parameters;
