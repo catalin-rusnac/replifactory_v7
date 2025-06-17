@@ -20,7 +20,7 @@
 </template>
 
 <script>
-import { defineComponent, ref, onMounted, watch, computed, onBeforeUnmount } from "vue";
+import { defineComponent, ref, onMounted, watch, computed, onBeforeUnmount, nextTick } from "vue";
 import RevoGrid from '@revolist/vue3-datagrid';
 import {
   HistoryPlugin,
@@ -35,7 +35,8 @@ export default defineComponent({
     rowHeaderLabel: { type: String, default: "Row" },
     rowHeaderWidth: { type: Number, default: 270 },
     readonly: { type: Boolean, default: false },
-    fixedRows: { type: Number, default: null }
+    fixedRows: { type: Number, default: null },
+    rowTooltips: { type: Object, default: () => ({}) }
   },
   setup(props) {
     const gridColumns = ref([]);
@@ -48,6 +49,28 @@ export default defineComponent({
 
     const plugins = ref([HistoryPlugin]);
     const grid = ref();
+
+    // Tooltip state
+    const tooltip = ref({
+      show: false,
+      text: '',
+      x: 0,
+      y: 0
+    });
+
+    // Tooltip handlers
+    const showTooltip = (event, rowKey) => {
+      if (props.rowTooltips[rowKey]) {
+        tooltip.value.text = props.rowTooltips[rowKey];
+        tooltip.value.x = event.clientX + 10;
+        tooltip.value.y = event.clientY - 10;
+        tooltip.value.show = true;
+      }
+    };
+
+    const hideTooltip = () => {
+      tooltip.value.show = false;
+    };
 
     // Handle horizontal scrolling with shift+wheel or when no vertical scroll is possible
     const handleWheel = (event) => {
@@ -94,6 +117,27 @@ export default defineComponent({
         }
         return obj;
       });
+
+      // Add tooltip event listeners after grid is rendered
+      nextTick(() => {
+        setupTooltipListeners(keys);
+      });
+    };
+
+    const setupTooltipListeners = (keys) => {
+      setTimeout(() => {
+        const gridElement = grid.value?.$el;
+        if (gridElement) {
+          const rowHeaderCells = gridElement.querySelectorAll('.rgRowHeaderCell');
+          rowHeaderCells.forEach((cell, index) => {
+            if (keys[index] && props.rowTooltips[keys[index]]) {
+              cell.style.cursor = 'help';
+              cell.addEventListener('mouseenter', (e) => showTooltip(e, keys[index]));
+              cell.addEventListener('mouseleave', hideTooltip);
+            }
+          });
+        }
+      }, 100);
     };
 
     // Listen for prop changes
@@ -143,8 +187,8 @@ export default defineComponent({
   /* Add touch-action and other performance optimizations */
   touch-action: manipulation;
   -webkit-overflow-scrolling: touch;
-  /* Prevent internal scrollbars */
-  overflow: visible;
+  /* Allow proper scrolling */
+  overflow: auto;
 }
 
 .hot-table .rgHeaderCell,
@@ -186,12 +230,12 @@ revogrid-data *,
   overscroll-behavior: contain;
 }
 
-/* Enable horizontal scrolling for the parent container */
+/* Enable proper scrolling for the grid container */
 revo-grid {
   scroll-behavior: smooth;
   will-change: scroll-position;
-  /* Allow wheel events to bubble up for horizontal scrolling */
-  overflow-x: visible !important;
+  /* Allow proper scrolling */
+  overflow: auto !important;
   /* Constrain grid to content size */
   width: fit-content !important;
   max-width: fit-content !important;
@@ -214,9 +258,9 @@ revo-grid {
   max-width: none !important;
 }
 
-/* Prevent grid from extending beyond columns and internal scrollbars */
+/* Allow proper scrolling within the grid */
 .hot-table revo-grid {
-  overflow: visible;
+  overflow: auto;
 }
 
 </style>

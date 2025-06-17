@@ -62,23 +62,42 @@
         </v-btn>
       </div>
 
+      <!-- Create New Experiment - Moved to appear before experiment checks -->
+      <div v-if="showCreate" class="new-experiment-form">
+        <div class="form-header">
+          <div class="form-note">
+            New experiment will copy parameters from <strong>{{ getExperimentDisplayName() }}</strong>
+          </div>
+          <v-btn
+            icon
+            size="small"
+            @click="showCreate = false"
+            class="close-btn"
+            title="Close"
+          >
+            <v-icon size="18">mdi-close</v-icon>
+          </v-btn>
+        </div>
+        <div class="form-content">
+          <div class="form-input-row">
+            <v-text-field
+              v-model="newExperimentname"
+              label="New Experiment Name"
+              outlined
+              dense
+              class="flex-grow-1"
+              @keyup.enter="createAndSelectExperiment"
+            ></v-text-field>
+            <v-btn color="primary" @click="createAndSelectExperiment" class="ml-3 create-btn">Create Experiment</v-btn>
+          </div>
+        </div>
+      </div>
+
       <!-- Experiment Checks - Hide when experiment is running -->
       <ExperimentChecks 
         v-if="currentExperiment && currentExperiment.status !== 'running'" 
         ref="experimentChecks" 
       />
-
-      <!-- Create New Experiment -->
-      <div v-if="showCreate" class="d-flex">
-        <v-text-field
-          v-model="newExperimentname"
-          label="New Experiment Name"
-          outlined
-          dense
-          class="flex-grow-1 mt-3"
-        ></v-text-field>
-        <v-btn color="success" @click="createAndSelectExperiment" class="ml-3 mt-3">Create Experiment</v-btn>
-      </div>
 
       <!-- Experiment Parameters -->
       <div v-if="currentExperiment">
@@ -127,10 +146,59 @@ async function handleNewExperimentButton() {
 }
 
 async function createAndSelectExperiment() {
-  currentExperimentId.value = await experimentStore.createExperiment({ name: newExperimentname.value });
-  await experimentStore.selectExperiment(currentExperimentId.value);
-  showCreate.value = false;
-  newExperimentname.value = currentExperiment.value.name;
+  // Validate that name is not empty
+  if (!newExperimentname.value || newExperimentname.value.trim() === '') {
+    toast('Experiment name cannot be empty', { type: 'error' });
+    return;
+  }
+  
+  const trimmedName = newExperimentname.value.trim();
+  
+  // Check for invalid characters that could cause filesystem problems
+  const invalidChars = /[<>:"/\\|?*\x00-\x1f]/;
+  if (invalidChars.test(trimmedName)) {
+    toast('Experiment name contains invalid characters. Avoid: < > : " / \\ | ? *', { type: 'error' });
+    return;
+  }
+  
+  // Check for reserved names (Windows)
+  const reservedNames = /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i;
+  if (reservedNames.test(trimmedName)) {
+    toast('Experiment name cannot be a reserved system name', { type: 'error' });
+    return;
+  }
+  
+  // Check if name starts or ends with dots or spaces (problematic on many systems)
+  if (trimmedName.startsWith('.') || trimmedName.endsWith('.') || trimmedName.endsWith(' ')) {
+    toast('Experiment name cannot start or end with dots or spaces', { type: 'error' });
+    return;
+  }
+  
+  // Check length (most filesystems have limits)
+  if (trimmedName.length > 255) {
+    toast('Experiment name is too long (maximum 255 characters)', { type: 'error' });
+    return;
+  }
+  
+  try {
+    currentExperimentId.value = await experimentStore.createExperiment({ name: trimmedName });
+    await experimentStore.selectExperiment(currentExperimentId.value);
+    showCreate.value = false;
+    newExperimentname.value = currentExperiment.value.name;
+    toast(`New experiment "${trimmedName}" created`, { type: 'success' });
+  } catch (error) {
+    toast(error.message || 'Failed to create experiment', { type: 'error' });
+  }
+}
+
+function getExperimentDisplayName() {
+  if (!currentExperiment.value) {
+    return 'Default Template';
+  }
+  if (currentExperiment.value.id === 0) {
+    return 'Default Template';
+  }
+  return currentExperiment.value.name || 'Default Template';
 }
 
 async function startExperiment() {
@@ -262,9 +330,53 @@ onMounted(async () => {
 
 .start-button {
   margin-top: 10px;
-  width: 220px;
+}
+
+.new-experiment-form {
+  margin: 20px 0;
+  background-color: rgba(33, 150, 243, 0.05);
+  border: 2px solid rgba(33, 150, 243, 0.3);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 20px 20px 0 20px;
+}
+
+.form-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 20px 20px 20px;
+}
+
+.close-btn {
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.close-btn:hover {
+  opacity: 1;
+}
+
+.form-note {
+  color: #666;
+  font-size: 0.9em;
+  font-style: italic;
+}
+
+.form-input-row {
   display: flex;
   align-items: center;
+}
+
+.create-btn {
+  height: 40px !important;
+  min-height: 40px !important;
 }
 
 @media (max-width: 768px) {

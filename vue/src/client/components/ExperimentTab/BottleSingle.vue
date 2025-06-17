@@ -73,6 +73,7 @@
                  v-model="editingValue"
                  @input="handleInput('units')"
                  @blur="finishEditing('units')"
+                 @keyup.enter="finishEditing('units')"
                  @keyup.esc="cancelEditing"
                  ref="volumeInput"
                  class="volume-input"

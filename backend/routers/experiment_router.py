@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Body
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from experiment.experiment_manager import experiment_manager
@@ -6,6 +7,7 @@ from experiment.exceptions import ExperimentNotFound
 from routers.experiment_schemas import ExperimentCreate, ExperimentOut, SelectExperimentIn, ParametersUpdate
 from logger.logger import logger
 import traceback
+import os
 from fastapi import WebSocket, WebSocketDisconnect
 
 router = APIRouter()
@@ -287,6 +289,55 @@ def get_experiment_summary(db_session: Session = Depends(get_db)):
         logger.error(f"Error getting experiment summary: {e}")
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/export/{vial}/{filetype}")
+def export_vial_data(vial: int, filetype: str, db_session: Session = Depends(get_db)):
+    """Export vial data as CSV or HTML"""
+    if filetype not in ['csv', 'html']:
+        raise HTTPException(status_code=400, detail="Invalid filetype. Must be 'csv' or 'html'")
+    
+    if vial < 1 or vial > 7:
+        raise HTTPException(status_code=400, detail="Vial must be between 1 and 7")
+    
+    try:
+        experiment = experiment_manager.experiment
+        if experiment is None:
+            raise HTTPException(status_code=404, detail="No current experiment selected")
+        
+        culture = experiment.cultures[vial]
+        
+        if filetype == 'csv':
+            csv_path = culture.export_csv()
+            if not os.path.exists(csv_path):
+                raise HTTPException(status_code=500, detail="Failed to generate CSV file")
+            
+            logger.info(f"Exporting CSV for vial {vial}: {csv_path}")
+            return FileResponse(
+                path=csv_path,
+                filename=f"vial_{vial}_data.csv",
+                media_type="text/csv"
+            )
+            
+        elif filetype == 'html':
+            html_path = culture.export_plot_html()
+            if not os.path.exists(html_path):
+                raise HTTPException(status_code=500, detail="Failed to generate HTML file")
+            
+            logger.info(f"Exporting HTML for vial {vial}: {html_path}")
+            return FileResponse(
+                path=html_path,
+                filename=f"vial_{vial}_plot.html",
+                media_type="text/html"
+            )
+            
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Vial {vial} not found in current experiment")
+    except ExperimentNotFound as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error exporting {filetype} for vial {vial}: {e}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Failed to export {filetype}: {str(e)}")
 
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):

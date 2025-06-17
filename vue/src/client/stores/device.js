@@ -122,9 +122,7 @@ export const useDeviceStore = defineStore('device', {
     },
     async measureDevicePart({ devicePart, partIndex }) {
       try {
-        console.log('Device store: Making API call to', `/measure-${devicePart}`, { partIndex });
         const response = await api.post(`/measure-${devicePart}`, { partIndex })
-        console.log('Device store: Got response', response);
         if (response.data.success) {
           await this.fetchDeviceData()
         } else {

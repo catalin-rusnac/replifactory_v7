@@ -67,6 +67,8 @@ import { toast } from 'vue3-toastify'
 import { useExperimentStore } from '@/client/stores/experiment'
 import { useDeviceStore } from '@/client/stores/device'
 
+
+
 const experimentStore = useExperimentStore()
 const deviceStore = useDeviceStore()
 
@@ -171,7 +173,7 @@ async function checkExperimentTiming(check) {
       <i class="v-icon mdi mdi-close-circle" style="font-size: 16px; vertical-align: middle;"></i> 
       No experiment selected - please select or create an experiment
     </span>`
-    toast('No experiment selected', { type: 'error' })
+    toast('No experiment selected', { type: 'error', autoClose: 10000 })
     return
   }
 
@@ -199,7 +201,7 @@ async function checkExperimentTiming(check) {
         <i class="v-icon mdi mdi-check-circle" style="font-size: 16px; vertical-align: middle;"></i> 
         Experiment "${currentExperiment.name}" selected - no previous OD data (new experiment)
       </span>`
-      toast('Experiment ready - no previous data found', { type: 'success' })
+      toast('Experiment ready - no previous data found', { type: 'success', autoClose: 10000 })
       return
     }
 
@@ -216,7 +218,7 @@ async function checkExperimentTiming(check) {
         <i class="v-icon mdi mdi-close-circle" style="font-size: 16px; vertical-align: middle;"></i> 
         Last OD measurement was ${hoursAgo}h ${minutesAgo}m ago. Experiments idle >24h must be restarted. Autoclave tubing and start a new experiment.
       </span>`
-      toast(`Error: Last measurement was ${hoursAgo}h ${minutesAgo}m ago. Must start new experiment.`, { type: 'error' })
+      toast(`Error: Last measurement was ${hoursAgo}h ${minutesAgo}m ago. Must start new experiment.`, { type: 'error', autoClose: 10000 })
     } else if (timeDifferenceHours > 3) {
       check.status = 'warning'
       const hoursAgo = Math.floor(timeDifferenceHours)
@@ -225,7 +227,7 @@ async function checkExperimentTiming(check) {
         <i class="v-icon mdi mdi-alert-circle" style="font-size: 16px; vertical-align: middle;"></i> 
         Last OD measurement was ${hoursAgo}h ${minutesAgo}m ago. Resuming after >3h delays can cause unstable culture dynamics. Consider autoclaving tubing and starting a new experiment.
       </span>`
-      toast(`Warning: Last measurement was ${hoursAgo}h ${minutesAgo}m ago. Consider starting fresh.`, { type: 'warning' })
+      toast(`Warning: Last measurement was ${hoursAgo}h ${minutesAgo}m ago. Consider starting fresh.`, { type: 'warning', autoClose: 10000 })
     } else {
       check.status = 'passed'
       const hoursAgo = Math.floor(timeDifferenceHours)
@@ -234,7 +236,7 @@ async function checkExperimentTiming(check) {
         <i class="v-icon mdi mdi-check-circle" style="font-size: 16px; vertical-align: middle;"></i> 
         Experiment "${currentExperiment.name}" selected - last measurement ${hoursAgo}h ${minutesAgo}m ago (safe to resume)
       </span>`
-      toast('Experiment timing is safe for resumption', { type: 'success' })
+      toast('Experiment timing is safe for resumption', { type: 'success', autoClose: 10000 })
     }
 
   } catch (error) {
@@ -244,7 +246,7 @@ async function checkExperimentTiming(check) {
       <i class="v-icon mdi mdi-check-circle" style="font-size: 16px; vertical-align: middle;"></i> 
       Experiment "${currentExperiment.name}" selected - no previous data available (new experiment)
     </span>`
-    toast('Experiment selected - no previous data available', { type: 'success' })
+    toast('Experiment selected - no previous data available', { type: 'success', autoClose: 10000 })
   }
 }
 
@@ -287,14 +289,14 @@ const isExperimentSafeForChecks = computed(() => {
 async function runCheck(checkId) {
   // Only run checks if the page and component are visible
   if (!shouldAllowUpdates()) {
-    toast('Cannot run checks while page/component is not visible', { type: 'warning' })
+    toast('Cannot run checks while page/component is not visible', { type: 'warning', autoClose: 10000 })
     return
   }
   
   // Only run checks if experiment is in a safe state
   if (!isExperimentSafeForChecks.value) {
     const status = experimentStore.currentExperiment?.status || 'unknown'
-    toast(`Cannot run checks while experiment is ${status}. Please wait for experiment to fully stop.`, { type: 'warning' })
+    toast(`Cannot run checks while experiment is ${status}. Please wait for experiment to fully stop.`, { type: 'warning', autoClose: 10000 })
     return
   }
 
@@ -337,7 +339,7 @@ async function checkStockConcentrations(check) {
   check.status = allMatch ? 'passed' : 'failed'
   toast(
     check.status === 'passed' ? 'Stock concentrations verified' : 'Stock concentration mismatch detected',
-    { type: check.status === 'passed' ? 'success' : 'error' }
+    { type: check.status === 'passed' ? 'success' : 'error', autoClose: 10000 }
   )
 }
 
@@ -384,7 +386,7 @@ async function checkODCalibration(check) {
     toast.warning(`OD calibration warning for vials: ${warning_vials.map(v => v.vial).join(', ')}`, { type: 'warning' });
   } else {
     check.status = 'passed';
-    toast('OD calibration verified', { type: 'success' });
+    toast('OD calibration verified', { type: 'success', autoClose: 10000 });
   }
 
   if (warning_vials.length > 0) {
@@ -429,7 +431,7 @@ async function checkCurrentODs(check) {
             <i class="v-icon mdi mdi-close-circle" style="font-size: 16px; vertical-align: middle;"></i> 
             Error - Device disconnected. Please check device connection and try again.
           </span>`
-          toast('Error - Device disconnected. Check device connection.', { type: 'error' });
+          toast('Error - Device disconnected. Check device connection.', { type: 'error', autoClose: 10000 });
           console.log('Device disconnection error detected:', vialError);
           return;
         }
@@ -874,7 +876,7 @@ async function verifyAll() {
     const totalChecks = checks.value.length
     
     if (failedChecks === 0 && warningChecks === 0) {
-      toast(`All ${totalChecks} checks passed! Experiment ready to start.`, { type: 'success' })
+      toast(`All ${totalChecks} checks passed! Experiment ready to start.`, { type: 'success', autoClose: 10000 })
     } else if (failedChecks === 0 && warningChecks > 0) {
       toast(`${passedChecks} checks passed, ${warningChecks} warning(s). Review warnings before starting.`, { type: 'warning' })
     } else if (failedChecks > 0) {

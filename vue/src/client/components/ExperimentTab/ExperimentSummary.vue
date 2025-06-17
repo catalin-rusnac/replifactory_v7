@@ -10,7 +10,7 @@
         ⓘ
       </span>
     </h2>
-    <div class="table-container">
+    <div class="table-container" @mouseover="handleTableMouseOver" @mouseout="handleTableMouseOut">
       <TableComponent
         :key="tableKey"
         :fetchData="fetchTableData"
@@ -21,6 +21,14 @@
         :readonly="true"
         :fixedRows="12"
       />
+      <!-- Custom tooltip -->
+      <div 
+        v-if="tooltip.show" 
+        class="custom-tooltip"
+        :style="{ top: tooltip.y + 'px', left: tooltip.x + 'px' }"
+      >
+        {{ tooltip.text }}
+      </div>
     </div>
     <div class="refresh-controls">
       <v-btn
@@ -84,6 +92,29 @@ export default defineComponent({
       'Runtime'
     ]
 
+    const tooltipData = {
+      'Last OD': 'Most recent optical density measurement',
+      'OD Timestamp': 'Time when the last OD measurement was taken',
+      'Growth Rate (1/h)': 'Current growth rate (mu)',
+      'RPM (1h)': 'Average stirrer speed over the last hour (mean ± standard deviation)',
+      'Current Concentration': 'Current drug concentration in the culture',
+      'Medium Used (1h)': 'Volume of pump1 medium growth medium consumed in the last hour',
+      'Medium Used (24h)': 'Volume of pump1 medium consumed in the last 24 hours',
+      'Drug Used (1h)': 'Volume of pump2 medium (drug) consumed in the last hour',
+      'Drug Used (24h)': 'Volume of pump2 medium (drug) consumed in the last 24 hours',
+      'Total Dilutions': 'Total number of dilution events since experiment start',
+      'Last Dilution': 'Most recent dilution event',
+      'Runtime': 'Time between first and last OD measurements'
+    }
+
+    // Tooltip state
+    const tooltip = ref({
+      show: false,
+      text: '',
+      x: 0,
+      y: 0
+    })
+
     // Initialize empty data structure
     function initializeSummaryData() {
       summaryData.value = rowKeys.map(() => Array(8).fill('—'))
@@ -144,6 +175,29 @@ export default defineComponent({
       // This is read-only, so we don't actually update anything
       // Just log that someone tried to edit
       console.log('Summary table is read-only')
+    }
+
+    // Tooltip handlers
+    function handleTableMouseOver(event) {
+      const targetCell = event.target.closest('.rgCell')
+      if (targetCell) {
+        const cellText = targetCell.textContent?.trim()
+        if (cellText && tooltipData[cellText]) {
+          const rect = targetCell.getBoundingClientRect()
+          const containerRect = summaryContainer.value.getBoundingClientRect()
+          
+          tooltip.value = {
+            show: true,
+            text: tooltipData[cellText],
+            x: rect.left - containerRect.left,
+            y: rect.top - containerRect.top - 40 // Show above the cell
+          }
+        }
+      }
+    }
+
+    function handleTableMouseOut() {
+      tooltip.value.show = false
     }
 
     // Format time for display - show "X seconds ago"
@@ -410,7 +464,10 @@ export default defineComponent({
         summaryContainer,
         isPageVisible,
         isComponentVisible,
-        shouldAllowUpdates
+        shouldAllowUpdates,
+        tooltip,
+        handleTableMouseOver,
+        handleTableMouseOut
       }
   }
 })
@@ -431,6 +488,7 @@ export default defineComponent({
   /* Allow horizontal scroll when table is wider than viewport */
   overflow-x: auto;
   overflow-y: visible;
+  position: relative;
 }
 
 h2 {
@@ -464,5 +522,31 @@ h2 {
   /* Fixed width to prevent layout shifts */
   min-width: 200px;
   white-space: nowrap;
+}
+
+.custom-tooltip {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  max-width: 300px;
+  z-index: 1000;
+  pointer-events: none;
+  white-space: normal;
+  word-wrap: break-word;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.custom-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: rgba(0, 0, 0, 0.9) transparent transparent transparent;
 }
 </style> 

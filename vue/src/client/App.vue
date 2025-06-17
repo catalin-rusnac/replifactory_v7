@@ -54,8 +54,9 @@ const components = {
   DeviceControl: defineAsyncComponent(() => import("@/client/components/DeviceControl/DeviceControl.vue")),
   // NgrokTab: defineAsyncComponent(() => import("@/client/components/Remote/NgrokTab.vue")),
   HelpTab: defineAsyncComponent(() => import("@/client/components/HelpTab/HelpTab.vue")),
+  CameraTab: defineAsyncComponent(() => import("@/client/components/CameraTab/CameraTab.vue")),
   StatusTab: defineAsyncComponent(() => import("@/client/components/StatusTab/StatusTab.vue")),
-  LogsTab: defineAsyncComponent(() => import("@/client/components/LogsTab/LogsTab.vue")),
+  // LogsTab: defineAsyncComponent(() => import("@/client/components/LogsTab/LogsTab.vue")),
   SelfTest: defineAsyncComponent(() => import("@/client/components/DeviceControl/SelfTest/SelfTest.vue")),
 };
 
@@ -66,10 +67,11 @@ const tabs = [
   { name: "Prediction", component: "PredictionTab", icon: "mdi-chart-bell-curve-cumulative" },
   { name: "Device Control", component: "DeviceControl", icon: "mdi-robot-industrial" },
   { name: "Device Test", component: "SelfTest", icon: "mdi-robot" },
+  { name: "Camera", component: "CameraTab", icon: "mdi-camera" },
   // { name: "Ngrok", component: "NgrokTab", icon: "mdi-remote-desktop" },
   { name: "Docs", component: "HelpTab", icon: "mdi-book-open-variant" },
-  { name: "Status", component: "StatusTab", icon: "mdi-monitor-eye" },
-  { name: "Logs", component: "LogsTab", icon: "mdi-file-document-alert-outline" },
+  { name: "Export Data", component: "StatusTab", icon: "mdi-cloud-download" },
+  // { name: "Logs", component: "LogsTab", icon: "mdi-file-document-alert-outline" },
 ]
 
 const currentComponent = computed(() => {

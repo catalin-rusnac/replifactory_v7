@@ -1,8 +1,29 @@
 <template>
-  <div class="DeviceControl" :class="{ 'device-disconnected': deviceConnected === false }">
+  <div class="DeviceControl" :class="{ 'device-disconnected': deviceConnected === false, 'experiment-running-bg': isExperimentRunning }">
 <!--    <div class="disconnected-overlay" v-if="deviceConnected === false"></div>-->
 <!--    <div v-if="deviceConnected === false" class="centered-text"> device connection not available </div>-->
     <div class="experiment-running-overlay" v-if="deviceControlEnabled === false"></div>
+    
+    <!-- Overlay when experiment is running -->
+    <div class="experiment-running-overlay" v-if="isExperimentRunning && !bypassMode">
+      <div class="overlay-content">
+        <div class="warning-message">
+          <v-icon color="white" size="48">mdi-flask</v-icon>
+          <h2>Experiment Running</h2>
+          <p>Device controls are locked during experiment</p>
+        </div>
+        <v-btn
+          class="bypass-button"
+          color="error"
+          size="large"
+          @click="enableBypass"
+        >
+          <v-icon left>mdi-close</v-icon>
+          Bypass
+        </v-btn>
+      </div>
+    </div>
+    
     <div class="calibration-switch-row">
       <template v-if="calibrationModeEnabled">
         <v-btn class="reconnect-btn" @click="onReconnectClick">Reconnect Device</v-btn>
@@ -13,7 +34,7 @@
       ></v-switch>
     </div>
 
-    <template v-if="deviceControlEnabled || controlsVisible">
+    <template v-if="deviceControlEnabled || controlsVisible || bypassMode">
       <PumpControl />
       <ValveControl />
       <StirrerControl />
@@ -34,6 +55,7 @@
 <script setup>
 import { storeToRefs } from 'pinia'
 import { useDeviceStore } from '../../stores/device'
+import { useExperimentStore } from '../../stores/experiment'
 import { computed, onMounted, ref } from 'vue'
 import PumpControl from './PumpControl.vue';
 import ValveControl from './ValveControl.vue';
@@ -46,6 +68,8 @@ import { useDialog } from '@/client/composables/useDialog'
 import { toast } from 'vue3-toastify';
 
 const deviceStore = useDeviceStore()
+const experimentStore = useExperimentStore()
+
 const {
   deviceConnected,
   deviceControlEnabled,
@@ -56,6 +80,11 @@ const {
   ods
 } = storeToRefs(deviceStore)
 
+const { currentExperiment } = storeToRefs(experimentStore)
+
+// Bypass mode to allow device control during experiment
+const bypassMode = ref(false)
+
 const controlsVisible = computed(() => deviceControlEnabled.value)
 
 const calibrationMode = computed({
@@ -63,7 +92,19 @@ const calibrationMode = computed({
   set: (val) => deviceStore.setCalibrationModeEnabled(val)
 })
 
+// Check if experiment is running
+const isExperimentRunning = computed(() => {
+  return currentExperiment.value?.status === 'running'
+})
+
 const { openDialog } = useDialog()
+
+function enableBypass() {
+  bypassMode.value = true
+  toast.warning('Device control bypass enabled. Use caution during running experiment.', {
+    autoClose: 5000
+  })
+}
 
 async function onReconnectClick() {
   console.log('onReconnectClick')
@@ -81,6 +122,7 @@ async function onReconnectClick() {
 
 onMounted(() => {
   deviceStore.fetchDeviceData()
+  experimentStore.fetchCurrentExperiment()
 })
 </script>
 
@@ -126,7 +168,45 @@ onMounted(() => {
   left: 0;
   right: 0;
   background-color: rgba(250, 1, 59, 0.5);
-  z-index: 1;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.overlay-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background-color: rgba(0, 0, 0, 0.8);
+  padding: 40px;
+  border-radius: 12px;
+  border: 2px solid rgba(250, 1, 59, 0.8);
+}
+
+.warning-message {
+  color: white;
+  margin-bottom: 24px;
+}
+
+.warning-message h2 {
+  margin: 16px 0 8px 0;
+  font-size: 1.8rem;
+  font-weight: bold;
+}
+
+.warning-message p {
+  margin: 0;
+  font-size: 1.1rem;
+  opacity: 0.9;
+}
+
+.bypass-button {
+  font-size: 1.1rem;
+  font-weight: bold;
+  min-width: 140px;
 }
 
 .centered-text {
@@ -145,5 +225,11 @@ onMounted(() => {
 
 .device-disconnected {
   position: relative;
+}
+
+.experiment-running-bg {
+  background-color: rgba(139, 0, 0, 0.15) !important;
+  border: 2px solid rgba(139, 0, 0, 0.3);
+  border-radius: 8px;
 }
 </style>

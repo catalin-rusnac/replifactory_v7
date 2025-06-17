@@ -55,16 +55,11 @@ const { pumps, valves, calibrationModeEnabled } = storeToRefs(deviceStore)
 // Track polling intervals to prevent multiple polling
 const pollIntervals = ref({})
 
-// Debug logging
-watch(pumps, (newPumps) => {
-  console.log('PumpControl - pumps data updated:', newPumps)
-  if (newPumps && newPumps.states) {
-    console.log('PumpControl - pump states:', newPumps.states)
-    Object.keys(newPumps.states).forEach(pumpId => {
-      console.log(`PumpControl - Pump ${pumpId} state: "${newPumps.states[pumpId]}"`)
-    })
-  }
-}, { immediate: true, deep: true })
+// Watch for pump state changes (without deep watching to avoid excessive updates)
+watch(() => pumps.value?.states, (newStates) => {
+  // Only log if needed for debugging - remove in production
+  // console.log('PumpControl - pump states changed:', newStates)
+}, { immediate: false })
 
 const pump_names = {
   1: 'MAIN',
@@ -82,25 +77,17 @@ onMounted(() => {
 })
 
 async function handlePumpClick(pumpId) {
-  console.log(`PumpControl - handlePumpClick called for pump ${pumpId}`)
-  console.log(`PumpControl - Current pump state: "${pumps.value.states[pumpId]}"`)
-  
   // Clear any existing polling for this pump
   if (pollIntervals.value[pumpId]) {
-    console.log(`PumpControl - Clearing existing poll interval for pump ${pumpId}`)
     clearInterval(pollIntervals.value[pumpId])
     delete pollIntervals.value[pumpId]
   }
   
   if (pumps.value.states[pumpId] === 'running') {
-    console.log(`PumpControl - Stopping pump ${pumpId}`)
-    
     await deviceStore.setPartStateAction({ devicePart: 'pumps', partIndex: pumpId, newState: 'stopped' })
     
     // Force refresh to get real state from backend
     await deviceStore.fetchDeviceData()
-    
-    console.log(`PumpControl - After stop, pump ${pumpId} state is now: "${pumps.value.states[pumpId]}"`)
     return
   }
 
@@ -117,24 +104,17 @@ async function handlePumpClick(pumpId) {
   }
 
   try {
-    console.log(`PumpControl - Starting pump ${pumpId} with volume ${vol}`)
-    
     // Start polling BEFORE starting the pump so we catch state changes
-    console.log(`PumpControl - Starting poll interval for pump ${pumpId}`)
     pollIntervals.value[pumpId] = setInterval(async () => {
-      const oldState = pumps.value.states[pumpId]
       await deviceStore.fetchDeviceData()
       const newState = pumps.value.states[pumpId]
       
-      console.log(`PumpControl - Polling pump ${pumpId}: old="${oldState}" new="${newState}"`)
-      
       // Stop polling when pump is no longer running (either stopped manually or finished automatically)
       if (newState !== 'running') {
-        console.log(`PumpControl - Pump ${pumpId} finished (${newState}), stopping poll`)
         clearInterval(pollIntervals.value[pumpId])
         delete pollIntervals.value[pumpId]
       }
-    }, 300) // Poll every 300ms
+    }, 500) // Poll every 500ms (reduced frequency)
     
     // Start the pump (no optimistic update - let real state drive the UI)
     await deviceStore.setPartStateAction({ devicePart: 'pumps', partIndex: pumpId, newState: 'running', input: { volume: vol } })
@@ -142,7 +122,6 @@ async function handlePumpClick(pumpId) {
     // Fallback timeout to stop polling after 30 seconds
     setTimeout(() => {
       if (pollIntervals.value[pumpId]) {
-        console.log(`PumpControl - Timeout reached for pump ${pumpId}, stopping poll`)
         clearInterval(pollIntervals.value[pumpId])
         delete pollIntervals.value[pumpId]
         // Force refresh state
@@ -151,7 +130,7 @@ async function handlePumpClick(pumpId) {
     }, 30000)
     
   } catch (error) {
-    console.error(`PumpControl - Error starting pump ${pumpId}:`, error)
+    console.error(`Error starting pump ${pumpId}:`, error)
     // Reset state on error and clear polling
     pumps.value.states[pumpId] = 'stopped'
     if (pollIntervals.value[pumpId]) {
