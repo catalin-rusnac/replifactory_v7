@@ -160,7 +160,16 @@ class BaseDevice:
         logger.info("Attempting to connect to device...")
         self.connect_i2c_spi()
         try:
-            self.pwm_controller.connect()
+            self.eeprom.connect()
+        except Exception as e:
+            warnings.warn(f"Failed to connect eeprom: {e}")
+
+        try:
+            frequency = self.device_data["frequency_multiplier"] * 50
+        except Exception as e:
+            frequency = None
+        try:
+            self.pwm_controller.connect(frequency=frequency)
         except Exception as e:
             warnings.warn(f"Failed to connect pwm_controller: {e}")
 
@@ -210,11 +219,7 @@ class BaseDevice:
             warnings.warn(f"Failed to connect pump4: {e}")
 
         try:
-            self.eeprom.connect()
-        except Exception as e:
-            warnings.warn(f"Failed to connect eeprom: {e}")
-
-        try:
+            logger.info("Connecting valves")
             self.valves.connect()
         except Exception as e:
             warnings.warn(f"Failed to connect valves: {e}")
@@ -329,13 +334,13 @@ class BaseDevice:
         logger.info("Disconnected from device")
 
     def hello(self):
-        self.pwm_controller.play_turn_on_sound()
+        # self.pwm_controller.play_turn_on_sound()
         self.lasers.blink()
         self.rgb_leds.blink_hello()
         logger.info("Said hello from device")
     
     def hello_quick(self):
-        self.pwm_controller.play_quick_beep()
+        # self.pwm_controller.play_quick_beep()
         self.lasers.blink_quick()
         logger.info("Said hello_quick from device")
 
