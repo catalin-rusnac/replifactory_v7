@@ -101,7 +101,6 @@ class ExperimentManager:
         if self._device is None:
             self._device = BaseDevice(connect=False)
         self._device.connect()
-        self._device.hello_quick()
         if self._current_experiment_obj is not None:
             self._current_experiment_obj.device = self._device
     
@@ -163,6 +162,28 @@ class ExperimentManager:
             return None
         self._current_experiment_obj = Experiment(self._device, experiment_id, manager=self)
         self._current_experiment_obj.model = db_session.query(ExperimentModel).get(experiment_id)
+        
+        # Add this block to fix old experiments
+        params = self._current_experiment_obj.model.parameters
+        if any(p not in params for p in ["bottle_volume_main", "bottle_volume_drug", "bottle_volume_waste"]):
+            new_params = params.copy()
+            bottle_params = [
+                "bottle_volume_main", 
+                "bottle_volume_drug", 
+                "bottle_volume_waste",
+                "stock_volume_main",
+                "stock_volume_drug",
+                "stock_volume_waste"
+            ]
+            for param in bottle_params:
+                if param not in new_params:
+                    new_params[param] = 1000  # Default to 1000ml
+            
+            self._current_experiment_obj.model.parameters = new_params
+            db_session.commit()
+            db_session.refresh(self._current_experiment_obj.model)
+            logger.info(f"Updated missing bottle parameters for experiment {experiment_id}")
+
         return self.experiment
     
     def get_default_experiment(self):

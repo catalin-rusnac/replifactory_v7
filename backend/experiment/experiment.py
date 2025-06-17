@@ -217,8 +217,15 @@ class Experiment:
         self.experiment_worker.dilution_worker.paused = True
 
     def stop(self):
-        self.status = "stopped"
+        self.status = "stopping"
         self.manager.emit_ws_message({"type": "info", "action": "stop", "message": "Stopping experiment..."})
+        
+        # Actually stop the experiment worker if it exists
+        if self.experiment_worker is not None:
+            self.experiment_worker.stop()
+        
+        # Set final status after workers have stopped
+        self.status = "stopped"
         return
 
     def measure_od_and_rpm_in_background(self):

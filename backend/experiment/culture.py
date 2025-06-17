@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import numpy as np
 from experiment.database_models import CultureData, PumpData, CultureGenerationData
@@ -118,6 +118,18 @@ class Culture:
                 CultureData.experiment_id == self.experiment.model.id,
                 CultureData.vial_number == self.vial
             ).order_by(CultureData.timestamp).first()
+        if culture_data is None:
+            return None
+        return culture_data.timestamp
+
+    def get_last_od_timestamp(self):
+        with self.experiment.manager.get_session() as db:
+            culture_data = db.query(CultureData).filter(
+                CultureData.experiment_id == self.experiment.model.id,
+                CultureData.vial_number == self.vial
+            ).order_by(CultureData.timestamp.desc()).first()
+        if culture_data is None:
+            return None
         return culture_data.timestamp
 
     def update_parameters_from_experiment(self):
@@ -255,7 +267,9 @@ class Culture:
         parameters = self.experiment.parameters
         parameters["stock_volume_main"] = float(parameters["stock_volume_main"]) - main_pump_volume
         parameters["stock_volume_drug"] = float(parameters["stock_volume_drug"]) - drug_pump_volume
-        parameters["stock_volume_waste"] = float(parameters["stock_volume_waste"]) + main_pump_volume - drug_pump_volume
+        # Waste volume = pumped volume + extra vacuum (5mL as per dilution.py)
+        actual_waste_volume = main_pump_volume + drug_pump_volume + 5
+        parameters["stock_volume_waste"] = float(parameters["stock_volume_waste"]) + actual_waste_volume
         self.experiment.parameters = parameters
 
     def log_generation(self, generation, concentration):
@@ -459,7 +473,7 @@ class Culture:
             "updater_status": self.updater.status_dict,
         }
         return culture_info
-    
+
     def get_latest_od(self):
         """Get the latest OD measurement with timestamp"""
         if self.od is not None:
@@ -501,17 +515,25 @@ class Culture:
             return f"{minutes}m ago"
     
     def get_runtime(self):
-        """Get the runtime of this vial since first OD measurement"""
-        first_timestamp = self.get_first_od_timestamp()
-        if first_timestamp is None:
-            return None
-            
-        from datetime import datetime
-        time_diff = datetime.now() - first_timestamp
-        hours = int(time_diff.total_seconds() // 3600)
-        minutes = int((time_diff.total_seconds() % 3600) // 60)
+        first_od_time = self.get_first_od_timestamp()
+        if not first_od_time:
+            return "0s"
         
-        return f"{hours}h {minutes}m"
+        last_od_time = self.get_last_od_timestamp()
+        if not last_od_time:
+            last_od_time = first_od_time
+            
+        runtime_delta = last_od_time - first_od_time
+        
+        hours, remainder = divmod(runtime_delta.total_seconds(), 3600)
+        minutes, seconds = divmod(remainder, 60)
+        
+        if hours > 0:
+            return f"{int(hours)}h {int(minutes)}m"
+        elif minutes > 0:
+            return f"{int(minutes)}m {int(seconds)}s"
+        else:
+            return f"{int(seconds)}s"
     
     def get_volume_usage_1h(self):
         """Get medium and drug volume usage in the past hour"""
@@ -546,6 +568,77 @@ class Culture:
             drug_total = sum(p.volume_drug for p in pump_data if p.volume_drug)
             
             return medium_total, drug_total
+    
+    def get_rpm_stats_1h(self):
+        """Get RPM mean and standard deviation for the past hour"""
+        from datetime import datetime, timedelta
+        import statistics
+        
+        one_hour_ago = datetime.now() - timedelta(hours=1)
+        
+        with self.experiment.manager.get_session() as db:
+            culture_data = db.query(CultureData).filter(
+                CultureData.experiment_id == self.experiment.model.id,
+                CultureData.vial_number == self.vial,
+                CultureData.timestamp >= one_hour_ago,
+                CultureData.rpm.isnot(None)
+            ).all()
+            
+            rpm_values = [data.rpm for data in culture_data]
+            
+            if not rpm_values:
+                return None, None
+                
+            mean_rpm = statistics.mean(rpm_values)
+            std_rpm = statistics.stdev(rpm_values) if len(rpm_values) > 1 else 0.0
+            
+            return mean_rpm, std_rpm
+    
+    @staticmethod
+    def get_all_vials_rpm_stats_1h(experiment_id, db_session):
+        """Efficiently get RPM stats for all vials in one query"""
+        from datetime import datetime, timedelta
+        from sqlalchemy import func
+        import statistics
+        
+        one_hour_ago = datetime.now() - timedelta(hours=1)
+        
+        # Get all RPM data for the experiment in the past hour
+        culture_data = db_session.query(CultureData).filter(
+            CultureData.experiment_id == experiment_id,
+            CultureData.timestamp >= one_hour_ago,
+            CultureData.rpm.isnot(None)
+        ).all()
+        
+        # Group by vial and calculate statistics
+        vial_rpm_data = {}
+        for data in culture_data:
+            vial = data.vial_number
+            if vial not in vial_rpm_data:
+                vial_rpm_data[vial] = []
+            vial_rpm_data[vial].append(data.rpm)
+        
+        # Calculate mean and std for each vial
+        rpm_stats = {}
+        for vial, rpm_values in vial_rpm_data.items():
+            if rpm_values:
+                mean_rpm = statistics.mean(rpm_values)
+                std_rpm = statistics.stdev(rpm_values) if len(rpm_values) > 1 else 0.0
+                rpm_stats[vial] = {'mean': mean_rpm, 'std': std_rpm}
+            else:
+                rpm_stats[vial] = {'mean': None, 'std': None}
+        
+        return rpm_stats
+
+    def get_last_dilution_timestamp(self):
+        with self.experiment.manager.get_session() as db:
+            last_dilution = db.query(PumpData).filter(
+                PumpData.experiment_id == self.experiment.model.id,
+                PumpData.vial_number == self.vial
+            ).order_by(PumpData.timestamp.desc()).first()
+        if last_dilution:
+            return last_dilution.timestamp
+        return None
 
 
 

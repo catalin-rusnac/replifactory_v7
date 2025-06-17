@@ -221,6 +221,13 @@ def get_experiment_summary(db_session: Session = Depends(get_db)):
         experiment = experiment_manager.experiment
         summary_data = {}
         
+        # Get RPM stats for all vials efficiently in one query
+        from experiment.culture import Culture
+        rpm_stats_all_vials = Culture.get_all_vials_rpm_stats_1h(
+            experiment.model.id, 
+            db_session
+        )
+        
         # Calculate summary for each vial (1-7)
         for vial_id in range(1, 8):
             if vial_id not in experiment.cultures:
@@ -229,13 +236,16 @@ def get_experiment_summary(db_session: Session = Depends(get_db)):
                     'last_od': None,
                     'od_timestamp': None,
                     'growth_rate': None,
+                    'rpm_mean_1h': None,
+                    'rpm_std_1h': None,
                     'medium_used_1h': None,
                     'medium_used_24h': None,
                     'drug_used_1h': None,
                     'drug_used_24h': None,
                     'total_dilutions': None,
                     'last_dilution': None,
-                    'runtime': None
+                    'runtime': None,
+                    'current_concentration': None
                 }
                 continue
                 
@@ -250,17 +260,23 @@ def get_experiment_summary(db_session: Session = Depends(get_db)):
             medium_1h, drug_1h = culture.get_volume_usage_1h()
             medium_24h, drug_24h = culture.get_volume_usage_24h()
             
+            # Get RPM stats from the efficient query result
+            rpm_stats = rpm_stats_all_vials.get(vial_id, {'mean': None, 'std': None})
+            
             summary_data[f'vial{vial_id}'] = {
                 'last_od': latest_od['value'] if latest_od else None,
                 'od_timestamp': latest_od['timestamp'] if latest_od else None,
                 'growth_rate': growth_rate,
+                'rpm_mean_1h': rpm_stats['mean'],
+                'rpm_std_1h': rpm_stats['std'],
                 'medium_used_1h': medium_1h,
                 'medium_used_24h': medium_24h,
                 'drug_used_1h': drug_1h,
                 'drug_used_24h': drug_24h,
                 'total_dilutions': dilution_count,
                 'last_dilution': last_dilution_time,
-                'runtime': runtime
+                'runtime': runtime,
+                'current_concentration': culture.drug_concentration
             }
         
         return {"summary": summary_data}
