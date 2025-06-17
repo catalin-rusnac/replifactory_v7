@@ -107,7 +107,6 @@ class PwmController:
         :param duty_cycle:
         :return:
         """
-        logger.info(f"Setting duty cycle of {led_number} to {duty_cycle}")
         assert 0 <= led_number <= 15
         assert 0 <= duty_cycle <= 1
         msb, lsb = divmod(

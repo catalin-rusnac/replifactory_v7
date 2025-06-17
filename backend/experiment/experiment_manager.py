@@ -65,6 +65,7 @@ class ExperimentManager:
         self._current_experiment_obj = None
         self._device = None
         self._exp_lock = Lock()  # For experiment state
+        self._camera_lock = Lock()  # For camera operations to prevent concurrent access
         self._db = db  # Use the imported db object
         self.fix_inconsistent_experiment_states()
         self.active_sockets = set()
@@ -328,5 +329,9 @@ class ExperimentManager:
             except Exception as e:
                 print(f"Exception in broadcast: {e}")
         future.add_done_callback(log_if_exception)
+
+    def get_camera_lock(self):
+        """Get the singleton camera lock to prevent concurrent camera operations."""
+        return self._camera_lock
 
 experiment_manager = ExperimentManager()

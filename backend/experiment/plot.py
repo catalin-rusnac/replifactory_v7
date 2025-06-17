@@ -5,7 +5,7 @@ import plotly.graph_objs as go
 from experiment.ModelBasedCulture.culture_growth_model import CultureGrowthModel
 
 
-def plot_culture(culture, limit=100000):
+def plot_culture(culture, limit=100000, title=None):
     culture_parameters = culture.updater.__dict__
 
     if isinstance(culture, CultureGrowthModel):
@@ -130,7 +130,7 @@ def plot_culture(culture, limit=100000):
     )
 
     layout = go.Layout(
-        # title="Culture: " + str(vial_number) + "<br>Experiment: "+experiment_name,
+        title=title if title else None,
         # annotations=[
         #     dict(
         #         x=0,

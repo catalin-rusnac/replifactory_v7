@@ -19,10 +19,17 @@ def clean_experiment_name(experiment_name):
 def export_culture_plot_html(culture, output_directory, predicted=False):
     experiment_name = culture.experiment.model.name
     vial = culture.vial
+    
+    # Create title for the plot
+    title = f"Vial {vial} - {experiment_name}"
     if predicted:
-        fig = culture.plot_predicted()
+        title += " (Predicted)"
+    
+    if predicted:
+        fig = culture.plot_predicted(title=title)
     else:
-        fig = culture.plot_data()
+        fig = culture.plot_data(title=title)
+    
     # clear experiment name from characters forbidden in file names such as !, ?, etc.
     experiment_name = clean_experiment_name(experiment_name)
 

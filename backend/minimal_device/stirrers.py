@@ -70,10 +70,15 @@ class Stirrers:
             time.sleep(0.01)
 
         self._set_duty_cycle(vial=vial, duty_cycle=duty_cycle)
+        
+        # Update the device_data state to reflect the actual stirrer state
+        self.device.device_data["stirrers"]["states"][vial] = speed
 
     def emergency_stop(self):
         for vial in range(1, 8):
             self._set_duty_cycle(vial, duty_cycle=0)
+            # Update the device_data state to reflect stopped state
+            self.device.device_data["stirrers"]["states"][vial] = "stopped"
 
     def set_speed_all(self, speed, accelerate=False):
         assert speed in ["stopped", "low", "high"]
@@ -86,6 +91,9 @@ class Stirrers:
                 self._set_duty_cycle(vial=vial, duty_cycle=duty_cycle*2)
                 time.sleep(0.05)
             self._set_duty_cycle(vial, duty_cycle=duty_cycle)
+            
+            # Update the device_data state to reflect the actual stirrer state
+            self.device.device_data["stirrers"]["states"][vial] = speed
 
     def check_calibration(self, vial=-1):
         if vial == -1:

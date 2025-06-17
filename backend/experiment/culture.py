@@ -84,7 +84,7 @@ class Culture:
     def plot_data(self, *args, **kwargs):
         return plot_culture(self, *args, **kwargs)
 
-    def plot_predicted(self, rerun=True, simulation_hours=48):
+    def plot_predicted(self, rerun=True, simulation_hours=48, title=None):
         if rerun:
             self.updater = MorbidostatUpdater(**self.parameters.inner_dict)
             growth_parameters = self.experiment.model.parameters["growth_parameters"][str(self.vial)]
@@ -92,7 +92,7 @@ class Culture:
             self.culture_growth_model.vial = "%d(simulated)" % self.vial
             self.culture_growth_model.updater = self.updater
             self.culture_growth_model.simulate_experiment(simulation_hours=simulation_hours)
-        return plot_culture(self.culture_growth_model)
+        return plot_culture(self.culture_growth_model, title=title)
     
     def run_and_save_simulation(self, simulation_hours=48):
         self.updater = MorbidostatUpdater(**self.parameters.inner_dict)
