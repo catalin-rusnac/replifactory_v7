@@ -93,14 +93,14 @@
         </div>
       </div>
 
-      <!-- Experiment Checks - Hide when experiment is running -->
+      <!-- Experiment Checks - Hide when experiment is running or no experiment selected -->
       <ExperimentChecks 
-        v-if="currentExperiment && currentExperiment.status !== 'running'" 
+        v-if="currentExperiment && currentExperiment.id && currentExperiment.id !== 0 && currentExperiment.status !== 'running'" 
         ref="experimentChecks" 
       />
 
-      <!-- Experiment Parameters -->
-      <div v-if="currentExperiment">
+      <!-- Experiment Parameters - Hide when no experiment selected -->
+      <div v-if="currentExperiment && currentExperiment.id && currentExperiment.id !== 0">
         <BottleDisplay />
         <!-- <ExperimentParameters /> -->
       </div>
