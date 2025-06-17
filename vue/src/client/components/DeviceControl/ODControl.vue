@@ -1,14 +1,32 @@
 <template>
     <div class="od-control-container">
       <div class="elements-container" v-for="(od, index) in ods.states" :key="index">
-        <button class="od-button" @click="handleOdClick(index)">
-          <span>OD {{ index }}</span>
+        <button class="od-button" @click="handleOdClick(index)" :disabled="loadingOdIndex === index">
+          <v-progress-circular
+            v-if="loadingOdIndex === index"
+            indeterminate
+            color="white"
+            size="24"
+          ></v-progress-circular>
+          <span v-else>OD {{ index }}</span>
         </button>
-        <span class="od-output-value" v-if="ods.states && ods.states[index] !== undefined && ods.states[index] !== 0">{{ parseFloat(ods.states[index].toFixed(2))}}</span>
-        <span class="od-output-value" v-else>---</span>
+        <span class="od-output-value error-message" 
+              v-if="odErrors[index]">{{ odErrors[index] }}</span>
+        <span class="od-output-value" 
+              :class="{ 'value-being-replaced': loadingOdIndex === index }"
+              v-else-if="ods.states && ods.states[index] !== undefined && ods.states[index] !== 0">{{ parseFloat(ods.states[index].toFixed(2))}}</span>
+        <span class="od-output-value" 
+              :class="{ 'value-being-replaced': loadingOdIndex === index }"
+              v-else>---</span>
         <div style="height: 0.5px;"></div>
-        <span class="signal-output-value" v-if="ods.odsignals && ods.odsignals[index] !== undefined && ods.odsignals[index] !== 0">({{ parseFloat(ods.odsignals[index].toFixed(2)) }}mV)</span>
-        <span class="signal-output-value" v-else>(---)</span>
+        <span class="signal-output-value error-message" 
+              v-if="odErrors[index]"></span>
+        <span class="signal-output-value" 
+              :class="{ 'value-being-replaced': loadingOdIndex === index }"
+              v-else-if="ods.odsignals && ods.odsignals[index] !== undefined && ods.odsignals[index] !== 0">({{ parseFloat(ods.odsignals[index].toFixed(2)) }}mV)</span>
+        <span class="signal-output-value" 
+              :class="{ 'value-being-replaced': loadingOdIndex === index }"
+              v-else>(---)</span>
       </div>
     </div>
   
@@ -195,8 +213,9 @@
   import { useGuideDialog } from '@/client/composables/useGuideDialog'
   import ODGuide from './ODGuide.vue'
   import { useDialog } from '@/client/composables/useDialog'
-  import { toast } from 'vue3-toastify'
-  import ConfirmDialog from '@/client/components/ConfirmDialog.vue'
+import { toast } from 'vue3-toastify'
+import ConfirmDialog from '@/client/components/ConfirmDialog.vue'
+import api from '@/api'
   
   const deviceStore = useDeviceStore()
   const {
@@ -212,6 +231,8 @@
   const showCharts = ref(true)
   const showODGuide = ref(false)
   const isRemeasuring = ref(false)
+  const loadingOdIndex = ref(null)
+  const odErrors = ref({})
   const tempProbeValues = ref({})
   const tempCalibrationValues = ref({})
   const allOdValues = computed(() => {
@@ -259,6 +280,8 @@
     deviceStore.fetchDeviceData();
     // Add document click handler
     document.addEventListener('click', handleDocumentClick);
+    
+
   });
 
   onUnmounted(() => {
@@ -282,16 +305,44 @@
   }
 
   async function handleOdClick(odIndex) {
+    console.log('handleOdClick called with odIndex:', odIndex, typeof odIndex);
+    if (loadingOdIndex.value !== null) {
+      return; // Prevent multiple simultaneous measurements
+    }
+
+    loadingOdIndex.value = odIndex;
+    // Clear any previous error for this OD
+    delete odErrors.value[odIndex];
+    
     try {
-      const result = await deviceStore.measureDevicePart({
-        devicePart: "ods",
-        partIndex: odIndex
-      });
-      await deviceStore.fetchDeviceData();
+      console.log('Starting OD measurement for index:', odIndex);
+      // Make direct API call to properly catch errors
+      const response = await api.post('/measure-ods', { partIndex: odIndex });
+      console.log('Raw API response:', response);
+      
+      if (response.data.success) {
+        console.log('OD measurement successful for index:', odIndex);
+        // Update device data on success
+        await deviceStore.fetchDeviceData();
+        // Clear any error if measurement succeeds
+        delete odErrors.value[odIndex];
+      } else {
+        console.log('API returned failure for index:', odIndex);
+        throw new Error(response.data.message || 'Measurement failed');
+      }
     } catch (error) {
       console.error('Error measuring OD:', error);
-      toast.error(error.message || 'Failed to measure OD. Please try again.');
-      throw error;
+      console.log('Setting error for OD index:', odIndex);
+      // Store error message for this specific OD
+      const errorMessage = error.response?.data?.message || 
+                          error.message || 
+                          'Measurement failed';
+      // Force reactivity by creating a new object
+      odErrors.value = { ...odErrors.value, [odIndex]: errorMessage };
+      console.log('Error set for odIndex:', odIndex, 'error:', errorMessage);
+      console.log('Full odErrors object:', odErrors.value);
+    } finally {
+      loadingOdIndex.value = null;
     }
   }
   
@@ -1444,6 +1495,21 @@ function updateSignalValue(vial, odValue) {
     align-items: center;
     justify-content: center;
     gap: 4px;
+  }
+
+  .value-being-replaced {
+    color: #666;
+    transition: color 0.3s ease;
+  }
+
+  .error-message {
+    color: #ff6b6b !important;
+    font-size: 11px !important;
+    font-weight: bold;
+    text-align: center;
+    max-width: 80px;
+    word-wrap: break-word;
+    line-height: 1.2;
   }
   </style>
   

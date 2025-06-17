@@ -14,7 +14,8 @@
           class="flex-grow-1 mt-3 experiment-select"
           :style="{ minWidth: '150px' }"
           @update:modelValue="handleExperimentSelected"
-          :disabled="currentExperiment.status === 'running'"
+          :disabled="currentExperiment.status === 'running' || currentExperiment.status === 'stopping' || isLoadingExperiments"
+          :loading="isLoadingExperiments"
         ></v-select>
         <v-btn
           color="primary"
@@ -22,7 +23,8 @@
           class="mt-3"
           :style="{ height: '60px' }"
           title="New Experiment"
-          :disabled="currentExperiment.status === 'running'"
+          :disabled="currentExperiment.status === 'running' || currentExperiment.status === 'stopping' || isLoadingExperiments"
+          :loading="isLoadingExperiments"
         >+</v-btn>
       </div>
 
@@ -38,7 +40,8 @@
           @click="startExperiment"
           color="success"
           title="Start the experiment loop - measure OD every minute and dilute the cultures as necessary, according to the parameters."
-          :disabled="currentExperiment.status === 'running'"
+          :disabled="currentExperiment.status === 'running' || currentExperiment.status === 'stopping' || isLoadingExperiments"
+          :loading="isLoadingExperiments"
         >
           Start
         </v-btn>
@@ -52,14 +55,18 @@
           @click="stopExperiment"
           color="error"
           title="Stop gracefully - wait for the current dilution to finish."
-          :disabled="currentExperiment.status === 'stopped'"
+          :disabled="currentExperiment.status === 'stopped' || currentExperiment.status === 'stopping' || isStoppingExperiment || isLoadingExperiments"
+          :loading="isStoppingExperiment"
         >
           Stop
         </v-btn>
       </div>
 
-      <!-- Experiment Checks -->
-      <ExperimentChecks v-if="currentExperiment" ref="experimentChecks" />
+      <!-- Experiment Checks - Hide when experiment is running -->
+      <ExperimentChecks 
+        v-if="currentExperiment && currentExperiment.status !== 'running'" 
+        ref="experimentChecks" 
+      />
 
       <!-- Create New Experiment -->
       <div v-if="showCreate" class="d-flex">
@@ -98,6 +105,8 @@ const newExperimentname = ref('');
 const showCreate = ref(false);
 const currentExperimentId = ref(null);
 const experimentChecks = ref(null);
+const isStoppingExperiment = ref(false);
+const isLoadingExperiments = ref(true);
 
 const experiments = computed(() => experimentStore.experiments);
 const currentExperiment = computed(() => experimentStore.currentExperiment || {});
@@ -165,15 +174,61 @@ async function startExperiment() {
 }
 
 async function stopExperiment() {
-  await experimentStore.stopExperiment();
-  await experimentStore.fetchCurrentExperiment();
+  console.log('Stop experiment clicked, setting loading to true');
+  isStoppingExperiment.value = true;
+  try {
+    console.log('Calling experimentStore.stopExperiment()');
+    await experimentStore.stopExperiment();
+    console.log('Stop experiment request sent, polling for actual status change');
+    
+    // Poll until experiment is actually stopped
+    let attempts = 0;
+    const maxAttempts = 30; // Max 30 seconds of polling
+    
+    while (attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+      await experimentStore.fetchCurrentExperiment();
+      
+      const status = experimentStore.currentExperiment?.status;
+      console.log(`Polling attempt ${attempts + 1}: status = ${status}`);
+      
+      if (status === 'stopped' || status === 'inactive' || !status) {
+        console.log('Experiment confirmed stopped');
+        toast('Experiment stopped!', { type: 'success' });
+        return; // Exit successfully
+      }
+      
+      // Continue polling if still stopping
+      if (status === 'stopping') {
+        console.log('Experiment still stopping, continuing to poll...');
+        // Continue the loop
+      }
+      
+      attempts++;
+    }
+    
+    // If we reach here, polling timed out
+    console.warn('Stop polling timed out, but experiment may have stopped');
+    toast('Stop command sent, but status confirmation timed out', { type: 'warning' });
+    
+  } catch (error) {
+    console.error('Error stopping experiment:', error);
+    toast(error.message || 'Failed to stop experiment', { type: 'error' });
+  } finally {
+    console.log('Setting loading to false');
+    isStoppingExperiment.value = false;
+  }
 }
 
 onMounted(async () => {
-  await experimentStore.fetchExperiments();
-  await experimentStore.fetchCurrentExperiment();
-  if (experimentStore.currentExperiment) {
-    currentExperimentId.value = experimentStore.currentExperiment.id;
+  try {
+    await experimentStore.fetchExperiments();
+    await experimentStore.fetchCurrentExperiment();
+    if (experimentStore.currentExperiment) {
+      currentExperimentId.value = experimentStore.currentExperiment.id;
+    }
+  } finally {
+    isLoadingExperiments.value = false;
   }
 });
 </script>
@@ -216,5 +271,25 @@ onMounted(async () => {
   .line-container {
     flex-direction: column; /* Stack items vertically on smaller screens */
   }
+}
+
+.loading-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  width: 100%;
+}
+
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.loading-text {
+  color: #fff;
+  font-size: 1.1em;
 }
 </style>

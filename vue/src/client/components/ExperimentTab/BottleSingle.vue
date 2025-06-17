@@ -30,8 +30,8 @@
         <div class="current-volume"
              @dblclick="startEditing('current')"
              v-if="!editing.current"
-             :title="`Current Volume: ${currentVolume.toFixed(1)}ml`">
-          {{ currentVolume.toFixed(1) }}ml
+             :title="`Current Volume: ${safeCurrentVolume}ml`">
+          {{ safeCurrentVolume }}ml
         </div>
         <input v-else
                type="number"
@@ -148,6 +148,12 @@ export default {
     }
   },
   computed: {
+    safeCurrentVolume() {
+      if (typeof this.currentVolume === 'number' && !isNaN(this.currentVolume)) {
+        return this.currentVolume.toFixed(1);
+      }
+      return '---';
+    },
     showConcentration() {
       return this.bottleName === 'drug' && this.concentration !== null && this.bottleName !== 'waste'
     },
@@ -257,6 +263,9 @@ export default {
       }
     },
     startEditing(field) {
+      console.log(`[BottleSingle] Starting edit for field: ${field}`)
+      console.log(`[BottleSingle] Current props - totalVolume: ${this.totalVolume}, currentVolume: ${this.currentVolume}`)
+      
       this.editing[field] = true
       // Round to 4 decimal places for numeric fields
       if (field === 'total' || field === 'current' || field === 'concentration') {
@@ -266,11 +275,16 @@ export default {
       } else {
         this.editingValue = field === 'units' ? this.units : 0
       }
+      
+      console.log(`[BottleSingle] Set editingValue to: ${this.editingValue}`)
+      
       this.$nextTick(() => {
         this.$refs.volumeInput.focus()
       })
     },
     handleInput(field) {
+      console.log(`[BottleSingle] Handle input for field: ${field}, value: ${this.editingValue}`)
+      
       if (this.updateTimeout) {
         clearTimeout(this.updateTimeout)
       }
@@ -279,8 +293,13 @@ export default {
       if (field !== 'units') {
         this.editingValue = Number(this.editingValue)
       }
+      
+      console.log(`[BottleSingle] Processed editingValue: ${this.editingValue}`)
     },
     finishEditing(field) {
+      console.log(`[BottleSingle] Finishing edit for field: ${field}`)
+      console.log(`[BottleSingle] Final editingValue: ${this.editingValue}, isUpdating: ${this.isUpdating}`)
+      
       if (this.isUpdating) return
       this.isUpdating = true
       
@@ -289,11 +308,19 @@ export default {
                         field === 'current' ? this.currentVolume :
                         field === 'concentration' ? this.concentration :
                         this.units;
-        this.$emit('update:' + (field === 'total' ? 'totalVolume' : 
+        
+        const eventName = 'update:' + (field === 'total' ? 'totalVolume' : 
                                field === 'current' ? 'currentVolume' :
                                field === 'concentration' ? 'concentration' :
-                               'units'), this.editingValue)
+                               'units');
+        
+        console.log(`[BottleSingle] Emitting ${eventName} with value: ${this.editingValue} (old value: ${oldValue})`)
+        
+        this.$emit(eventName, this.editingValue)
+      } else {
+        console.log(`[BottleSingle] Skipping emit - invalid value: ${this.editingValue}`)
       }
+      
       this.editing[field] = false
       
       // Reset the flag after a short delay
@@ -302,6 +329,8 @@ export default {
       }, 100)
     },
     cancelEditing() {
+      console.log(`[BottleSingle] Canceling edit`)
+      
       if (this.updateTimeout) {
         clearTimeout(this.updateTimeout)
       }

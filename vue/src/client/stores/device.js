@@ -122,14 +122,33 @@ export const useDeviceStore = defineStore('device', {
     },
     async measureDevicePart({ devicePart, partIndex }) {
       try {
+        console.log('Device store: Making API call to', `/measure-${devicePart}`, { partIndex });
         const response = await api.post(`/measure-${devicePart}`, { partIndex })
+        console.log('Device store: Got response', response);
         if (response.data.success) {
           await this.fetchDeviceData()
         } else {
           this.errorMessage = `Failed to measure ${devicePart}.`
+          console.log('Device store: Response not successful, throwing error');
+          throw new Error(response.data.message || `Failed to measure ${devicePart}.`)
         }
       } catch (error) {
+        console.log('Device store: Caught error', error);
         this.errorMessage = `Failed to measure ${devicePart}.`
+        throw error
+      }
+    },
+    async measureODs(vialIndices) {
+      try {
+        const measurePromises = vialIndices.map(index => 
+          this.measureDevicePart({ devicePart: "ods", partIndex: index })
+        );
+        await Promise.all(measurePromises);
+        // fetchDeviceData is called by measureDevicePart, so no need to call it again here.
+      } catch (error) {
+        console.error('Error measuring multiple ODs:', error);
+        this.errorMessage = 'Failed to measure one or more ODs.';
+        throw error;
       }
     },
     async setAllStirrersStateAction(newState) {
@@ -239,6 +258,7 @@ export const useDeviceStore = defineStore('device', {
         const response = await api.post(endpoint, { pumpId, rotations, iterations });
         if (response.data.success) {
           await this.setPartStateAction({ devicePart, partIndex: pumpId, newState: "stopped" });
+          await this.fetchDeviceData(); // Ensure UI gets updated with correct pump state
           return true;
         } else {
           this.errorMessage = `Error updating ${devicePart} calibration: ${response.data.message}`;

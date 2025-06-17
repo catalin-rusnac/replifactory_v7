@@ -86,6 +86,7 @@ const chartOptions = ref({
 })
 
 const isStopButton = ref({})
+const activeCalibrationId = ref(null)
 const rows = ref([
   { rotations: 1, iterations: 50, total_ml: NaN },
   { rotations: 5, iterations: 10, total_ml: NaN },
@@ -144,20 +145,60 @@ function onTotalMlInput(row) {
   }
 }
 
-function promptForMl(row) {
-  alert(`Pumping ${row.rotations} rotations ${row.iterations} times. Please blank the scale`)
-  deviceStore.startPumpCalibrationSequence({
-    pumpId: props.pumpId,
-    rotations: row.rotations,
-    iterations: row.iterations
-  }).then(() => {
-    resetButton(row)
-    const total_ml = parseFloat(prompt('Enter total mL pumped'))
-    if (!isNaN(total_ml)) {
-      row.total_ml = total_ml
-      onTotalMlInput(row)
+async function promptForMl(row) {
+  const proceed = confirm(`Pumping ${row.rotations} rotations ${row.iterations} times. Please blank the scale. Continue?`)
+  
+  if (!proceed) {
+    // User cancelled, reset button back to start state
+    const rowIndex = rows.value.findIndex(r => r === row)
+    resetButton(rowIndex)
+    return
+  }
+  
+  try {
+    // Create unique ID for this calibration
+    const calibrationId = Date.now() + Math.random()
+    activeCalibrationId.value = calibrationId
+    
+    // Start calibration sequence (this sets pump state to 'running' in backend)
+    const calibrationPromise = deviceStore.startPumpCalibrationSequence({
+      pumpId: props.pumpId,
+      rotations: row.rotations,
+      iterations: row.iterations
+    })
+    
+    // Small delay to ensure backend has set the pump state
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
+    // Refresh device data so main pump button shows spinning
+    await deviceStore.fetchDeviceData()
+    
+    // Wait for calibration to complete
+    await calibrationPromise
+    
+    const rowIndex = rows.value.findIndex(r => r === row)
+    resetButton(rowIndex)
+    
+    // Only ask for input if this calibration is still active (wasn't interrupted)
+    if (activeCalibrationId.value === calibrationId) {
+      const total_ml = parseFloat(prompt('Enter total mL pumped'))
+      if (!isNaN(total_ml)) {
+        row.total_ml = total_ml
+        onTotalMlInput(row)
+      }
     }
-  })
+    
+    // Clear active calibration ID
+    if (activeCalibrationId.value === calibrationId) {
+      activeCalibrationId.value = null
+    }
+  } catch (error) {
+    console.error('Calibration failed:', error)
+    const rowIndex = rows.value.findIndex(r => r === row)
+    resetButton(rowIndex)
+    // Clear active calibration on error
+    activeCalibrationId.value = null
+  }
 }
 
 onMounted(() => {
@@ -173,6 +214,24 @@ onMounted(() => {
 watch(pumpIdCalibrationData, () => {
   updateChartData()
 }, { deep: true })
+
+// Watch pump state and reset calibration buttons when pump is stopped externally
+watch(() => pumps.value?.states?.[props.pumpId], (newState, oldState) => {
+  if (newState === 'stopped' && oldState === 'running') {
+    // Mark calibration as interrupted if pump was manually stopped
+    const anyCalibrationRunning = Object.values(isStopButton.value).some(Boolean)
+    if (anyCalibrationRunning && activeCalibrationId.value) {
+      activeCalibrationId.value = null // Clear active calibration to prevent input prompt
+    }
+    
+    // Reset all calibration buttons when pump is stopped
+    Object.keys(isStopButton.value).forEach(index => {
+      if (isStopButton.value[index]) {
+        isStopButton.value[index] = false
+      }
+    })
+  }
+})
 </script>
 
 <style scoped>

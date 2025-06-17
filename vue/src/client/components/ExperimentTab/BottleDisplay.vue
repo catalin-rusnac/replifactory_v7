@@ -1,6 +1,7 @@
 <!-- group 3 bottles from BottleSingle.vue - main, drug, waste. next to each other. -->
 <template>
   <div class="bottle-display">
+    <template v-if="currentExperiment">
       <BottleSingle
       v-for="bottle in bottles"
       :key="bottle.name"
@@ -16,6 +17,7 @@
       @update:concentration="(val) => updateConcentration(val)"
       @update:units="(val) => updateUnits(val)"
     />
+    </template>
   </div>
 </template>
 
@@ -63,9 +65,9 @@ export default {
     function getBottleVolume(bottleName) {
       const params = currentExperiment.value.parameters || {}
       switch(bottleName) {
-        case 'main': return params.bottle_volume_main || 0
-        case 'drug': return params.bottle_volume_drug || 0
-        case 'waste': return params.bottle_volume_waste || 0
+        case 'main': return Number(params.bottle_volume_main) || 0
+        case 'drug': return Number(params.bottle_volume_drug) || 0
+        case 'waste': return Number(params.bottle_volume_waste) || 0
         default: return 0
       }
     }
@@ -73,16 +75,16 @@ export default {
     function getCurrentVolume(bottleName) {
       const params = currentExperiment.value.parameters || {}
       switch(bottleName) {
-        case 'main': return params.stock_volume_main || 0
-        case 'drug': return params.stock_volume_drug || 0
-        case 'waste': return params.stock_volume_waste || 0
+        case 'main': return Number(params.stock_volume_main) || 0
+        case 'drug': return Number(params.stock_volume_drug) || 0
+        case 'waste': return Number(params.stock_volume_waste) || 0
         default: return 0
       }
     }
 
     function getConcentration() {
       const params = currentExperiment.value.parameters || {}
-      return params.stock_concentration_drug || 0
+      return Number(params.stock_concentration_drug) || 0
     }
 
     function getUnits() {
@@ -91,23 +93,41 @@ export default {
     }
 
     async function updateBottleVolume(bottleName, value) {
+      console.log(`[BottleDisplay] updateBottleVolume called - bottleName: ${bottleName}, value: ${value}`)
+      console.log(`[BottleDisplay] Current experiment parameters:`, currentExperiment.value.parameters)
+      
       const params = { ...currentExperiment.value.parameters }
       switch(bottleName) {
         case 'main': params.bottle_volume_main = value; break
         case 'drug': params.bottle_volume_drug = value; break
         case 'waste': params.bottle_volume_waste = value; break
       }
+      
+      console.log(`[BottleDisplay] Updated params:`, params)
+      
       await experimentStore.updateCurrentExperimentParameters(params)
+      await experimentStore.fetchCurrentExperiment()
+      
+      console.log(`[BottleDisplay] Parameters updated and refreshed successfully`)
     }
 
     async function updateCurrentVolume(bottleName, value) {
+      console.log(`[BottleDisplay] updateCurrentVolume called - bottleName: ${bottleName}, value: ${value}`)
+      console.log(`[BottleDisplay] Current experiment parameters:`, currentExperiment.value.parameters)
+      
       const params = { ...currentExperiment.value.parameters }
       switch(bottleName) {
         case 'main': params.stock_volume_main = value; break
         case 'drug': params.stock_volume_drug = value; break
         case 'waste': params.stock_volume_waste = value; break
       }
+      
+      console.log(`[BottleDisplay] Updated params:`, params)
+      
       await experimentStore.updateCurrentExperimentParameters(params)
+      await experimentStore.fetchCurrentExperiment()
+      
+      console.log(`[BottleDisplay] Parameters updated and refreshed successfully`)
     }
 
     async function updateConcentration(value) {
@@ -148,7 +168,8 @@ export default {
       updateConcentration,
       getUnits,
       updateUnits,
-      getMaxScale
+      getMaxScale,
+      currentExperiment
     }
   }
 }

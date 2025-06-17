@@ -106,3 +106,29 @@ const selectTab = (tabName) => {
   padding: 20px;
 }
 </style>
+
+<style>
+/* Global styles for passive event optimization */
+* {
+  /* Optimize touch and scroll performance */
+  touch-action: manipulation;
+}
+
+/* Specific optimizations for scrollable elements */
+.v-container,
+.v-main,
+[class*="scroll"],
+[class*="table"],
+[class*="grid"] {
+  -webkit-overflow-scrolling: touch;
+  touch-action: manipulation;
+}
+
+/* RevoGrid specific optimizations */
+revogrid-data,
+revo-grid,
+.rgCell,
+.rgHeaderCell {
+  touch-action: manipulation !important;
+}
+</style>

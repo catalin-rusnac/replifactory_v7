@@ -11,6 +11,7 @@
           indeterminate
           color="white"
           class="spinner-custom"
+          size="64"
         ></v-progress-circular>
         <span v-else>{{ pump_names[i] }}<br>pump</span>
       </v-btn>
@@ -46,10 +47,24 @@
 import { storeToRefs } from 'pinia'
 import { useDeviceStore } from '../../stores/device'
 import PumpCalibration from '@/client/components/DeviceControl/PumpCalibration.vue'
-import { onMounted, reactive } from 'vue'
+import { onMounted, reactive, watch, ref } from 'vue'
 
 const deviceStore = useDeviceStore()
 const { pumps, valves, calibrationModeEnabled } = storeToRefs(deviceStore)
+
+// Track polling intervals to prevent multiple polling
+const pollIntervals = ref({})
+
+// Debug logging
+watch(pumps, (newPumps) => {
+  console.log('PumpControl - pumps data updated:', newPumps)
+  if (newPumps && newPumps.states) {
+    console.log('PumpControl - pump states:', newPumps.states)
+    Object.keys(newPumps.states).forEach(pumpId => {
+      console.log(`PumpControl - Pump ${pumpId} state: "${newPumps.states[pumpId]}"`)
+    })
+  }
+}, { immediate: true, deep: true })
 
 const pump_names = {
   1: 'MAIN',
@@ -67,8 +82,25 @@ onMounted(() => {
 })
 
 async function handlePumpClick(pumpId) {
+  console.log(`PumpControl - handlePumpClick called for pump ${pumpId}`)
+  console.log(`PumpControl - Current pump state: "${pumps.value.states[pumpId]}"`)
+  
+  // Clear any existing polling for this pump
+  if (pollIntervals.value[pumpId]) {
+    console.log(`PumpControl - Clearing existing poll interval for pump ${pumpId}`)
+    clearInterval(pollIntervals.value[pumpId])
+    delete pollIntervals.value[pumpId]
+  }
+  
   if (pumps.value.states[pumpId] === 'running') {
+    console.log(`PumpControl - Stopping pump ${pumpId}`)
+    
     await deviceStore.setPartStateAction({ devicePart: 'pumps', partIndex: pumpId, newState: 'stopped' })
+    
+    // Force refresh to get real state from backend
+    await deviceStore.fetchDeviceData()
+    
+    console.log(`PumpControl - After stop, pump ${pumpId} state is now: "${pumps.value.states[pumpId]}"`)
     return
   }
 
@@ -85,11 +117,47 @@ async function handlePumpClick(pumpId) {
   }
 
   try {
+    console.log(`PumpControl - Starting pump ${pumpId} with volume ${vol}`)
+    
+    // Start polling BEFORE starting the pump so we catch state changes
+    console.log(`PumpControl - Starting poll interval for pump ${pumpId}`)
+    pollIntervals.value[pumpId] = setInterval(async () => {
+      const oldState = pumps.value.states[pumpId]
+      await deviceStore.fetchDeviceData()
+      const newState = pumps.value.states[pumpId]
+      
+      console.log(`PumpControl - Polling pump ${pumpId}: old="${oldState}" new="${newState}"`)
+      
+      // Stop polling when pump is no longer running (either stopped manually or finished automatically)
+      if (newState !== 'running') {
+        console.log(`PumpControl - Pump ${pumpId} finished (${newState}), stopping poll`)
+        clearInterval(pollIntervals.value[pumpId])
+        delete pollIntervals.value[pumpId]
+      }
+    }, 300) // Poll every 300ms
+    
+    // Start the pump (no optimistic update - let real state drive the UI)
     await deviceStore.setPartStateAction({ devicePart: 'pumps', partIndex: pumpId, newState: 'running', input: { volume: vol } })
+    
+    // Fallback timeout to stop polling after 30 seconds
+    setTimeout(() => {
+      if (pollIntervals.value[pumpId]) {
+        console.log(`PumpControl - Timeout reached for pump ${pumpId}, stopping poll`)
+        clearInterval(pollIntervals.value[pumpId])
+        delete pollIntervals.value[pumpId]
+        // Force refresh state
+        deviceStore.fetchDeviceData()
+      }
+    }, 30000)
+    
   } catch (error) {
-    console.error(error)
-  } finally {
-    await deviceStore.setPartStateAction({ devicePart: 'pumps', partIndex: pumpId, newState: 'stopped' })
+    console.error(`PumpControl - Error starting pump ${pumpId}:`, error)
+    // Reset state on error and clear polling
+    pumps.value.states[pumpId] = 'stopped'
+    if (pollIntervals.value[pumpId]) {
+      clearInterval(pollIntervals.value[pumpId])
+      delete pollIntervals.value[pumpId]
+    }
   }
 }
 
@@ -174,8 +242,8 @@ function calculateVolume(rotationsVal, pumpId) {
 
 .pump-button {
   margin-bottom: 20px;
-  background-color: blue;
-  color: white;
+  background-color: blue !important;
+  color: white !important;
   font-size: 20px;
   padding: 10px;
   width: 160px;
@@ -186,8 +254,16 @@ function calculateVolume(rotationsVal, pumpId) {
 }
 
 .pump-button.stop-button {
-  background-color: red;
-  color: white;
+  background-color: red !important;
+  color: white !important;
+}
+
+:deep(.pump-button.stop-button .v-btn__content) {
+  color: white !important;
+}
+
+:deep(.pump-button.stop-button .v-btn__overlay) {
+  opacity: 0 !important;
 }
 
 .pump-controls {
