@@ -1,6 +1,6 @@
 <template>
   <div class="dilution-controls">
-    <h3>Preconfigured</h3>
+    <h3>Configuration helpers</h3>
     <v-table>
       <thead>
         <tr>
@@ -13,11 +13,12 @@
           <td></td>
           <td v-for="vial in vials" :key="vial">
             <v-btn
-              color="warning"
-              @click="openSettings(vial)"
+              color="success"
+              @click="openGrowthParametersSettings(vial)"
               class="dilution-button"
             >
-              Dilutions Off
+              <v-icon left>mdi-chart-bell-curve-cumulative</v-icon>
+              Dose Response
             </v-btn>
           </td>
         </tr>
@@ -44,6 +45,18 @@
             >
               <v-icon left>mdi-skull</v-icon>
               Morbidostat
+            </v-btn>
+          </td>
+        </tr>
+        <tr>
+          <td></td>
+          <td v-for="vial in vials" :key="vial">
+            <v-btn
+              color="warning"
+              @click="openSettings(vial)"
+              class="dilution-button">
+            <v-icon left>mdi-pump-off</v-icon>
+              Dilutions Off
             </v-btn>
           </td>
         </tr>
@@ -79,6 +92,16 @@
         @confirm="handleSettingsConfirm"
       />
     </v-dialog>
+
+    <!-- Add GrowthParametersSettings dialog -->
+    <v-dialog v-model="showGrowthParametersSettings" max-width="600">
+      <GrowthParametersSettings
+        v-if="showGrowthParametersSettings"
+        :vialId="selectedVial"
+        @close="handleGrowthParametersSettingsClose"
+        @confirm="handleSettingsConfirm"
+      />
+    </v-dialog>
   </div>
 </template>
 
@@ -87,6 +110,7 @@ import { ref } from 'vue'
 import DilutionSettings from './DilutionSettings.vue'
 import MorbidostatSettings from './MorbidostatSettings.vue'
 import ChemostatSettings from './ChemostatSettings.vue'
+import GrowthParametersSettings from './GrowthParametersSettings.vue'
 import { useExperimentStore } from '@/client/stores/experiment'
 
 const emit = defineEmits(['settings-updated'])
@@ -94,6 +118,7 @@ const vials = [1, 2, 3, 4, 5, 6, 7]
 const showSettings = ref(false)
 const showMorbidostatSettings = ref(false)
 const showChemostatSettings = ref(false)
+const showGrowthParametersSettings = ref(false)
 const selectedVial = ref(null)
 const experimentStore = useExperimentStore()
 
@@ -112,6 +137,11 @@ function openChemostatSettings(vial) {
   showChemostatSettings.value = true
 }
 
+function openGrowthParametersSettings(vial) {
+  selectedVial.value = vial
+  showGrowthParametersSettings.value = true
+}
+
 function handleSettingsClose() {
   showSettings.value = false
 }
@@ -124,10 +154,15 @@ function handleChemostatSettingsClose() {
   showChemostatSettings.value = false
 }
 
+function handleGrowthParametersSettingsClose() {
+  showGrowthParametersSettings.value = false
+}
+
 async function handleSettingsConfirm() {
   showSettings.value = false
   showMorbidostatSettings.value = false
   showChemostatSettings.value = false
+  showGrowthParametersSettings.value = false
   // Refresh the experiment data to show updated values
   await experimentStore.fetchCurrentExperiment()
   // Emit event to refresh the control parameters table
@@ -182,7 +217,7 @@ h3 {
 }
 
 .dilution-button {
-  width: 140px;
+  width: 160px;
   height: 32px;
   font-size: 14px;
   font-weight: normal;

@@ -139,7 +139,9 @@ export default defineComponent({
 
 
     const loadTableData = async () => {
-      const { data, keys } = await props.fetchData();
+      const fetchResult = await props.fetchData();
+      const data = fetchResult?.data || [];
+      const keys = fetchResult?.keys || [];
       // Add row header column
       gridColumns.value = [
         {
@@ -185,7 +187,7 @@ export default defineComponent({
           if (rowHeaderCells.length === 0) {
             rowHeaderCells = gridElement.querySelectorAll('revogrid-row-header');
           }
-          if (rowHeaderCells.length === 0) {
+          if (rowHeaderCells.length === 0 && keys && Array.isArray(keys)) {
             // Try looking for cells containing the row header text
             rowHeaderCells = Array.from(gridElement.querySelectorAll('*')).filter(el => 
               keys.some(key => el.textContent && el.textContent.includes(key))
@@ -195,7 +197,7 @@ export default defineComponent({
           // Instead of relying on index position, match by text content
           rowHeaderCells.forEach((cell) => {
             const cellText = cell.textContent?.trim();
-            if (cellText && props.rowTooltips[cellText]) {
+            if (cellText && props.rowTooltips && props.rowTooltips[cellText]) {
               cell.style.cursor = 'help';
               cell.addEventListener('mouseenter', (e) => showTooltip(e, cellText));
               cell.addEventListener('mouseleave', () => hideTooltip(cell));
@@ -210,7 +212,8 @@ export default defineComponent({
     
     // Also watch for rowTooltips changes
     watch(() => props.rowTooltips, () => {
-      const { keys } = props.fetchData();
+      const fetchResult = props.fetchData();
+      const keys = fetchResult?.keys || [];
       nextTick(() => {
         setupTooltipListeners(keys);
       });
@@ -227,7 +230,7 @@ export default defineComponent({
           // Alternative approach: listen for mouseover on the entire grid
           gridElement.addEventListener('mouseover', (e) => {
             const target = e.target;
-            if (target && target.textContent) {
+            if (target && target.textContent && props.rowTooltips) {
               // Check if the target contains any of our parameter names
               const paramKey = Object.keys(props.rowTooltips).find(key => 
                 target.textContent.trim() === key
@@ -240,7 +243,7 @@ export default defineComponent({
           
           gridElement.addEventListener('mouseout', (e) => {
             const target = e.target;
-            if (target && target.textContent) {
+            if (target && target.textContent && props.rowTooltips) {
               const paramKey = Object.keys(props.rowTooltips).find(key => 
                 target.textContent.trim() === key
               );

@@ -218,7 +218,16 @@ export default {
       if (!this.maskLoaded || !this.maskData) return
       
       const canvas = this.$refs.liquidCanvas
+      if (!canvas) {
+        console.warn('Liquid canvas ref not available yet')
+        return
+      }
+      
       const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        console.error('Could not get liquid canvas context')
+        return
+      }
       const { drawW, drawH, offsetX, offsetY, scale } = this.getImageDrawParams(this.maskImage.width, this.maskImage.height)
       
       // Clear the canvas
@@ -339,18 +348,54 @@ export default {
       this.editing.current = false
       this.editing.concentration = false
       this.editing.units = false
-    }
-  },
-  watch: {
-    fillPercentage() {
-      this.updateLiquid()
-    }
-  },
-  mounted() {
-    this.maskImage.src = bottleMask
-    this.maskImage.onload = () => {
+    },
+    initializeMask() {
+      if (this.maskImage.src !== bottleMask) {
+        this.maskImage.src = bottleMask
+      }
+      
+      this.maskImage.onload = () => {
+        // Only setup mask if canvas dimensions are ready
+        if (this.canvasWidth > 0 && this.canvasHeight > 0) {
+          this.setupMaskCanvas()
+        } else {
+          // Wait a bit for bottle image to set dimensions
+          setTimeout(() => this.setupMaskCanvas(), 100)
+        }
+      }
+      
+      // If image is already loaded, setup immediately
+      if (this.maskImage.complete) {
+        if (this.canvasWidth > 0 && this.canvasHeight > 0) {
+          this.setupMaskCanvas()
+        } else {
+          // Wait a bit for bottle image to set dimensions
+          setTimeout(() => this.setupMaskCanvas(), 100)
+        }
+      }
+    },
+    setupMaskCanvas() {
       const canvas = this.$refs.maskCanvas
+      if (!canvas) {
+        console.warn('Mask canvas ref not available yet, retrying...')
+        // Retry after a short delay to ensure DOM is ready
+        setTimeout(() => this.setupMaskCanvas(), 50)
+        return
+      }
+      
       const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        console.error('Could not get canvas context')
+        return
+      }
+      
+      // Ensure canvas has valid dimensions before proceeding
+      if (this.canvasWidth <= 0 || this.canvasHeight <= 0) {
+        console.warn('Canvas dimensions not ready yet, retrying mask setup...')
+        setTimeout(() => this.setupMaskCanvas(), 100)
+        return
+      }
+      
       const srcW = this.maskImage.width
       const srcH = this.maskImage.height
       const { drawW, drawH, offsetX, offsetY, scale } = this.getImageDrawParams(srcW, srcH)
@@ -365,20 +410,57 @@ export default {
       
       // Initial liquid update
       this.updateLiquid()
-    }
-
-    // Get natural dimensions of bottle image
-    const bottleImg = this.$refs.bottleImg
-    if (bottleImg) {
-      bottleImg.onload = () => {
-        this.bottleNaturalWidth = bottleImg.naturalWidth
-        this.bottleNaturalHeight = bottleImg.naturalHeight
-        // Calculate canvas dimensions based on bottle's natural size
-        const aspectRatio = this.bottleNaturalHeight / this.bottleNaturalWidth
-        this.canvasWidth = 150
-        this.canvasHeight = Math.round(this.canvasWidth * aspectRatio)
+    },
+    setupBottleImage() {
+      // Get natural dimensions of bottle image
+      const bottleImg = this.$refs.bottleImg
+      if (bottleImg) {
+        bottleImg.onload = () => {
+          this.bottleNaturalWidth = bottleImg.naturalWidth
+          this.bottleNaturalHeight = bottleImg.naturalHeight
+          // Calculate canvas dimensions based on bottle's natural size
+          const aspectRatio = this.bottleNaturalHeight / this.bottleNaturalWidth
+          this.canvasWidth = 150
+          this.canvasHeight = Math.round(this.canvasWidth * aspectRatio)
+          
+          // Now that dimensions are set, try to setup mask if image is ready
+          if (this.maskImage.complete && !this.maskLoaded) {
+            this.setupMaskCanvas()
+          }
+        }
+        
+        // If image is already loaded, setup immediately
+        if (bottleImg.complete) {
+          this.bottleNaturalWidth = bottleImg.naturalWidth
+          this.bottleNaturalHeight = bottleImg.naturalHeight
+          const aspectRatio = this.bottleNaturalHeight / this.bottleNaturalWidth
+          this.canvasWidth = 150
+          this.canvasHeight = Math.round(this.canvasWidth * aspectRatio)
+          
+          // Now that dimensions are set, try to setup mask if image is ready
+          if (this.maskImage.complete && !this.maskLoaded) {
+            this.setupMaskCanvas()
+          }
+        }
       }
     }
+  },
+  watch: {
+    fillPercentage() {
+      this.updateLiquid()
+    }
+  },
+  mounted() {
+    // Set default canvas dimensions to prevent errors
+    if (this.canvasWidth <= 0) {
+      this.canvasWidth = 150
+    }
+    if (this.canvasHeight <= 0) {
+      this.canvasHeight = 300 // Default aspect ratio approximation
+    }
+    
+    this.setupBottleImage()
+    this.initializeMask()
   },
   beforeUnmount() {
     window.removeEventListener('resize', this.updateCanvasSize)

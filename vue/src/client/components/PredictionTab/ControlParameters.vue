@@ -51,7 +51,7 @@ const parameterTooltips = {
   'threshold_od_min_increase_stress': 'Minimum OD threshold to allow stress increase events. Useful to prevent stressing a small population.',
   'threshold_growth_rate_increase_stress': 'Growth rate threshold above which stress increase events are allowed. Decrease this parameter for more stress increase events that reduce growth rate and media consumption.',
   'threshold_growth_rate_decrease_stress': 'Growth rate threshold below which stress decrease events are allowed. Useful to prevent over-stressing the culture.',
-  'postfill': 'Volume added after pumping waste. Useful for phage experiments.'
+  'postfill': 'Whether the volume is added before or after pumping waste (0 or 1). Useful for phage experiments, default is 0.'
 };
 
 function fetchCulturesData() {

@@ -19,12 +19,7 @@
     <!-- Image Display -->
     <div class="mt-3" v-if="camera_image">
       <v-card>
-        <v-card-title>
-          <span class="text-h6">Latest Captured Image</span>
-        </v-card-title>
-        <v-card-text>
-          <img :src="camera_image" class="img-fluid" style="max-width: 100%; height: auto;" />
-        </v-card-text>
+        <img :src="camera_image" class="img-fluid" style="max-width: 100%; height: auto;">
       </v-card>
     </div>
   </div>

@@ -10,7 +10,7 @@
           <ControlParameters :key="controlParamsKey" @refresh-table="refreshControlParams" />
         </div>
         <div class="table-wrapper">
-          <GrowthParameters />
+          <GrowthParameters :key="growthParamsKey" />
         </div>
       </div>
     </div>
@@ -97,6 +97,7 @@ const experimentStore = useExperimentStore();
 const vials = Array.from({ length: 7 }, (_, i) => i + 1); // Example: 7 vials
 const selectedVial = ref(1);
 const controlParamsKey = ref(0);
+const growthParamsKey = ref(0);
 
 const currentExperiment = computed(() => experimentStore.currentExperiment || {});
 const simulation_data = computed(() => experimentStore.simulation_data || {});
@@ -118,7 +119,8 @@ const simulationHoursError = computed(() => {
 
 function refreshControlParams() {
   controlParamsKey.value = Date.now();
-  }
+  growthParamsKey.value = Date.now();
+}
 
 async function plotVial(vial) {
   if (!currentExperiment.value) {
