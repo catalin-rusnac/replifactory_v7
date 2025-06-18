@@ -167,19 +167,6 @@ export const useDeviceStore = defineStore('device', {
         this.errorMessage = 'Failed to measure OD calibration.';
       }
     },
-    async measureAllODSignalsAction(payload) {
-      try {
-        const response = await api.post('/measure-all-od-signals', payload);
-        if (response.data.success) {
-          console.log("measured all od signals", response.data.device_states.ods.calibration)
-          await this.fetchDeviceData();
-        } else {
-          this.errorMessage = 'Failed to measure all OD signals.';
-        }
-      } catch (error) {
-        this.errorMessage = 'Failed to measure all OD signals.';
-      }
-    },
     async updateODCalibrationKeyAction({ oldOD, newOD }) {
       try {
         const response = await api.post('/update-od-calibration-key', { oldOD, newOD });
@@ -342,6 +329,19 @@ export const useDeviceStore = defineStore('device', {
         return response.data;
       } catch (error) {
         this.errorMessage = error.message || `Failed to run simulation for vial ${vial}`;
+        throw error;
+      }
+    },
+    async setODScalingFactorAction({ vial, scalingFactor }) {
+      try {
+        const response = await api.post('/set-od-scaling-factor', { vial, scaling_factor: scalingFactor });
+        if (response.data.success) {
+          await this.fetchDeviceData();
+        } else {
+          this.errorMessage = 'Failed to set OD scaling factor.';
+        }
+      } catch (error) {
+        this.errorMessage = 'Failed to set OD scaling factor.';
         throw error;
       }
     }

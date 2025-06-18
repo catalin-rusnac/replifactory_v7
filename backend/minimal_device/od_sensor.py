@@ -170,8 +170,13 @@ class OdSensor:
         calibration_mv = calibration_mv[mask]
         calibration_od = calibration_od[mask]
         calibration_od = np.array([float(i) for i in calibration_od])
+        
+        # Count valid calibration points
+        num_points = len(calibration_od)
         logger.info(f"calibration_od: {calibration_od}")
         logger.info(f"calibration_mv: {calibration_mv}")
+        logger.info(f"Number of calibration points for vial {self.vial_number}: {num_points}")
+
         try:
             blank_signal = calibration_mv[calibration_od == 0.0][0]
             blank_bounds = (blank_signal - 0.00001, blank_signal + 0.00001)
@@ -193,20 +198,46 @@ class OdSensor:
         calibration_mv = np.nanmean(calibration_mv_filled, 1)
 
         calibration_mv_err += 0.01  # allows curve fit with single measurements
-        # coefficients for fitting beer lambert scaled are blank and scaling factor
-        # blank bounds are 0.5-200, scaling factor bounds are 1-3
-        # initial guess is 50mV for blank and 1.0 for scaling factor
+
+        # Check if we have exactly 1 calibration point and a custom scaling factor
+        if num_points == 1:
+            # For 1 point, use custom scaling factor if available
+            custom_scaling = None
+            try:
+                custom_scaling = self.device.device_data['ods']['default_scaling_factor'][self.vial_number]
+                logger.info(f"Using custom scaling factor {custom_scaling} for vial {self.vial_number} with 1 calibration point")
+            except (KeyError, TypeError):
+                logger.info(f"No custom scaling factor found for vial {self.vial_number}, using default of 2.0")
+                custom_scaling = 2.0
+            
+            # With 1 point, handle the blank signal calculation properly
+            # If the single calibration point is OD=0, use its signal as blank
+            if 0.0 in calibration_od:
+                blank_from_calibration = calibration_mv[calibration_od == 0.0][0]
+                logger.info(f"Using blank signal {blank_from_calibration} from OD=0 calibration point")
+                coefs = [blank_from_calibration, custom_scaling]
+            else:
+                # If no OD=0 point, we can't determine blank reliably with just 1 point
+                # Use the existing blank_signal estimate and warn
+                logger.warning(f"Single calibration point for vial {self.vial_number} is not OD=0. Using estimated blank {blank_signal}")
+                coefs = [blank_signal, custom_scaling]
+        else:
+            # For 2+ points, calculate scaling factor automatically using curve fitting
+            logger.info(f"Fitting calibration curve for vial {self.vial_number} with {num_points} calibration points")
+            
+            # coefficients for fitting beer lambert scaled are blank and scaling factor
+            # blank bounds are 0.5-200, scaling factor bounds are 1-3
+            # initial guess is 50mV for blank and 1.0 for scaling factor
+            coefs, _ = curve_fit(
+                BeerLambertScaledInverse,
+                calibration_od,
+                calibration_mv,
+                maxfev=5000,
+                p0=(blank_signal, 1.0),
+                bounds=[(blank_bounds[0], 0.1), (blank_bounds[1], 5)],
+                sigma=calibration_mv_err,
+            )
         
-        
-        coefs, _ = curve_fit(
-            BeerLambertScaledInverse,
-            calibration_od,
-            calibration_mv,
-            maxfev=5000,
-            p0=(blank_signal, 1.0),
-            bounds=[(blank_bounds[0], 0.1), (blank_bounds[1], 5)],
-            sigma=calibration_mv_err,
-        )
         coefs = [round(i, 4) for i in coefs]
         coefs = [float(i) for i in coefs]
         blank_signal, scaling = coefs
@@ -236,11 +267,11 @@ class OdSensor:
         xmax = max(max(calibration_mv),140) + 10
         x = np.linspace(xmin, xmax, 501)
         y = self.mv_to_od(x)
-        a, b, c, d, g = self.device.device_data['ods']['calibration_coefs'][self.vial_number]
+        blank_signal, scaling = self.device.device_data['ods']['calibration_coefs'][self.vial_number]
         plt.plot(x, y, "b:", label="function fit")
         plt.title(
-            "od_max:%.2f slope: %.2f mv_inflec: %.2f od_min: %.2f, g: %.2f"
-            % (a, b, c, d, g),
+            "Beer-Lambert scaled: blank=%.2f mV, scaling=%.2f"
+            % (blank_signal, scaling),
             fontsize=8,
         )
         #     plt.plot(calibration_mv, calibration_od, "r.")

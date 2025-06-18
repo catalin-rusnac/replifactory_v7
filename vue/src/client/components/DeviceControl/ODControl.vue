@@ -184,11 +184,28 @@
                   <input type="number" step="0.01" min="0.1" v-model.number="scalingFactorsLocal[idx]" style="width: 60px; text-align: center; background: #23272e; color: #90caf9; border: 1px solid #444; border-radius: 4px;" />
                 </template>
                 <template v-else>
-                  <div class="scaling-factor-value">
-                    {{ typeof sf === 'number' ? sf.toFixed(2) : sf }}
-                    <v-icon :color="getScalingFactorStatus(sf, idx + 1).color" size="small" style="margin-left: 4px;">
-                      {{ getScalingFactorStatus(sf, idx + 1).icon }}
-                    </v-icon>
+                  <div class="scaling-factor-value"
+                       :class="{ 'editable': isScalingFactorEditable(idx + 1), 'non-editable': !isScalingFactorEditable(idx + 1) }"
+                       @dblclick="handleScalingFactorEdit(idx + 1)"
+                       :title="getScalingFactorTooltip(idx + 1)">
+                    <!-- Show input when editing this specific scaling factor -->
+                    <input v-if="editingScalingFactor === idx + 1"
+                           v-model.number="tempScalingFactor"
+                           @blur="finishScalingFactorEdit(idx + 1)"
+                           @keyup.enter="finishScalingFactorEdit(idx + 1)"
+                           @keyup.esc="cancelScalingFactorEdit"
+                           type="number"
+                           step="0.01"
+                           min="0.1"
+                           class="scaling-factor-input"
+                           ref="scalingFactorInput" />
+                    <!-- Show display value otherwise -->
+                    <span v-else>
+                      {{ typeof sf === 'number' ? sf.toFixed(2) : sf }}
+                      <v-icon :color="getScalingFactorStatus(sf, idx + 1).color" size="small" style="margin-left: 4px;">
+                        {{ getScalingFactorStatus(sf, idx + 1).icon }}
+                      </v-icon>
+                    </span>
                   </div>
                 </template>
               </th>
@@ -271,6 +288,10 @@ import api from '@/api'
   // Add local editable scaling factors
   const scalingFactorsLocal = ref([]);
 
+  // Scaling factor editing state
+  const editingScalingFactor = ref(null);
+  const tempScalingFactor = ref(null);
+
   // Sync local scaling factors with backend values when calibration_coefs changes
   watch(scalingFactors, (newFactors) => {
     scalingFactorsLocal.value = [...newFactors];
@@ -301,6 +322,10 @@ import api from '@/api'
         updateProbeValue(editingOdValue.value, idx, event);
       }
       editingOdValue.value = null;
+    }
+    // If we're editing scaling factor and the click is outside the input
+    if (editingScalingFactor.value && !event.target.closest('.scaling-factor-input')) {
+      finishScalingFactorEdit(editingScalingFactor.value);
     }
   }
 
@@ -377,24 +402,6 @@ function updateSignalValue(vial, odValue) {
     delete tempCalibrationValues.value[vial][odValue];
     }
 }
-
-  async function measureAllODSignals() {
-    isRemeasuring.value = true
-    try {
-      // Build the vial_ods mapping: {1: od1, 2: od2, ...}
-      const vial_ods = {}
-      vials.forEach((vial, idx) => {
-        vial_ods[vial] = getHighlightedOdValue(vial)
-      })
-      console.log(vial_ods)
-      await deviceStore.measureAllODSignalsAction({ vial_ods })
-      await deviceStore.fetchDeviceData()
-    } catch (e) {
-      // Optionally handle error
-    } finally {
-      isRemeasuring.value = false
-    }
-  }
   
   function getCalibrationInputValue(vial, odValue) {
       // Check if we have a temporary value first
@@ -702,6 +709,77 @@ function updateSignalValue(vial, odValue) {
       tooltip: 'Scaling factor'
     };
   };
+
+  // Function to count non-null calibration points for a vial
+  function getCalibrationPointCount(vial) {
+    if (!ods.value.calibration || !ods.value.calibration[vial]) {
+      return 0;
+    }
+    return Object.values(ods.value.calibration[vial]).filter(value => value !== null && value !== undefined).length;
+  }
+
+  // Function to determine if scaling factor is editable
+  function isScalingFactorEditable(vial) {
+    const pointCount = getCalibrationPointCount(vial);
+    return pointCount === 1; // Only editable when there's exactly 1 calibration point
+  }
+
+  // Function to get tooltip for scaling factor
+  function getScalingFactorTooltip(vial) {
+    const pointCount = getCalibrationPointCount(vial);
+    if (pointCount >= 2) {
+      return 'Scaling factor is automatically calculated from multiple calibration points. Cannot be edited.';
+    } else if (pointCount === 1) {
+      return 'Double-click to edit scaling factor.';
+    } else {
+      return 'No calibration points available for this vial.';
+    }
+  }
+
+  // Function to handle scaling factor edit
+  function handleScalingFactorEdit(vial) {
+    if (!isScalingFactorEditable(vial)) {
+      return; // Don't allow editing if not editable
+    }
+    
+    editingScalingFactor.value = vial;
+    const currentValue = scalingFactorsLocal.value[vial - 1];
+    tempScalingFactor.value = typeof currentValue === 'number' ? currentValue : 2.0; // Default to 2.0
+    
+    nextTick(() => {
+      const input = document.querySelector('.scaling-factor-input');
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    });
+  }
+
+  // Function to finish scaling factor edit
+  async function finishScalingFactorEdit(vial) {
+    if (editingScalingFactor.value !== vial) return;
+    
+    try {
+      if (tempScalingFactor.value && tempScalingFactor.value > 0) {
+        await deviceStore.setODScalingFactorAction({
+          vial: vial,
+          scalingFactor: tempScalingFactor.value
+        });
+        // The scaling factor will be updated automatically when device data is refetched
+      }
+    } catch (error) {
+      console.error('Error setting scaling factor:', error);
+    } finally {
+      editingScalingFactor.value = null;
+      tempScalingFactor.value = null;
+    }
+  }
+
+  // Function to cancel scaling factor edit
+  function cancelScalingFactorEdit() {
+    editingScalingFactor.value = null;
+    tempScalingFactor.value = null;
+  }
   
   // Add this function after getScalingFactorStatus
   const getOD0Status = (vial) => {
@@ -1481,6 +1559,33 @@ function updateSignalValue(vial, odValue) {
     align-items: center;
     justify-content: center;
     gap: 4px;
+  }
+
+  .scaling-factor-value.editable {
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 3px;
+    transition: background-color 0.2s;
+  }
+
+  .scaling-factor-value.editable:hover {
+    background-color: rgba(144, 202, 249, 0.1);
+  }
+
+  .scaling-factor-value.non-editable {
+    cursor: not-allowed;
+    opacity: 0.8;
+  }
+
+  .scaling-factor-input {
+    width: 70px !important;
+    text-align: center !important;
+    background: #23272e !important;
+    color: #90caf9 !important;
+    border: 2px solid #90caf9 !important;
+    border-radius: 4px !important;
+    padding: 4px !important;
+    font-size: 14px !important;
   }
   
   .od-value-with-status {

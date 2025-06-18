@@ -100,21 +100,25 @@ def set_device_state(devicePart: str, payload: dict, device: BaseDevice = Depend
         device.stirrers.set_speed(part_index, new_state)
     return {"success": True, "newState": new_state}
 
-# measure all od signals
-@router.post("/measure-all-od-signals")
-def measure_all_od_signals(payload: dict, device: BaseDevice = Depends(get_device)):
-    vial_ods = payload['vial_ods'] # example: {1:0.0001, 2:0.12, 3:0.25, 4:0.5, 5:1, 6:2, 7:4}
-    vial_ods = {int(k): v for k, v in vial_ods.items()}
-    for vial in range(1, 8):
-        signal = device.od_sensors[vial].measure_signal()
-        od = vial_ods[vial]
-        od_str = str(od)
-        device.device_data['ods']['calibration'][vial][od_str] = signal
-        device.od_sensors[vial].fit_calibration_function()
-        logger.info(f"measured signal {signal} for vial {vial} with od {od_str}")
+@router.post("/set-od-scaling-factor")
+def set_od_scaling_factor(payload: dict, device: BaseDevice = Depends(get_device)):
+    vial = payload['vial']
+    scaling_factor = payload['scaling_factor']
+    scaling_factor = float(scaling_factor)
+    
+    # Initialize default_scaling_factor if it doesn't exist
+    if 'default_scaling_factor' not in device.device_data['ods']:
+        device.device_data['ods']['default_scaling_factor'] = {}
+    
+    device.device_data['ods']['default_scaling_factor'][vial] = scaling_factor
+    
+    # Trigger calibration function fit to recalculate with new scaling factor
+    device.od_sensors[vial].fit_calibration_function()
+    
     device.eeprom.save_config_to_eeprom()
-    logger.info(f"measured all od signals {device.device_data['ods']['calibration']}")
-    return device.device_data['ods']['calibration']
+    logger.info(f"Set OD scaling factor for vial {vial} to {scaling_factor} and recalculated calibration")
+    
+    return {"success": True, "scaling_factor": scaling_factor}
 
 @router.post("/update-od-calibration-value")
 def update_od_calibration_value(payload: dict, device: BaseDevice = Depends(get_device)):
