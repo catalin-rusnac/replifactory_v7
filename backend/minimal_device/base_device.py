@@ -229,62 +229,6 @@ class BaseDevice:
         self.hard_stop_trigger = False
         self.soft_stop_trigger = False
         self.release_vial_locks()
-        
-
-    # def connect(self, ftdi_address="ftdi://ftdi:2232h", retries=10):
-    #     # if ftdi_address is None:
-    #     #     ftdi_address = self.ftdi_address
-    #     # else:
-    #     try:
-    #         # t0=time.time()
-    #         assert ftdi_address[-1] != "/", "ftdi_address should not end with a '/'"
-    #         self.spi = SpiController(cs_count=5)
-    #         self.spi.configure(ftdi_address + "/1")
-    #         self.i2c = pyftdi.i2c.I2cController()
-    #         self.i2c.configure(ftdi_address + "/2", frequency=5e4)
-    #         self.pwm_controller.connect()  # valves and stirrers
-    #         # self.valves.connect()
-    #         self.stirrers.connect()
-    #         self.photodiodes.connect()
-    #         self.lasers.connect()
-    #         self.thermometers.connect()
-    #         self.pump1.connect()
-    #         self.pump2.connect()
-    #         self.pump3.connect()
-    #         self.pump4.connect()
-    #         self.eeprom.connect()
-    #         # print("Device %s connection established" % ftdi_address)
-    #         self.dilution_worker = QueueWorker(device=self, worker_name="dilution")
-    #         self.od_worker = QueueWorker(device=self, worker_name="od")
-    #         self.hard_stop_trigger = False
-    #         self.soft_stop_trigger = False
-    #
-    #     # except USBError as ex:
-    #     #     raise FtdiError('UsbError: %s' % str(ex)) from None
-    #
-    #     except pyftdi.ftdi.FtdiError as ex:
-    #         raise ConnectionError("Connection failed! %s" % ex) from None
-    #     except pyftdi.usbtools.USBError:
-    #         if retries >0:
-    #             try:
-    #                 self.spi.terminate()
-    #             except Exception:
-    #                 pass
-    #             try:
-    #                 self.i2c.terminate()
-    #             except Exception:
-    #                 pass
-    #             UsbTools.release_all_devices()
-    #             UsbTools.flush_cache()
-    #             print("Retrying connection...")
-    #             self.connect(ftdi_address=ftdi_address, retries=retries - 1)
-    #         print("Device connected but does not recognize the command.\nPlease reset connections.")
-    #     except pyftdi.usbtools.UsbToolsError as ex:
-    #         print("Connection failed! %s" % ex)
-    #         print("Device %s not connected." % ftdi_address)
-    #     for lock in self.locks_vials.values():
-    #         if lock.locked():
-    #             lock.release()
 
     @staticmethod
     def reset_usb_device():
@@ -500,48 +444,6 @@ class BaseDevice:
                 target_culture.__dict__[k] = source_culture.__dict__[k]
         target_culture.save()
 
-    def calibrate(self, dummy_data=False):
-        if dummy_data:
-            # self.calibration_mv_to_od = {1: {1: 5, 10: 2, 22: 0.5, 35: 0.1, 41: 0.0001},
-            #                              2: {1: 5, 10: 2, 22: 0.5, 35: 0.1, 41: 0.0001},
-            #                              3: {1: 5, 10: 2, 35: 0.1, 41: 0.0001},
-            #                              4: {1: 5, 10: 2, 35: 0.1, 41: 0.0001},
-            #                              5: {1: 5, 10: 2, 35: 0.1, 41: 0.0001},
-            #                              6: {1: 5, 10: 2, 35: 0.1, 41: 0.0001},
-            #                              7: {1: 5, 10: 2, 35: 0.1, 41: 0.0001}}
-            for v in range(1, 8):
-                self.calibration_od_to_mv[v] = {
-                    11.973: [0.40625, 0.4103125],
-                    5.644: [0.75, 0.7575],
-                    2.661: [1.6484375, 1.664921875],
-                    1.254: [4.2890625, 4.331953125],
-                    0.591: [10.6796875, 10.786484375],
-                    0.279: [21.1015625, 21.312578125],
-                    0.131: [29.8671875, 30.165859375],
-                    0.062: [38.1328125, 38.514140625],
-                    0.029: [42.515625, 42.94078125],
-                    0.014: [45.71875, 46.1759375],
-                    0: [47.859375, 48.33796875],
-                }
-
-            self.calibration_fan_speed_to_duty_cycle = {
-                1: {1: 0.3, 2: 0.6, 3: 1},
-                2: {1: 0.3, 2: 0.6, 3: 1},
-                3: {1: 0.3, 2: 0.6, 3: 1},
-                4: {1: 0.3, 2: 0.6, 3: 1},
-                5: {1: 0.3, 2: 0.6, 3: 1},
-                6: {1: 0.3, 2: 0.6, 3: 1},
-                7: {1: 0.3, 2: 0.6, 3: 1},
-            }
-            self.calibration_pump_rotations_to_ml = {
-                1: {1: 0.184, 3: 0.55, 20: 3.59, 80: 14.23},
-                2: {1: 0.184, 3: 0.55, 20: 3.59, 80: 14.23},
-                3: {},
-                4: {1: 0.17, 5: 0.64, 10: 1.05, 50: 5.1, 100: 7.55, 200: 13.71},
-            }
-            self.save()
-            self.fit_calibration_functions()
-
     def show_parameters(self):
         self.stirrers.show_parameters()
         print()
@@ -552,14 +454,3 @@ class BaseDevice:
         print()
         for od_sensor in self.od_sensors.values():
             od_sensor.plot_calibration_curve()
-
-    def load_calibration(self, config_path):
-        assert config_path.endswith("device_config.yaml")
-        config = open(config_path).read()
-        loaded_dict = yaml.load(config, Loader=yaml.Loader)
-        # assert loaded_dict["_class"] == self.__class__
-        for k in loaded_dict.keys():
-            if k != "directory":
-                self.__dict__[k] = loaded_dict[k]
-        print("Loaded calibration data from %s" % config_path)
-        self.fit_calibration_functions()
