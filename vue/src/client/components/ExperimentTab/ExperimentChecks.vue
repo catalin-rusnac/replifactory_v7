@@ -105,7 +105,7 @@ const checks = ref([
   },
   {
     id: 'od',
-    name: 'OD Calibration (OD0 > 20mV)',
+    name: 'OD Calibration (20mV < OD0 < 150mV)',
     status: 'pending',
     loading: false,
     tooltip: 'Checks that optical density blank calibration is between 20-150mV for all vials to ensure accurate OD measurements',
