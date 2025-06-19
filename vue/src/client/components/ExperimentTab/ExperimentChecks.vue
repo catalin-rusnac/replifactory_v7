@@ -108,7 +108,7 @@ const checks = ref([
     name: 'OD Calibration (OD0 > 20mV)',
     status: 'pending',
     loading: false,
-    tooltip: 'Checks that optical density blank calibration is above 20mV for all vials to ensure accurate OD measurements',
+    tooltip: 'Checks that optical density blank calibration is between 20-150mV for all vials to ensure accurate OD measurements',
     details: ''
   },
   {
@@ -371,6 +371,9 @@ async function checkODCalibration(check) {
       failed_vials.push({ vial, value: od0_value });
     } else if (od0_value < 20) {
       warning_vials.push({ vial, value: od0_value });
+    }
+    else if (od0_value > 150) {
+      failed_vials.push({ vial, value: od0_value });
     }
   }
   
