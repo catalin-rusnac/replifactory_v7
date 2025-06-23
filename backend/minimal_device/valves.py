@@ -39,7 +39,6 @@ class Valves:
         else:
             self.device.device_data["valves"]["duty_cycle_closed"][valve] = duty_cycle
             self.device.eeprom.save_config_to_eeprom()
-        self.DUTY_CYCLE_CLOSED = duty_cycle
 
     def set_duty_cycle_open(self, valve, duty_cycle=None):
         # change the default value of duty_cycle_open and save device config to eeprom
@@ -49,7 +48,6 @@ class Valves:
         else:
             self.device.device_data["valves"]["duty_cycle_open"][valve] = duty_cycle
             self.device.eeprom.save_config_to_eeprom()
-        self.DUTY_CYCLE_OPEN = duty_cycle
     
     def set_frequency_multiplier(self, frequency_multiplier=None):
         if frequency_multiplier is None:
