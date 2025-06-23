@@ -122,7 +122,13 @@ class Valves:
             self.pwm_controller.lock.release()
 
     def open(self, valve):
-        self.set_duty_cycle(valve=valve, duty_cycle=self.DUTY_CYCLE_OPEN)
+        try:
+            duty_cycle = self.device.device_data["valves"]["duty_cycle_open"][valve]
+        except KeyError:
+            logger.warning("No duty cycle open for valve %d, using default", valve)
+            duty_cycle = self.DUTY_CYCLE_OPEN
+            self.set_duty_cycle_open(valve=valve, duty_cycle=duty_cycle)
+        self.set_duty_cycle(valve=valve, duty_cycle=duty_cycle)
         time.sleep(self.VALVE_OPEN_TIME)
         self.is_open[valve] = True
         self.device.device_data["valves"]['states'][valve] = "open"
@@ -144,7 +150,13 @@ class Valves:
         remaining_open_valves = [v for v in open_valves if v != valve]
         if len(remaining_open_valves) < 1:
             assert (not self.device.is_pumping()), "can't close last valve while pumping"
-        self.set_duty_cycle(valve=valve, duty_cycle=self.DUTY_CYCLE_CLOSED)
+        try:
+            duty_cycle = self.device.device_data["valves"]["duty_cycle_closed"][valve]
+        except KeyError:
+            logger.warning("No duty cycle closed for valve %d, using default", valve)
+            duty_cycle = self.DUTY_CYCLE_CLOSED
+            self.set_duty_cycle_closed(valve=valve, duty_cycle=duty_cycle)
+        self.set_duty_cycle(valve=valve, duty_cycle=duty_cycle)
         time.sleep(self.VALVE_CLOSE_TIME)
         self.is_open[valve] = False
         self.device.device_data["valves"]['states'][valve] = "closed"
