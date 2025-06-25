@@ -272,16 +272,6 @@ class OdSensor:
         print("vial %d OD sensor: " % v + color + "%.2f mV" % signal + bcolors.ENDC)
 
     def fit_calibration_function(self):
-        # Check if calibration data exists
-        if (self.vial_number not in self.device.device_data['ods']['calibration'] or 
-            not self.device.device_data['ods']['calibration'][self.vial_number]):
-            logger.warning(f"No calibration data available for vial {self.vial_number}. Using default coefficients.")
-            # Set default calibration coefficients
-            self.device.device_data['ods']['calibration_coefs'][self.vial_number] = [40.0, 2.0]  # default blank and scaling
-            if self.device.is_connected():
-                self.device.eeprom.save_config_to_eeprom()
-            return
-            
         calibration_od = np.array(list(self.device.device_data['ods']['calibration'][self.vial_number].keys()))
         calibration_mv = np.array(list(self.device.device_data['ods']['calibration'][self.vial_number].values()))
 
@@ -295,14 +285,6 @@ class OdSensor:
         logger.info(f"calibration_od: {calibration_od}")
         logger.info(f"calibration_mv: {calibration_mv}")
         logger.info(f"Number of calibration points for vial {self.vial_number}: {num_points}")
-        
-        # Handle case where we end up with no valid points after filtering
-        if num_points == 0:
-            logger.warning(f"No valid calibration points for vial {self.vial_number} after filtering. Using default coefficients.")
-            self.device.device_data['ods']['calibration_coefs'][self.vial_number] = [40.0, 2.0]
-            if self.device.is_connected():
-                self.device.eeprom.save_config_to_eeprom()
-            return
 
         try:
             blank_signal = calibration_mv[calibration_od == 0.0][0]
