@@ -48,18 +48,68 @@ from logger.logger import logger
 def BeerLambertScaled(sig, blank, scaling):
     """convert signal to optical density using Beer-Lambert law and scaling factor"""
     try:
-        return -np.log10(sig / blank) * scaling
-    except:
-        logger.error(f"error converting signal {sig} to od with blank {blank} and scaling {scaling}")
-        return 0
+        # Validate inputs for NaN, infinity, or invalid values
+        if not np.isfinite(sig) or not np.isfinite(blank) or not np.isfinite(scaling):
+            logger.error(f"Invalid input values: sig={sig}, blank={blank}, scaling={scaling}")
+            return 0.0
+        
+        # Check for division by zero or negative/zero values in log
+        if blank <= 0:
+            logger.error(f"Invalid blank signal {blank} (must be positive)")
+            return 0.0
+            
+        if sig <= 0:
+            logger.warning(f"Invalid signal {sig} (must be positive), returning 0 OD")
+            return 0.0
+            
+        if scaling <= 0:
+            logger.error(f"Invalid scaling factor {scaling} (must be positive)")
+            return 0.0
+            
+        ratio = sig / blank
+        if ratio <= 0:
+            logger.warning(f"Invalid signal/blank ratio {ratio} (must be positive), returning 0 OD")
+            return 0.0
+            
+        result = -np.log10(ratio) * scaling
+        
+        # Validate the result
+        if not np.isfinite(result):
+            logger.error(f"BeerLambertScaled produced invalid result: {result} from sig={sig}, blank={blank}, scaling={scaling}")
+            return 0.0
+            
+        return float(result)
+    except Exception as e:
+        logger.error(f"Exception in BeerLambertScaled: {e} - sig={sig}, blank={blank}, scaling={scaling}")
+        return 0.0
 
 def BeerLambertScaledInverse(od, blank, scaling):
     """convert optical density to signal using Beer-Lambert law and scaling factor"""
     try:
-        return blank * 10**(-od / scaling)
-    except:
-        logger.error(f"error converting od {od} to signal with blank {blank} and scaling {scaling}")
-        return 0
+        # Validate inputs for NaN, infinity, or invalid values
+        if not np.isfinite(od) or not np.isfinite(blank) or not np.isfinite(scaling):
+            logger.error(f"Invalid input values: od={od}, blank={blank}, scaling={scaling}")
+            return 0.0
+            
+        if blank <= 0:
+            logger.error(f"Invalid blank signal {blank} (must be positive)")
+            return 0.0
+            
+        if scaling <= 0:
+            logger.error(f"Invalid scaling factor {scaling} (must be positive)")
+            return 0.0
+            
+        result = blank * 10**(-od / scaling)
+        
+        # Validate the result
+        if not np.isfinite(result):
+            logger.error(f"BeerLambertScaledInverse produced invalid result: {result} from od={od}, blank={blank}, scaling={scaling}")
+            return 0.0
+            
+        return float(result)
+    except Exception as e:
+        logger.error(f"Exception in BeerLambertScaledInverse: {e} - od={od}, blank={blank}, scaling={scaling}")
+        return 0.0
 
 
 class OdSensor:
@@ -68,17 +118,51 @@ class OdSensor:
         self.vial_number = vial_number
 
     def mv_to_od(self, mv):
+        # Validate input
+        if not np.isfinite(mv):
+            logger.error(f"Invalid mv value {mv} for vial {self.vial_number}")
+            return 0.0
+            
         coefs = self.device.device_data['ods']['calibration_coefs'][self.vial_number]
         if len(coefs) > 3:
             self.fit_calibration_function()
             print("fit calibration function with beer-lambert scaled because there were too many calibration coefficients")
             coefs = self.device.device_data['ods']['calibration_coefs'][self.vial_number]
+            
+        # Validate coefficients
+        if len(coefs) < 2:
+            logger.error(f"Insufficient calibration coefficients for vial {self.vial_number}: {coefs}")
+            return 0.0
+            
         blank_signal, scaling = coefs
+        
+        # Validate coefficients for NaN/infinity
+        if not np.isfinite(blank_signal) or not np.isfinite(scaling):
+            logger.error(f"Invalid calibration coefficients for vial {self.vial_number}: blank={blank_signal}, scaling={scaling}")
+            return 0.0
+            
         # if the minimum value in calibration is equal to 0 or 0.0, use it as blank
-        lowest_od_in_calibration = min(self.device.device_data['ods']['calibration'][self.vial_number].keys())
-        if float(lowest_od_in_calibration) == 0.0:
-            blank_signal = self.device.device_data['ods']['calibration'][self.vial_number][lowest_od_in_calibration]
-        return BeerLambertScaled(mv, blank_signal, scaling)
+        try:
+            calibration_keys = list(self.device.device_data['ods']['calibration'][self.vial_number].keys())
+            if calibration_keys:  # Check if there are any calibration points
+                lowest_od_in_calibration = min(calibration_keys)
+                if float(lowest_od_in_calibration) == 0.0:
+                    blank_from_calibration = self.device.device_data['ods']['calibration'][self.vial_number][lowest_od_in_calibration]
+                    if np.isfinite(blank_from_calibration):
+                        blank_signal = blank_from_calibration
+            else:
+                logger.info(f"No calibration data available for vial {self.vial_number} yet")
+        except (ValueError, KeyError) as e:
+            logger.warning(f"Could not check for OD=0 calibration point for vial {self.vial_number}: {e}")
+            
+        result = BeerLambertScaled(mv, blank_signal, scaling)
+        
+        # Final validation of result
+        if not np.isfinite(result):
+            logger.error(f"mv_to_od produced invalid result {result} for vial {self.vial_number}")
+            return 0.0
+            
+        return result
 
     def assign_blank(self, value):
         """assign a blank value to the vial, assuming known scaling factor"""
@@ -135,14 +219,39 @@ class OdSensor:
         if self.device.directory is not None:
             self.log_mv(background=background, transmitted=transmitted)
         signal = transmitted - background
-        if signal < 0:
-            signal = 0
+        
+        # Handle problematic signal values that would cause NaN/inf in OD calculation
+        if signal <= 0:
+            logger.warning(f"Vial {self.vial_number}: Signal is {signal} (transmitted={transmitted}, background={background}). Setting to small positive value to avoid log(0).")
+            signal = 0.001  # Small positive value to avoid log(0) = -inf
+        
+        # Validate signal is finite
+        if not np.isfinite(signal):
+            logger.error(f"Vial {self.vial_number}: Non-finite signal {signal}. Setting to 0.001.")
+            signal = 0.001
+            
         return signal
 
     def measure_od(self):
         signal = self.measure_signal()
+        
+        # Validate signal measurement
+        if not np.isfinite(signal):
+            logger.error(f"Invalid signal measurement {signal} for vial {self.vial_number}")
+            signal = 0.0
+            
         od = self.mv_to_od(signal)
-        od = float(od)
+        
+        # Ensure od is a valid float
+        try:
+            od = float(od)
+            if not np.isfinite(od):
+                logger.error(f"Invalid OD calculation {od} for vial {self.vial_number}, using 0.0")
+                od = 0.0
+        except (ValueError, TypeError) as e:
+            logger.error(f"Could not convert OD to float for vial {self.vial_number}: {e}, using 0.0")
+            od = 0.0
+            
         self.device.device_data["ods"]['states'][self.vial_number] = od
         self.device.device_data["ods"]['odsignals'][self.vial_number] = signal
         return od, signal
@@ -163,6 +272,16 @@ class OdSensor:
         print("vial %d OD sensor: " % v + color + "%.2f mV" % signal + bcolors.ENDC)
 
     def fit_calibration_function(self):
+        # Check if calibration data exists
+        if (self.vial_number not in self.device.device_data['ods']['calibration'] or 
+            not self.device.device_data['ods']['calibration'][self.vial_number]):
+            logger.warning(f"No calibration data available for vial {self.vial_number}. Using default coefficients.")
+            # Set default calibration coefficients
+            self.device.device_data['ods']['calibration_coefs'][self.vial_number] = [40.0, 2.0]  # default blank and scaling
+            if self.device.is_connected():
+                self.device.eeprom.save_config_to_eeprom()
+            return
+            
         calibration_od = np.array(list(self.device.device_data['ods']['calibration'][self.vial_number].keys()))
         calibration_mv = np.array(list(self.device.device_data['ods']['calibration'][self.vial_number].values()))
 
@@ -176,6 +295,14 @@ class OdSensor:
         logger.info(f"calibration_od: {calibration_od}")
         logger.info(f"calibration_mv: {calibration_mv}")
         logger.info(f"Number of calibration points for vial {self.vial_number}: {num_points}")
+        
+        # Handle case where we end up with no valid points after filtering
+        if num_points == 0:
+            logger.warning(f"No valid calibration points for vial {self.vial_number} after filtering. Using default coefficients.")
+            self.device.device_data['ods']['calibration_coefs'][self.vial_number] = [40.0, 2.0]
+            if self.device.is_connected():
+                self.device.eeprom.save_config_to_eeprom()
+            return
 
         try:
             blank_signal = calibration_mv[calibration_od == 0.0][0]
@@ -225,22 +352,57 @@ class OdSensor:
             # For 2+ points, calculate scaling factor automatically using curve fitting
             logger.info(f"Fitting calibration curve for vial {self.vial_number} with {num_points} calibration points")
             
-            # coefficients for fitting beer lambert scaled are blank and scaling factor
-            # blank bounds are 0.5-200, scaling factor bounds are 1-3
-            # initial guess is 50mV for blank and 1.0 for scaling factor
-            coefs, _ = curve_fit(
-                BeerLambertScaledInverse,
-                calibration_od,
-                calibration_mv,
-                maxfev=5000,
-                p0=(blank_signal, 1.0),
-                bounds=[(blank_bounds[0], 0.1), (blank_bounds[1], 5)],
-                sigma=calibration_mv_err,
-            )
+            try:
+                # Validate calibration data before curve fitting
+                if any(not np.isfinite(od) for od in calibration_od):
+                    logger.error(f"Invalid OD values in calibration data for vial {self.vial_number}: {calibration_od}")
+                    raise ValueError("Invalid OD values")
+                    
+                if any(not np.isfinite(mv) for mv in calibration_mv):
+                    logger.error(f"Invalid mv values in calibration data for vial {self.vial_number}: {calibration_mv}")
+                    raise ValueError("Invalid mv values")
+                
+                # coefficients for fitting beer lambert scaled are blank and scaling factor
+                # blank bounds are 0.5-200, scaling factor bounds are 1-3
+                # initial guess is 50mV for blank and 1.0 for scaling factor
+                coefs, _ = curve_fit(
+                    BeerLambertScaledInverse,
+                    calibration_od,
+                    calibration_mv,
+                    maxfev=5000,
+                    p0=(blank_signal, 1.0),
+                    bounds=[(blank_bounds[0], 0.1), (blank_bounds[1], 5)],
+                    sigma=calibration_mv_err,
+                )
+            except Exception as e:
+                logger.error(f"Curve fitting failed for vial {self.vial_number}: {e}")
+                # Use fallback coefficients
+                coefs = [blank_signal, 2.0]  # Use the estimated blank and default scaling
+                logger.warning(f"Using fallback coefficients for vial {self.vial_number}: {coefs}")
         
-        coefs = [round(i, 4) for i in coefs]
-        coefs = [float(i) for i in coefs]
+        # Validate coefficients before saving
+        if any(not np.isfinite(c) for c in coefs):
+            logger.error(f"Curve fitting produced invalid coefficients for vial {self.vial_number}: {coefs}")
+            # Use fallback values
+            blank_signal = 40.0  # Default blank signal
+            scaling = 2.0  # Default scaling factor
+            coefs = [blank_signal, scaling]
+            logger.warning(f"Using fallback calibration coefficients for vial {self.vial_number}: {coefs}")
+        else:
+            coefs = [round(i, 4) for i in coefs]
+            coefs = [float(i) for i in coefs]
+            
         blank_signal, scaling = coefs
+        
+        # Final validation of coefficients
+        if blank_signal <= 0 or scaling <= 0 or not np.isfinite(blank_signal) or not np.isfinite(scaling):
+            logger.error(f"Invalid calibration coefficients for vial {self.vial_number}: blank={blank_signal}, scaling={scaling}")
+            # Use safe fallback values
+            blank_signal = 40.0
+            scaling = 2.0
+            coefs = [blank_signal, scaling]
+            logger.warning(f"Using safe fallback calibration coefficients for vial {self.vial_number}: {coefs}")
+            
         logger.info(f"fitted calibration function for vial {self.vial_number} with blank {blank_signal} and scaling {scaling}")
         # a, b, c, d, g = coefs
         self.device.device_data['ods']['calibration_coefs'][self.vial_number] = coefs
