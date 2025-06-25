@@ -265,11 +265,33 @@ class Culture:
         self.get_latest_data_from_db()
 
         parameters = self.experiment.parameters
-        parameters["stock_volume_main"] = float(parameters["stock_volume_main"]) - main_pump_volume
-        parameters["stock_volume_drug"] = float(parameters["stock_volume_drug"]) - drug_pump_volume
+        
+        # Validate and handle NaN values for stock volumes
+        def safe_float_conversion(value, default=0.0, param_name="unknown"):
+            """Convert value to float, handling NaN and None cases"""
+            try:
+                if value is None:
+                    logger.warning(f"Parameter {param_name} is None, using default {default}")
+                    return default
+                result = float(value)
+                if not np.isfinite(result):  # Handles NaN and infinity
+                    logger.warning(f"Parameter {param_name} is {result}, using default {default}")
+                    return default
+                return result
+            except (ValueError, TypeError):
+                logger.warning(f"Could not convert {param_name} value '{value}' to float, using default {default}")
+                return default
+        
+        # Safe conversion of stock volumes
+        current_main = safe_float_conversion(parameters["stock_volume_main"], 0.0, "stock_volume_main")
+        current_drug = safe_float_conversion(parameters["stock_volume_drug"], 0.0, "stock_volume_drug") 
+        current_waste = safe_float_conversion(parameters["stock_volume_waste"], 0.0, "stock_volume_waste")
+        
+        parameters["stock_volume_main"] = current_main - main_pump_volume
+        parameters["stock_volume_drug"] = current_drug - drug_pump_volume
         # Waste volume = pumped volume + extra vacuum (5mL as per dilution.py)
         actual_waste_volume = main_pump_volume + drug_pump_volume + 5
-        parameters["stock_volume_waste"] = float(parameters["stock_volume_waste"]) + actual_waste_volume
+        parameters["stock_volume_waste"] = current_waste + actual_waste_volume
         self.experiment.parameters = parameters
 
     def log_generation(self, generation, concentration):

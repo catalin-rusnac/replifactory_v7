@@ -218,9 +218,48 @@ class ExperimentManager:
         experiment = self.experiment
         if experiment is None:
             raise ExperimentNotFound("No current experiment set")
+        
+        # Validate and handle NaN values for stock volume parameters
+        def safe_float_conversion(value, default=0.0, param_name="unknown"):
+            """Convert value to float, handling NaN and None cases"""
+            try:
+                if value is None:
+                    logger.warning(f"Parameter {param_name} is None, using default {default}")
+                    return default
+                result = float(value)
+                if str(result).lower() == 'nan' or result != result:  # Check for NaN
+                    logger.warning(f"Parameter {param_name} is NaN, using default {default}")
+                    return default
+                return result
+            except (ValueError, TypeError):
+                logger.warning(f"Could not convert {param_name} value '{value}' to float, using default {default}")
+                return default
+        
+        # Handle ONLY numeric parameters that could be NaN from empty frontend fields
+        # Explicitly exclude string parameters like 'concentration_units'
+        numeric_params = [
+            'stock_volume_main', 'stock_volume_drug', 'stock_volume_waste',
+            'bottle_volume_main', 'bottle_volume_drug', 'bottle_volume_waste',
+            'stock_concentration_drug'
+        ]
+        
+        validated_parameters = parameters.copy()
+        for param in numeric_params:
+            if param in validated_parameters:
+                default_value = 0.0
+                # Set appropriate defaults for different parameters
+                if 'bottle_volume' in param:
+                    default_value = 1000.0  # Default bottle volume
+                elif param == 'stock_concentration_drug':
+                    default_value = 100.0  # Default drug concentration
+                    
+                validated_parameters[param] = safe_float_conversion(
+                    validated_parameters[param], default_value, param
+                )
+        
         old_parameters = experiment.model.parameters.copy()
-        old_parameters["parameters"] = parameters
-        self.experiment.parameters = parameters
+        old_parameters.update(validated_parameters)  # Use update instead of setting "parameters" key
+        self.experiment.parameters = old_parameters
         db_session.commit()
         experiment.reload_model_from_db(db_session)
         for culture in experiment.cultures.values():
