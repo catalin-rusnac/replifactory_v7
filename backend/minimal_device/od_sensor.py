@@ -86,30 +86,41 @@ def BeerLambertScaled(sig, blank, scaling):
 def BeerLambertScaledInverse(od, blank, scaling):
     """convert optical density to signal using Beer-Lambert law and scaling factor"""
     try:
+        # Convert inputs to numpy arrays for consistent handling
+        od = np.asarray(od)
+        blank = np.asarray(blank)
+        scaling = np.asarray(scaling)
+        
         # Validate inputs for NaN, infinity, or invalid values
-        if not np.isfinite(od) or not np.isfinite(blank) or not np.isfinite(scaling):
+        if not np.all(np.isfinite(od)) or not np.all(np.isfinite(blank)) or not np.all(np.isfinite(scaling)):
             logger.error(f"Invalid input values: od={od}, blank={blank}, scaling={scaling}")
-            return 0.0
+            return np.zeros_like(od) if od.shape else 0.0
             
-        if blank <= 0:
+        if np.any(blank <= 0):
             logger.error(f"Invalid blank signal {blank} (must be positive)")
-            return 0.0
+            return np.zeros_like(od) if od.shape else 0.0
             
-        if scaling <= 0:
+        if np.any(scaling <= 0):
             logger.error(f"Invalid scaling factor {scaling} (must be positive)")
-            return 0.0
+            return np.zeros_like(od) if od.shape else 0.0
             
         result = blank * 10**(-od / scaling)
         
         # Validate the result
-        if not np.isfinite(result):
+        if not np.all(np.isfinite(result)):
             logger.error(f"BeerLambertScaledInverse produced invalid result: {result} from od={od}, blank={blank}, scaling={scaling}")
-            return 0.0
+            return np.zeros_like(od) if od.shape else 0.0
             
-        return float(result)
+        # Return scalar if input was scalar, array if input was array
+        if result.shape == ():
+            return float(result)
+        else:
+            return result.astype(float)
+            
     except Exception as e:
         logger.error(f"Exception in BeerLambertScaledInverse: {e} - od={od}, blank={blank}, scaling={scaling}")
-        return 0.0
+        od = np.asarray(od)
+        return np.zeros_like(od) if od.shape else 0.0
 
 
 class OdSensor:
