@@ -179,3 +179,111 @@ def plot_culture(culture, limit=100000, title=None):
     )
     fig = go.Figure(data=[trace1, trace2, trace3, trace4, trace5, params_trace], layout=layout)
     return fig
+
+
+def plot_compare_metric(experiment, vials, metric='od', limit=100000):
+    """
+    Compare a specific metric across multiple vials
+    
+    Args:
+        experiment: The experiment object
+        vials: List of vial numbers to compare
+        metric: Metric to plot ('od', 'growth_rate', 'concentration', 'generation', 'rpm')
+        limit: Number of data points to include
+    """
+    
+    # Define colors for consistent vial coloring
+    vial_colors = {
+        1: '#1f77b4',  # blue
+        2: '#ff7f0e',  # orange
+        3: '#2ca02c',  # green
+        4: '#d62728',  # red
+        5: '#9467bd',  # purple
+        6: '#8c564b',  # brown
+        7: '#e377c2',  # pink
+    }
+    
+    # Define metric properties
+    metric_config = {
+        'od': {
+            'title': 'Optical Density Comparison',
+            'y_title': 'Optical Density',
+            'mode': 'markers'
+        },
+        'growth_rate': {
+            'title': 'Growth Rate Comparison',
+            'y_title': 'Growth Rate (1/h)',
+            'mode': 'markers'
+        },
+        'concentration': {
+            'title': 'Drug Concentration Comparison',
+            'y_title': 'Concentration (μg/mL)',
+            'mode': 'lines+markers'
+        },
+        'generation': {
+            'title': 'Generation Comparison',
+            'y_title': 'Generation',
+            'mode': 'lines+markers'
+        },
+        'rpm': {
+            'title': 'Stirrer RPM Comparison',
+            'y_title': 'RPM',
+            'mode': 'markers'
+        }
+    }
+    
+    if metric not in metric_config:
+        raise ValueError(f"Unknown metric: {metric}. Must be one of: {list(metric_config.keys())}")
+    
+    traces = []
+    
+    for vial in vials:
+        if vial not in experiment.cultures:
+            continue
+            
+        culture = experiment.cultures[vial]
+        
+        # Get data based on metric type
+        if metric in ['od', 'growth_rate', 'rpm']:
+            ods, mus, rpms = culture.get_last_ods_and_rpms(limit=limit)
+            if metric == 'od':
+                data_dict = ods
+            elif metric == 'growth_rate':
+                data_dict = mus
+            else:  # rpm
+                data_dict = rpms
+                
+        elif metric in ['concentration', 'generation']:
+            gens, concs = culture.get_last_generations(limit=limit)
+            if metric == 'generation':
+                data_dict = gens
+            else:  # concentration
+                data_dict = concs
+        
+        if len(data_dict) > 0:
+            # Get vial name from culture parameters
+            try:
+                vial_name = culture.parameters["name"]
+            except (KeyError, AttributeError):
+                vial_name = f"Vial {vial}"
+            legend_name = f'Vial {vial} [{vial_name}]'
+            
+            trace = go.Scattergl(
+                x=list(data_dict.keys()),
+                y=list(data_dict.values()),
+                mode=metric_config[metric]['mode'],
+                name=legend_name,
+                marker=dict(color=vial_colors.get(vial, '#000000')),
+                line=dict(color=vial_colors.get(vial, '#000000'))
+            )
+            traces.append(trace)
+    
+    layout = go.Layout(
+        title=metric_config[metric]['title'],
+        xaxis=dict(title='Time'),
+        yaxis=dict(title=metric_config[metric]['y_title']),
+        showlegend=True
+    )
+    
+    fig = go.Figure(data=traces, layout=layout)
+    return fig

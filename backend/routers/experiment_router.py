@@ -213,6 +213,35 @@ def get_culture_plot(vial: int, db_session: Session = Depends(get_db)):
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/plot/compare/{vials}/{metric}")
+def get_culture_compare_plot(vials: str, metric: str, db_session: Session = Depends(get_db)):
+    """Compare a specific metric across multiple vials"""
+    vials = vials.split(',')
+    vials = [int(vial) for vial in vials]
+    
+    # Validate metric
+    valid_metrics = ['od', 'growth_rate', 'concentration', 'generation', 'rpm']
+    if metric not in valid_metrics:
+        raise HTTPException(status_code=400, detail=f"Invalid metric. Must be one of: {valid_metrics}")
+    
+    try:
+        experiment = experiment_manager.experiment
+        if experiment is None:
+            raise HTTPException(status_code=404, detail="No current experiment selected")
+        
+        # Use the first available vial to call plot_compare
+        available_vials = [v for v in vials if v in experiment.cultures]
+        if not available_vials:
+            raise HTTPException(status_code=404, detail="No valid vials found in current experiment")
+            
+        fig = experiment.cultures[available_vials[0]].plot_compare(vials, metric)
+        return fig.to_plotly_json()
+    except ExperimentNotFound as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/experiments/current/summary")
 def get_experiment_summary(db_session: Session = Depends(get_db)):
     """Get a summary of the current experiment status and recent activity"""
@@ -338,6 +367,110 @@ def export_vial_data(vial: int, filetype: str, db_session: Session = Depends(get
         logger.error(f"Error exporting {filetype} for vial {vial}: {e}")
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Failed to export {filetype}: {str(e)}")
+
+@router.get("/data/metric/{metric}")
+def get_metric_data(metric: str, vials: str = None, limit: int = 1000, db_session: Session = Depends(get_db)):
+    """Get specific metric data for comparison, optionally filtered by vials"""
+    
+    # Validate metric
+    valid_metrics = ['od', 'growth_rate', 'concentration', 'generation', 'rpm']
+    if metric not in valid_metrics:
+        raise HTTPException(status_code=400, detail=f"Invalid metric. Must be one of: {valid_metrics}")
+    
+    try:
+        experiment = experiment_manager.experiment
+        if experiment is None:
+            raise HTTPException(status_code=404, detail="No current experiment selected")
+        
+        # Parse vials if provided
+        if vials:
+            vial_list = [int(v) for v in vials.split(',')]
+        else:
+            vial_list = list(experiment.cultures.keys())
+        
+        metric_data = {}
+        
+        for vial in vial_list:
+            if vial not in experiment.cultures:
+                continue
+                
+            culture = experiment.cultures[vial]
+            
+            # Get data based on metric type
+            if metric in ['od', 'growth_rate', 'rpm']:
+                ods, mus, rpms = culture.get_last_ods_and_rpms(limit=limit)
+                if metric == 'od':
+                    data_dict = ods
+                elif metric == 'growth_rate':
+                    data_dict = mus
+                else:  # rpm
+                    data_dict = rpms
+                    
+            elif metric in ['concentration', 'generation']:
+                gens, concs = culture.get_last_generations(limit=limit)
+                if metric == 'generation':
+                    data_dict = gens
+                else:  # concentration
+                    data_dict = concs
+            
+            # Convert timestamps to ISO format for JSON serialization
+            serialized_data = {
+                timestamp.isoformat(): value 
+                for timestamp, value in data_dict.items()
+            }
+            
+            metric_data[f'vial_{vial}'] = {
+                'vial': vial,
+                'data': serialized_data,
+                'count': len(serialized_data)
+            }
+        
+        return {
+            'metric': metric,
+            'vials': metric_data,
+            'total_vials': len(metric_data)
+        }
+        
+    except ExperimentNotFound as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error getting {metric} data: {e}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/data/vials/available")
+def get_available_vials(db_session: Session = Depends(get_db)):
+    """Get list of available vials in current experiment"""
+    try:
+        experiment = experiment_manager.experiment
+        if experiment is None:
+            raise HTTPException(status_code=404, detail="No current experiment selected")
+        
+        available_vials = list(experiment.cultures.keys())
+        vial_info = {}
+        
+        for vial in available_vials:
+            culture = experiment.cultures[vial]
+            # Get basic info about each vial
+            latest_od = culture.get_latest_od()
+            vial_info[vial] = {
+                'vial': vial,
+                'has_data': latest_od is not None,
+                'last_measurement': latest_od['timestamp'].isoformat() if latest_od else None
+            }
+        
+        return {
+            'available_vials': sorted(available_vials),
+            'vial_info': vial_info,
+            'total_count': len(available_vials)
+        }
+        
+    except ExperimentNotFound as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error getting available vials: {e}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):

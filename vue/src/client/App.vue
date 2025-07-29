@@ -53,6 +53,7 @@ const components = {
   PredictionTab: defineAsyncComponent(() => import("@/client/components/PredictionTab/PredictionTab.vue")),
   DeviceControl: defineAsyncComponent(() => import("@/client/components/DeviceControl/DeviceControl.vue")),
   // NgrokTab: defineAsyncComponent(() => import("@/client/components/Remote/NgrokTab.vue")),
+  PlotTab: defineAsyncComponent(() => import("@/client/components/PlotTab/PlotTab.vue")),
   HelpTab: defineAsyncComponent(() => import("@/client/components/HelpTab/HelpTab.vue")),
   CameraTab: defineAsyncComponent(() => import("@/client/components/CameraTab/CameraTab.vue")),
   StatusTab: defineAsyncComponent(() => import("@/client/components/StatusTab/StatusTab.vue")),
@@ -70,6 +71,7 @@ const tabs = [
   { name: "Camera", component: "CameraTab", icon: "mdi-camera" },
   // { name: "Ngrok", component: "NgrokTab", icon: "mdi-remote-desktop" },
   { name: "Docs", component: "HelpTab", icon: "mdi-book-open-variant" },
+  { name: "Plot", component: "PlotTab", icon: "mdi-chart-line-variant" },
   { name: "Export Data", component: "StatusTab", icon: "mdi-cloud-download" },
   // { name: "Logs", component: "LogsTab", icon: "mdi-file-document-alert-outline" },
 ]

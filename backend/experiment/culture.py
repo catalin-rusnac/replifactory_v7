@@ -94,6 +94,18 @@ class Culture:
             self.culture_growth_model.simulate_experiment(simulation_hours=simulation_hours)
         return plot_culture(self.culture_growth_model, title=title)
     
+    def plot_compare(self, vials, metric='od', limit=100000):
+        """
+        Compare a specific metric across multiple vials
+        
+        Args:
+            vials: List of vial numbers to compare
+            metric: Metric to plot ('od', 'growth_rate', 'concentration', 'generation', 'rpm')
+            limit: Number of data points to include
+        """
+        from experiment.plot import plot_compare_metric
+        return plot_compare_metric(self.experiment, vials, metric, limit)
+    
     def run_and_save_simulation(self, simulation_hours=48):
         self.updater = MorbidostatUpdater(**self.parameters.inner_dict)
         growth_parameters = self.experiment.model.parameters["growth_parameters"][str(self.vial)]

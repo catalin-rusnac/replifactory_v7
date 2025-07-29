@@ -39,7 +39,7 @@ const growthParameterTooltips = {
   'carrying_capacity': 'Maximum OD the culture can reach under optimal conditions.',
   'mu_min': 'Minimum growth rate (death rate under stress)',
   'ic50_initial': 'Initial drug concentration that inhibits growth by 50% (IC50)',
-  'ic10_ic50_ratio': 'Ratio between IC10 and IC50 concentrations. Lower values indicate steeper dose-response curves.',
+  'ic10_ic50_ratio': 'Ratio between IC10 and IC50 concentrations. Higher values indicate steeper dose-response curves.',
   'dose_effective_slope_width_mins': 'Describes how fast the drug can stress the culture.',
   'time_lag_drug_effect_mins': 'Delay in minutes between drug addition and onset of growth inhibition effects.',
   'adaptation_rate_max': 'Maximum rate at which the culture can adapt to stress - the model assumes it is at IC50.',
