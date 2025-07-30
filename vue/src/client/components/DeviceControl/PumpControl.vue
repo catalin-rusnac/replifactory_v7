@@ -4,7 +4,8 @@
       <v-btn
         class="pump-button"
         :class="{ 'stop-button': pumps.states[i] === 'running' }"
-        @click="handlePumpClick(i)"
+        @click="handlePumpClick(i, $event)"
+        :title="`${pump_names[i]} pump - Ctrl+Shift+Click for settings`"
       >
         <v-progress-circular
           v-if="pumps.states[i] === 'running'"
@@ -41,12 +42,21 @@
   <div v-else>
     Loading pump data...
   </div>
+  
+  <!-- Pump Settings Dialog -->
+  <PumpSettingsDialog
+    v-model="settingsDialog.show"
+    :pump-id="settingsDialog.pumpId"
+    :pump-name="settingsDialog.pumpName"
+    @settings-updated="onSettingsUpdated"
+  />
 </template>
 
 <script setup>
 import { storeToRefs } from 'pinia'
 import { useDeviceStore } from '../../stores/device'
 import PumpCalibration from '@/client/components/DeviceControl/PumpCalibration.vue'
+import PumpSettingsDialog from '@/client/components/DeviceControl/PumpSettingsDialog.vue'
 import { onMounted, reactive, watch, ref } from 'vue'
 
 const deviceStore = useDeviceStore()
@@ -54,6 +64,13 @@ const { pumps, valves, calibrationModeEnabled } = storeToRefs(deviceStore)
 
 // Track polling intervals to prevent multiple polling
 const pollIntervals = ref({})
+
+// Settings dialog state
+const settingsDialog = reactive({
+  show: false,
+  pumpId: null,
+  pumpName: ''
+})
 
 // Watch for pump state changes (without deep watching to avoid excessive updates)
 watch(() => pumps.value?.states, (newStates) => {
@@ -76,7 +93,15 @@ onMounted(() => {
   }
 })
 
-async function handlePumpClick(pumpId) {
+async function handlePumpClick(pumpId, event) {
+  // Check for Ctrl+Shift+click to open settings
+  if (event.ctrlKey && event.shiftKey) {
+    settingsDialog.pumpId = pumpId
+    settingsDialog.pumpName = pump_names[pumpId]
+    settingsDialog.show = true
+    return
+  }
+  
   // Clear any existing polling for this pump
   if (pollIntervals.value[pumpId]) {
     clearInterval(pollIntervals.value[pumpId])
@@ -209,6 +234,11 @@ function calculateVolume(rotationsVal, pumpId) {
   const interpolatedCoefficient = lowerPoint[1] + (upperPoint[1] - lowerPoint[1]) * factor
 
   return (rotationsVal * interpolatedCoefficient).toFixed(2)
+}
+
+function onSettingsUpdated(data) {
+  console.log(`Pump ${data.pumpId} settings updated:`, data.params)
+  // Optionally show a success message or update UI
 }
 </script>
 

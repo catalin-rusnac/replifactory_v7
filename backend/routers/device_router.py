@@ -263,3 +263,74 @@ def set_valve_duty_cycle_closed(payload: dict, device: BaseDevice = Depends(get_
 def measure_stirrer_speeds(device: BaseDevice = Depends(get_device)):
     speeds = device.stirrers.measure_all_rpms()
     return {"success": True, "speeds": speeds}
+
+@router.get("/pump/{pump_id}/stepper-params")
+def get_pump_stepper_params(pump_id: int, device: BaseDevice = Depends(get_device)):
+    """
+    Get current stepper parameters for a specific pump
+    Used by the frontend when Ctrl+Shift+clicking a pump button to show settings dialog
+    """
+    if pump_id not in [1, 2, 3, 4]:  # Only valid pump IDs
+        raise HTTPException(status_code=400, detail="Invalid pump ID")
+    
+    pump = device.pumps[pump_id]
+    params = {
+        "max_speed_rps": pump.max_speed_rps,
+        "min_speed_rps": pump.min_speed_rps,
+        "acceleration": pump.acceleration,
+        "deceleration": pump.deceleration,
+        "kval_run": pump._kval_run,
+        "kval_acc": pump._kval_acc,
+        "kval_dec": pump._kval_dec,
+        "stall_threshold": pump.stall_threshold
+    }
+    return {"success": True, "params": params}
+
+@router.post("/pump/{pump_id}/stepper-params")
+def set_pump_stepper_params(pump_id: int, payload: dict, device: BaseDevice = Depends(get_device)):
+    """Set temporary stepper parameters for a specific pump (in memory only)"""
+    if pump_id not in [1, 2, 3, 4]:  # Only valid pump IDs
+        raise HTTPException(status_code=400, detail="Invalid pump ID")
+    
+    pump = device.pumps[pump_id]
+    params = payload.get('params', {})
+    
+    try:
+        # Update parameters in memory and apply to hardware
+        if 'max_speed_rps' in params:
+            pump.max_speed_rps = float(params['max_speed_rps'])
+            pump.set_max_speed(pump.max_speed_rps)
+            
+        if 'min_speed_rps' in params:
+            pump.min_speed_rps = float(params['min_speed_rps'])
+            pump.set_min_speed(pump.min_speed_rps)
+            
+        if 'acceleration' in params:
+            pump.acceleration = float(params['acceleration'])
+            pump.set_acceleration(pump.acceleration)
+            
+        if 'deceleration' in params:
+            pump.deceleration = float(params['deceleration'])
+            pump.set_deceleration(pump.deceleration)
+            
+        if 'kval_run' in params:
+            pump._kval_run = float(params['kval_run'])
+            pump.kval_run = pump._kval_run
+            
+        if 'kval_acc' in params:
+            pump._kval_acc = float(params['kval_acc'])
+            pump.kval_acc = pump._kval_acc
+            
+        if 'kval_dec' in params:
+            pump._kval_dec = float(params['kval_dec'])
+            pump.kval_dec = pump._kval_dec
+            
+        if 'stall_threshold' in params:
+            pump.stall_threshold = float(params['stall_threshold'])
+            # Note: stall threshold setting method would need to be implemented
+            
+        return {"success": True, "message": "Stepper parameters updated (temporary)"}
+        
+    except Exception as e:
+        logger.error(f"Error setting pump {pump_id} stepper params: {str(e)}")
+        return {"success": False, "error": str(e)}
