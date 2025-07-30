@@ -62,6 +62,7 @@ class Pump(Stepper):
 
     @staticmethod
     def test_stepper_drivers(device):
+        #method to test motor movement at *LOW* voltage
         drivers = {1: None, 2: None, 3: None, 4: None}
         motors = {1: None, 2: None, 3: None, 4: None}
         pumps = {1: device.pump1, 2: device.pump2, 3: device.pump3, 4: device.pump4}

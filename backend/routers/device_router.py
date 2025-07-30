@@ -264,6 +264,29 @@ def measure_stirrer_speeds(device: BaseDevice = Depends(get_device)):
     speeds = device.stirrers.measure_all_rpms()
     return {"success": True, "speeds": speeds}
 
+@router.get("/supply-voltage")
+def get_supply_voltage(device: BaseDevice = Depends(get_device)):
+    """Get the motor driver supply voltage configuration"""
+    supply_voltage = device.device_data.get('supply_voltage', 12.0)
+    return {"success": True, "supply_voltage": supply_voltage}
+
+@router.post("/supply-voltage")
+def set_supply_voltage(payload: dict, device: BaseDevice = Depends(get_device)):
+    """Set the motor driver supply voltage configuration"""
+    try:
+        supply_voltage = float(payload.get('supply_voltage'))
+        if not 8 <= supply_voltage <= 45:  # L6470H valid range
+            raise ValueError("Supply voltage must be between 8V and 45V (L6470H operating range)")
+        
+        device.device_data['supply_voltage'] = supply_voltage
+        device.eeprom.save_config_to_eeprom()
+        
+        return {"success": True, "message": f"Supply voltage set to {supply_voltage}V"}
+        
+    except Exception as e:
+        logger.error(f"Error setting supply voltage: {str(e)}")
+        return {"success": False, "error": str(e)}
+
 @router.get("/pump/{pump_id}/stepper-params")
 def get_pump_stepper_params(pump_id: int, device: BaseDevice = Depends(get_device)):
     """
@@ -274,6 +297,13 @@ def get_pump_stepper_params(pump_id: int, device: BaseDevice = Depends(get_devic
         raise HTTPException(status_code=400, detail="Invalid pump ID")
     
     pump = device.pumps[pump_id]
+    # Get supply voltage from device configuration
+    supply_voltage = device.device_data.get('supply_voltage', 12.0)
+    
+    # Convert stall_threshold from normalized value (0-1) back to amperes
+    stall_threshold_ma = pump.stall_threshold * 4000  # Convert to milliamps
+    stall_threshold_a = stall_threshold_ma / 1000     # Convert to amperes
+    
     params = {
         "max_speed_rps": pump.max_speed_rps,
         "min_speed_rps": pump.min_speed_rps,
@@ -282,7 +312,8 @@ def get_pump_stepper_params(pump_id: int, device: BaseDevice = Depends(get_devic
         "kval_run": pump._kval_run,
         "kval_acc": pump._kval_acc,
         "kval_dec": pump._kval_dec,
-        "stall_threshold": pump.stall_threshold
+        "stall_threshold": stall_threshold_a,
+        "supply_voltage": supply_voltage
     }
     return {"success": True, "params": params}
 
@@ -326,11 +357,44 @@ def set_pump_stepper_params(pump_id: int, payload: dict, device: BaseDevice = De
             pump.kval_dec = pump._kval_dec
             
         if 'stall_threshold' in params:
-            pump.stall_threshold = float(params['stall_threshold'])
-            # Note: stall threshold setting method would need to be implemented
+            # Convert from amperes to milliamperes for the L6470H driver
+            current_ma = float(params['stall_threshold']) * 1000
+            pump.set_stall_threshold_ma(current_ma)
             
         return {"success": True, "message": "Stepper parameters updated (temporary)"}
         
     except Exception as e:
         logger.error(f"Error setting pump {pump_id} stepper params: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+@router.post("/pump/{pump_id}/continuous-run")
+def toggle_pump_continuous_run(pump_id: int, payload: dict, device: BaseDevice = Depends(get_device)):
+    """Start or stop continuous run of a specific pump"""
+    if pump_id not in [1, 2, 3, 4]:  # Only valid pump IDs
+        raise HTTPException(status_code=400, detail="Invalid pump ID")
+    
+    pump = device.pumps[pump_id]
+    action = payload.get('action', 'start')  # 'start' or 'stop'
+    
+    try:
+        if action == 'stop':
+            # Stop the pump
+            pump.stop()
+            logger.info(f"Stopped continuous run for pump {pump_id}")
+            return {"success": True, "message": f"Pump {pump_id} continuous run stopped", "running": False}
+        else:
+            # Start continuous run
+            speed = payload.get('speed', 1.0)  # Default to 1 RPS if not specified
+            
+            # Validate speed range
+            if not (0.01 <= abs(speed) <= 10.0):
+                raise ValueError("Speed must be between 0.01 and 10.0 RPS")
+                
+            # Start continuous run
+            pump.run(speed=speed)
+            logger.info(f"Started continuous run for pump {pump_id} at {speed} RPS")
+            return {"success": True, "message": f"Pump {pump_id} started continuous run at {speed} RPS", "running": True}
+        
+    except Exception as e:
+        logger.error(f"Error toggling continuous run for pump {pump_id}: {str(e)}")
         return {"success": False, "error": str(e)}

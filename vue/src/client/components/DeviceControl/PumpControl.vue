@@ -5,7 +5,12 @@
         class="pump-button"
         :class="{ 'stop-button': pumps.states[i] === 'running' }"
         @click="handlePumpClick(i, $event)"
-        :title="`${pump_names[i]} pump - Ctrl+Shift+Click for settings`"
+        @touchstart="handleTouchStart(i, $event)"
+        @touchend="handleTouchEnd(i, $event)"
+        @mousedown="handleMouseDown(i, $event)"
+        @mouseup="handleMouseUp(i, $event)"
+        @mouseleave="handleMouseLeave(i)"
+        :title="`Start ${pump_names[i]} Pump (hold or Ctrl+Shift+Click to open advanced settings)`"
       >
         <v-progress-circular
           v-if="pumps.states[i] === 'running'"
@@ -57,7 +62,7 @@ import { storeToRefs } from 'pinia'
 import { useDeviceStore } from '../../stores/device'
 import PumpCalibration from '@/client/components/DeviceControl/PumpCalibration.vue'
 import PumpSettingsDialog from '@/client/components/DeviceControl/PumpSettingsDialog.vue'
-import { onMounted, reactive, watch, ref } from 'vue'
+import { onMounted, onUnmounted, reactive, watch, ref } from 'vue'
 
 const deviceStore = useDeviceStore()
 const { pumps, valves, calibrationModeEnabled } = storeToRefs(deviceStore)
@@ -71,6 +76,11 @@ const settingsDialog = reactive({
   pumpId: null,
   pumpName: ''
 })
+
+// Long press detection
+const longPressTimers = ref({})
+const longPressTriggered = ref({})
+const LONG_PRESS_DURATION = 2000 // 2 seconds
 
 // Watch for pump state changes (without deep watching to avoid excessive updates)
 watch(() => pumps.value?.states, (newStates) => {
@@ -93,12 +103,26 @@ onMounted(() => {
   }
 })
 
+onUnmounted(() => {
+  // Clear all timers to prevent memory leaks
+  Object.keys(longPressTimers.value).forEach(pumpId => {
+    clearLongPressTimer(parseInt(pumpId))
+  })
+  Object.keys(pollIntervals.value).forEach(pumpId => {
+    clearInterval(pollIntervals.value[pumpId])
+  })
+})
+
 async function handlePumpClick(pumpId, event) {
   // Check for Ctrl+Shift+click to open settings
   if (event.ctrlKey && event.shiftKey) {
-    settingsDialog.pumpId = pumpId
-    settingsDialog.pumpName = pump_names[pumpId]
-    settingsDialog.show = true
+    openPumpSettings(pumpId)
+    return
+  }
+  
+  // If long press was triggered, don't proceed with normal click
+  if (longPressTriggered.value[pumpId]) {
+    longPressTriggered.value[pumpId] = false
     return
   }
   
@@ -239,6 +263,64 @@ function calculateVolume(rotationsVal, pumpId) {
 function onSettingsUpdated(data) {
   console.log(`Pump ${data.pumpId} settings updated:`, data.params)
   // Optionally show a success message or update UI
+}
+
+// Long press detection functions
+function startLongPressTimer(pumpId) {
+  clearLongPressTimer(pumpId)
+  longPressTimers.value[pumpId] = setTimeout(() => {
+    longPressTriggered.value[pumpId] = true
+    openPumpSettings(pumpId)
+  }, LONG_PRESS_DURATION)
+}
+
+function clearLongPressTimer(pumpId) {
+  if (longPressTimers.value[pumpId]) {
+    clearTimeout(longPressTimers.value[pumpId])
+    delete longPressTimers.value[pumpId]
+  }
+}
+
+function openPumpSettings(pumpId) {
+  settingsDialog.pumpId = pumpId
+  settingsDialog.pumpName = pump_names[pumpId]
+  settingsDialog.show = true
+}
+
+// Touch event handlers
+function handleTouchStart(pumpId, event) {
+  event.preventDefault() // Prevent default touch behavior
+  longPressTriggered.value[pumpId] = false
+  startLongPressTimer(pumpId)
+}
+
+function handleTouchEnd(pumpId, event) {
+  clearLongPressTimer(pumpId)
+  // Small delay to allow click event to process the longPressTriggered flag
+  setTimeout(() => {
+    longPressTriggered.value[pumpId] = false
+  }, 50)
+}
+
+// Mouse event handlers (for desktop long press)
+function handleMouseDown(pumpId, event) {
+  if (!event.ctrlKey && !event.shiftKey) { // Don't interfere with Ctrl+Shift+click
+    longPressTriggered.value[pumpId] = false
+    startLongPressTimer(pumpId)
+  }
+}
+
+function handleMouseUp(pumpId, event) {
+  clearLongPressTimer(pumpId)
+  // Small delay to allow click event to process the longPressTriggered flag
+  setTimeout(() => {
+    longPressTriggered.value[pumpId] = false
+  }, 50)
+}
+
+function handleMouseLeave(pumpId) {
+  clearLongPressTimer(pumpId)
+  longPressTriggered.value[pumpId] = false
 }
 </script>
 
