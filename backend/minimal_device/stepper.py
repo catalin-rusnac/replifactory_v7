@@ -59,7 +59,7 @@ class Stepper:
     _kval_hold = 0
     _kval_run = 0.8
     _kval_acc = 0.57
-    _kval_dec = 0.3
+    _kval_dec = 0.57
 
     def __init__(self, device, cs):
         self.device = device
@@ -466,7 +466,10 @@ class Stepper:
         7: 1/128 microstep
         """
         assert mode in [0, 1, 2, 3, 4, 5, 6, 7]
-        assert not self.is_pumping(), "can't set step mode while pumping"
+        if self.is_pumping():
+            print("WARNING: can't set step mode while pumping")
+            self.stop()
+            time.sleep(0.5)
         self.hard_hiz()
         # self.port.write([self.REGISTER_STEP_MODE])
         # self.port.write([mode])

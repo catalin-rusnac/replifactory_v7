@@ -380,6 +380,8 @@ def toggle_pump_continuous_run(pump_id: int, payload: dict, device: BaseDevice =
         if action == 'stop':
             # Stop the pump
             pump.stop()
+            # Update device state to stopped
+            device.device_data['pumps']['states'][pump_id] = 'stopped'
             logger.info(f"Stopped continuous run for pump {pump_id}")
             return {"success": True, "message": f"Pump {pump_id} continuous run stopped", "running": False}
         else:
@@ -392,6 +394,8 @@ def toggle_pump_continuous_run(pump_id: int, payload: dict, device: BaseDevice =
                 
             # Start continuous run
             pump.run(speed=speed)
+            # Update device state to running
+            device.device_data['pumps']['states'][pump_id] = 'running'
             logger.info(f"Started continuous run for pump {pump_id} at {speed} RPS")
             return {"success": True, "message": f"Pump {pump_id} started continuous run at {speed} RPS", "running": True}
         
