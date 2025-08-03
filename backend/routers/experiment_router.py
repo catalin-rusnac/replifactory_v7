@@ -528,10 +528,10 @@ def advanced_growth_rate_analysis(payload: dict, db_session: Session = Depends(g
         elif use_sliding_window and method == 'fixed':
             logger.info(f"Using fixed sliding window with window_size={window_size} hours")
         smoothing_method = payload.get('smoothing_method', 'median')
-        smoothing_window = payload.get('smoothing_window', 5)
+        smoothing_window = int(payload.get('smoothing_window', 5))
         enable_outlier_removal = payload.get('enable_outlier_removal', False)
-        outlier_threshold = payload.get('outlier_threshold', 3.0)
-        outlier_window_size = payload.get('outlier_window_size', 5)
+        outlier_threshold = float(payload.get('outlier_threshold', 3.0))
+        outlier_window_size = int(payload.get('outlier_window_size', 5))
         enable_trimming = payload.get('enable_trimming', False)
         trim_settings = payload.get('trim_settings', {})
         enable_od_trimming = payload.get('enable_od_trimming', False)
@@ -837,10 +837,10 @@ def filter_od_data(payload: dict, db_session: Session = Depends(get_db)):
         
         # Extract filtering parameters
         smoothing_method = payload.get('smoothing_method', 'median')
-        smoothing_window = payload.get('smoothing_window', 5)
+        smoothing_window = int(payload.get('smoothing_window', 5))
         enable_outlier_removal = payload.get('enable_outlier_removal', False)
-        outlier_threshold = payload.get('outlier_threshold', 3.0)
-        outlier_window_size = payload.get('outlier_window_size', 5)
+        outlier_threshold = float(payload.get('outlier_threshold', 3.0))
+        outlier_window_size = int(payload.get('outlier_window_size', 5))
         enable_trimming = payload.get('enable_trimming', False)
         trim_settings = payload.get('trim_settings', {})
         enable_od_trimming = payload.get('enable_od_trimming', False)
