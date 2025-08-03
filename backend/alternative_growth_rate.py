@@ -357,6 +357,9 @@ def calculate_rolling_window_growth_rates(time_data: np.ndarray, od_data: np.nda
         else:
             return adaptive_window_growth_rate_retrospective(time_data, od_data)
     elif method == 'fixed':
+        if window_size is None:
+            logger.warning("window_size is None for fixed method, using default of 3.0 hours")
+            window_size = 3.0
         if use_real_time_simulation:
             return fixed_window_growth_rate_realtime(time_data, od_data, window_size)
         else:
@@ -2015,5 +2018,14 @@ def calculate_sliding_window_exponential(time_data: np.ndarray, od_data: np.ndar
         # Use the EXACT same algorithm as the main experiment for real-time mode
         return exponential_sliding_window_realtime_exact(time_data, od_data)
     else:
-        # For retrospective mode, use the fixed window approach
-        return fixed_window_growth_rate_retrospective(time_data, od_data, window_size)
+        # For retrospective mode, use the appropriate approach based on method
+        if method == 'adaptive':
+            # For adaptive retrospective, use the adaptive algorithm
+            return adaptive_window_growth_rate_retrospective(time_data, od_data)
+        elif method == 'fixed' and window_size is not None:
+            # For fixed retrospective, use the fixed window approach
+            return fixed_window_growth_rate_retrospective(time_data, od_data, window_size)
+        else:
+            # Fallback: use adaptive if window_size is None
+            logger.warning(f"window_size is None for method={method}, falling back to adaptive")
+            return adaptive_window_growth_rate_retrospective(time_data, od_data)

@@ -515,8 +515,18 @@ def advanced_growth_rate_analysis(payload: dict, db_session: Session = Depends(g
         method = payload.get('method', 'adaptive')
         model_type = payload.get('model_type', 'rolling')
         use_sliding_window = payload.get('use_sliding_window', False)
-        window_size = payload.get('window_size', 3.0)
+        window_size = payload.get('window_size')
+        # Only set default if window_size is needed for fixed method
+        if window_size is None and method == 'fixed':
+            window_size = 3.0
         window_step = payload.get('window_step', 0.5)
+        
+        # Debug logging for parameter passing
+        logger.info(f"Backend received parameters: method={method}, use_sliding_window={use_sliding_window}, window_size={window_size}, model_type={model_type}")
+        if use_sliding_window and method == 'adaptive':
+            logger.info(f"Using adaptive sliding window - window_size will be ignored")
+        elif use_sliding_window and method == 'fixed':
+            logger.info(f"Using fixed sliding window with window_size={window_size} hours")
         smoothing_method = payload.get('smoothing_method', 'median')
         smoothing_window = payload.get('smoothing_window', 5)
         enable_outlier_removal = payload.get('enable_outlier_removal', False)
