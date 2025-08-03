@@ -543,6 +543,20 @@ def advanced_growth_rate_analysis(payload: dict, db_session: Session = Depends(g
         
         # Analyze each vial (sort vials to ensure consistent ordering)
         vials = sorted(vials, key=int)
+        
+        # Check if parallel processing should be used (for more than 2 vials)
+        use_parallel = len(vials) > 2
+        
+        if use_parallel:
+            # Import performance optimization module
+            try:
+                from performance_optimization import analyze_vials_parallel, get_optimal_worker_count, optimize_memory_usage, process_single_vial
+                vial_data_list = []
+                logger.info(f"Using parallel processing for {len(vials)} vials")
+            except ImportError:
+                logger.warning("Performance optimization module not available, falling back to sequential processing")
+                use_parallel = False
+        
         vial_results = {}
         summary_stats = {}
         
@@ -627,25 +641,43 @@ def advanced_growth_rate_analysis(payload: dict, db_session: Session = Depends(g
             # Perform growth rate analysis
             # If use_filtered_data is True, pass 'none' for outlier handling since we already applied it
             outlier_handling = 'none' if use_filtered_data else ('interpolate' if enable_outlier_removal else 'none')
-            growth_rate_results, summary = analyze_growth_rate(
-                time_data=time_data,
-                od_data=od_values,
-                method=method,
-                window_size=window_size,
-                window_step=window_step,
-                smoothing_method='none' if use_filtered_data else smoothing_method,  # Avoid double smoothing
-                smoothing_window=smoothing_window,
-                outlier_handling=outlier_handling,
-                outlier_threshold=outlier_threshold,
-                outlier_window_size=outlier_window_size,
-                start_time=None if use_filtered_data else start_time,  # Avoid double trimming
-                end_time=None if use_filtered_data else end_time,
-                min_od=None if use_filtered_data else min_od,
-                max_od=None if use_filtered_data else max_od,
-                model_type=model_type,
-                use_real_time_simulation=use_real_time_simulation,
-                use_sliding_window=use_sliding_window
-            )
+            
+            if use_parallel:
+                # Store data for parallel processing
+                vial_data_tuple = (
+                    vial, time_data, od_values, original_time_data, original_od_values,
+                    method, window_size, window_step,
+                    'none' if use_filtered_data else smoothing_method,
+                    smoothing_window, outlier_handling, outlier_threshold, outlier_window_size,
+                    None if use_filtered_data else start_time,
+                    None if use_filtered_data else end_time,
+                    None if use_filtered_data else min_od,
+                    None if use_filtered_data else max_od,
+                    model_type, use_real_time_simulation, use_sliding_window, use_filtered_data
+                )
+                vial_data_list.append(vial_data_tuple)
+                continue
+            else:
+                # Sequential processing
+                growth_rate_results, summary = analyze_growth_rate(
+                    time_data=time_data,
+                    od_data=od_values,
+                    method=method,
+                    window_size=window_size,
+                    window_step=window_step,
+                    smoothing_method='none' if use_filtered_data else smoothing_method,  # Avoid double smoothing
+                    smoothing_window=smoothing_window,
+                    outlier_handling=outlier_handling,
+                    outlier_threshold=outlier_threshold,
+                    outlier_window_size=outlier_window_size,
+                    start_time=None if use_filtered_data else start_time,  # Avoid double trimming
+                    end_time=None if use_filtered_data else end_time,
+                    min_od=None if use_filtered_data else min_od,
+                    max_od=None if use_filtered_data else max_od,
+                    model_type=model_type,
+                    use_real_time_simulation=use_real_time_simulation,
+                    use_sliding_window=use_sliding_window
+                )
             
             vial_results[vial] = {
                 'growth_rate_results': growth_rate_results,
@@ -680,6 +712,39 @@ def advanced_growth_rate_analysis(payload: dict, db_session: Session = Depends(g
                 logger.warning(f"Router - model_parameters: {summary.get('model_parameters', 'NOT_FOUND')}")
                 if 'model_parameters' in summary:
                     logger.warning(f"Router - K value: {summary['model_parameters'].get('K', 'K_NOT_FOUND')}")
+        
+        # Process parallel data if any
+        if use_parallel and vial_data_list:
+            try:
+                # Optimize memory before parallel processing
+                optimize_memory_usage()
+                
+                # Determine optimal number of workers
+                max_workers = get_optimal_worker_count(len(vial_data_list))
+                
+                # Process vials in parallel
+                logger.info(f"Processing {len(vial_data_list)} vials with {max_workers} workers")
+                parallel_vial_results, parallel_summary_stats = analyze_vials_parallel(vial_data_list, max_workers)
+                
+                # Merge parallel results with sequential results
+                vial_results.update(parallel_vial_results)
+                summary_stats.update(parallel_summary_stats)
+                
+                # Optimize memory after parallel processing
+                optimize_memory_usage()
+                
+                logger.info(f"Parallel processing completed for {len(parallel_vial_results)} vials")
+            except Exception as e:
+                logger.error(f"Parallel processing failed: {str(e)}, falling back to sequential processing")
+                # Fall back to sequential processing for the remaining vials
+                for vial_data_tuple in vial_data_list:
+                    try:
+                        vial, vial_result, summary = process_single_vial(vial_data_tuple)
+                        if vial_result is not None:
+                            vial_results[vial] = vial_result
+                            summary_stats[vial] = summary
+                    except Exception as e2:
+                        logger.error(f"Sequential fallback failed for vial {vial_data_tuple[0]}: {str(e2)}")
         
         if not vial_results:
             raise HTTPException(status_code=404, detail="No analyzable data found for selected vials")

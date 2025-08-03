@@ -999,7 +999,11 @@ def logistic_growth(t: np.ndarray, N0: float, K: float, r: float) -> np.ndarray:
     """
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        # Prevent division by zero and extreme values
+        # Prevent division by zero and extreme values with more robust handling
+        epsilon = 1e-12
+        N0 = max(N0, epsilon)  # Ensure N0 is positive
+        K = max(K, epsilon)    # Ensure K is positive
+        
         if N0 <= 0 or K <= 0:
             return np.full_like(t, np.nan)
         
@@ -1036,7 +1040,10 @@ def gompertz_growth(t: np.ndarray, N0: float, A: float, B: float, C: float) -> n
     """
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        # Prevent division by zero and extreme values
+        # Prevent division by zero and extreme values with more robust handling
+        epsilon = 1e-12
+        A = max(A, epsilon)  # Ensure A is positive
+        
         if A <= 0 or C <= 0:
             return np.full_like(t, np.nan)
         
@@ -1064,7 +1071,10 @@ def exponential_growth(t: np.ndarray, N0: float, r: float) -> np.ndarray:
         N0: Initial population
         r: Growth rate
     """
-    # Prevent extreme values
+    # Prevent extreme values with robust handling
+    epsilon = 1e-12
+    N0 = max(N0, epsilon)  # Ensure N0 is positive
+    
     if N0 <= 0:
         return np.full_like(t, np.nan)
     
@@ -1160,7 +1170,8 @@ def estimate_growth_parameters(time_hours: np.ndarray, od_data: np.ndarray) -> D
     Estimate initial parameters for growth models based on data characteristics.
     """
     # Basic statistics
-    N0 = od_data[0]
+    # Ensure N0 is positive and reasonable
+    N0 = max(od_data[0], 1e-6)  # Use epsilon if first value is zero/negative
     N_max = np.max(od_data)
     N_final = od_data[-1]
     
@@ -1238,13 +1249,25 @@ def fit_growth_model(time_data: np.ndarray, od_data: np.ndarray, model_type: str
             'model_type': model_type
         }
     
-    # Validate data quality
+    # Handle non-positive values by filtering or replacing with small epsilon
+    epsilon = 1e-6  # Small positive value
+    
     if np.any(od_data <= 0):
-        return {
-            'success': False,
-            'error': 'OD data contains non-positive values',
-            'model_type': model_type
-        }
+        num_negative = np.sum(od_data <= 0)
+        logger.warning(f"Found {num_negative} non-positive OD values (min: {np.min(od_data):.6f}), replacing with epsilon={epsilon}")
+        
+        # Replace non-positive values with small epsilon
+        od_data = np.where(od_data <= 0, epsilon, od_data)
+        
+        # If too many values were replaced (>50%), it might indicate bad data quality
+        if num_negative > len(od_data) * 0.5:
+            return {
+                'success': False,
+                'error': f'Too many non-positive OD values ({num_negative}/{len(od_data)}), likely bad data quality',
+                'model_type': model_type
+            }
+        
+        logger.info(f"Successfully replaced {num_negative} non-positive values. Data range: {np.min(od_data):.6f} to {np.max(od_data):.6f}")
     
     # More relaxed growth validation for trimmed data
     growth_ratio = np.max(od_data) / np.min(od_data)
@@ -1264,7 +1287,10 @@ def fit_growth_model(time_data: np.ndarray, od_data: np.ndarray, model_type: str
     try:
         if model_type == 'logistic':
             # Improved logistic model initialization with better parameter estimates
-            N0 = np.mean(od_data[0:10])
+            # Use robust initial value estimation
+            initial_points = min(10, len(od_data) // 3)
+            N0 = np.mean(od_data[:initial_points])
+            N0 = max(N0, epsilon * 10)  # Ensure N0 is sufficiently above epsilon
             N_max = np.max(od_data)
             N_final = od_data[-1]
             
@@ -1311,7 +1337,8 @@ def fit_growth_model(time_data: np.ndarray, od_data: np.ndarray, model_type: str
             # More flexible bounds for better convergence
             min_K = np.max(od_data) * 0.95  # Allow K to be slightly below max
             max_K = np.max(od_data) * 10.0   # Reasonable upper bound
-            bounds = ([0.001, min_K, 0.01], [20.0, max_K, 5.0])
+            min_N0 = min(epsilon * 0.1, np.min(od_data) * 0.1)  # Allow N0 to be very small
+            bounds = ([min_N0, min_K, 0.01], [20.0, max_K, 5.0])
             
             best_result = None
             best_error = float('inf')
@@ -1340,7 +1367,8 @@ def fit_growth_model(time_data: np.ndarray, od_data: np.ndarray, model_type: str
                             max_growth_rate_time = start_time  # Max growth rate at start (no lag)
                         
                         # Debug: Print fitted parameters
-                        print(f"Logistic fit successful: N0={N0_fit:.4f}, K={K_fit:.4f}, r={r_fit:.4f}")
+                        logger.info(f"Logistic fit successful: N0={N0_fit:.6f}, K={K_fit:.4f}, r={r_fit:.4f}, error={error:.6f}")
+                        logger.info(f"Data range: {np.min(od_data):.6f} to {np.max(od_data):.6f}")
                         
                         best_result = {
                             'success': True,
@@ -1357,10 +1385,12 @@ def fit_growth_model(time_data: np.ndarray, od_data: np.ndarray, model_type: str
                             'fit_quality': calculate_goodness_of_fit(od_data, y_pred, 3),
                             'predictions': y_pred
                         }
-                except:
+                except Exception as e:
+                    logger.warning(f"Logistic fit attempt failed with p0={attempt}: {str(e)}")
                     continue
             
             if best_result is None:
+                logger.error(f"All logistic fitting attempts failed. Data range: {np.min(od_data):.6f} to {np.max(od_data):.6f}, N attempts: {len(attempts)}")
                 raise ValueError("All logistic fitting attempts failed")
             result = best_result
             
@@ -1380,7 +1410,8 @@ def fit_growth_model(time_data: np.ndarray, od_data: np.ndarray, model_type: str
             # Bounds for Gompertz parameters: [N0, A, B, C]
             min_A = np.max(od_data) * 0.99  # Allow A to be slightly below max (for trimmed stationary data)
             max_A = np.max(od_data) * 15.0  # More permissive upper bound
-            bounds = ([0.001, min_A, 0, 0.01], [20.0, max_A, time_hours[-1], 8.0])
+            min_N0 = min(epsilon * 0.1, np.min(od_data) * 0.1)  # Allow N0 to be very small
+            bounds = ([min_N0, min_A, 0, 0.01], [20.0, max_A, time_hours[-1], 8.0])
             
             best_result = None
             best_error = float('inf')
@@ -1447,8 +1478,8 @@ def fit_growth_model(time_data: np.ndarray, od_data: np.ndarray, model_type: str
             
             # Set bounds for exponential parameters
             # More flexible bounds for better fitting
-            min_N0 = od_data[0] * 0.1  # Allow wider range for initial OD
-            max_N0 = od_data[0] * 5.0  # Allow higher initial estimates
+            min_N0 = min(epsilon * 0.1, od_data[0] * 0.1)  # Allow very small initial OD values
+            max_N0 = max(od_data[0] * 5.0, epsilon * 1000)  # Allow higher initial estimates
             bounds = ([min_N0, 0.001],   # Lower bounds: N0, r (r > 0 for growth)
                      [max_N0, 10.0])     # Upper bounds: N0, r
             
