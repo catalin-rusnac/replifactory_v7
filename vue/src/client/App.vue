@@ -54,6 +54,7 @@ const components = {
   DeviceControl: defineAsyncComponent(() => import("@/client/components/DeviceControl/DeviceControl.vue")),
   // NgrokTab: defineAsyncComponent(() => import("@/client/components/Remote/NgrokTab.vue")),
   PlotTab: defineAsyncComponent(() => import("@/client/components/PlotTab/PlotTab.vue")),
+  GrowthRateTab: defineAsyncComponent(() => import("@/client/components/GrowthRateTab/GrowthRateTab.vue")),
   HelpTab: defineAsyncComponent(() => import("@/client/components/HelpTab/HelpTab.vue")),
   CameraTab: defineAsyncComponent(() => import("@/client/components/CameraTab/CameraTab.vue")),
   StatusTab: defineAsyncComponent(() => import("@/client/components/StatusTab/StatusTab.vue")),
@@ -72,6 +73,7 @@ const tabs = [
   // { name: "Ngrok", component: "NgrokTab", icon: "mdi-remote-desktop" },
   { name: "Docs", component: "HelpTab", icon: "mdi-book-open-variant" },
   { name: "Plot", component: "PlotTab", icon: "mdi-chart-line-variant" },
+  { name: "Growth Rate", component: "GrowthRateTab", icon: "mdi-trending-up" },
   { name: "Export Data", component: "StatusTab", icon: "mdi-cloud-download" },
   // { name: "Logs", component: "LogsTab", icon: "mdi-file-document-alert-outline" },
 ]

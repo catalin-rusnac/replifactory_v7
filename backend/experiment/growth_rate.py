@@ -117,45 +117,45 @@ def calculate_last_growth_rate(t, od):
     return timepoint, growth_rate, error
 
 
-# def sliding_window_growth_rate(time_values, od_values, window_size_minutes):
-#     """
-#     time_values in seconds
-#     window size in minutes
-#     """
-#     time_values = np.array(time_values)
-#     od_values = np.array(od_values)
-#     od_values[od_values <= 0] = 1e-6
-#
-#     growth_rates = []
-#     errors = []
-#     timepoints = []
-#     for i in range(len(time_values)):
-#         tmin = time_values[i]
-#         tmax = tmin + window_size_minutes * 60
-#         if tmax <= time_values[-1]:
-#             imax = np.where(time_values >= tmax)[0][0]
-#             time_window = time_values[i:imax + 1]
-#             od_window = od_values[i:imax + 1]
-#
-#             timepoint = (tmin+tmax)/2
-#             try:
-#                 growth_rate, error = calculate_growth_rate(time_window, od_window)
-#             except:
-#                 growth_rate, error = np.nan, np.nan
-#             timepoints += [timepoint]
-#             growth_rates += [growth_rate]
-#             errors += [error]
-#     growth_rates = np.array(growth_rates)
-#     errors = np.array(errors)
-#     timepoints = np.array(timepoints)
-#     return timepoints, growth_rates, errors
-#
-#
-# def sliding_window_doubling_time(t, od, window_size_minutes=20):
-#     timepoints, growth_rates, gr_errors = sliding_window_growth_rate(t, od, window_size_minutes=window_size_minutes)
-#     t_doubling = np.log(2) / growth_rates
-#     t_doubling_error = t_doubling * gr_errors / growth_rates
-#     return timepoints, t_doubling, t_doubling_error
+def sliding_window_growth_rate(time_values, od_values, window_size_minutes):
+    """
+    time_values in seconds
+    window size in minutes
+    """
+    time_values = np.array(time_values)
+    od_values = np.array(od_values)
+    od_values[od_values <= 0] = 1e-6
+
+    growth_rates = []
+    errors = []
+    timepoints = []
+    for i in range(len(time_values)):
+        tmin = time_values[i]
+        tmax = tmin + window_size_minutes * 60
+        if tmax <= time_values[-1]:
+            imax = np.where(time_values >= tmax)[0][0]
+            time_window = time_values[i:imax + 1]
+            od_window = od_values[i:imax + 1]
+
+            timepoint = (tmin+tmax)/2
+            try:
+                timepoint_result, growth_rate, error = calculate_growth_rate(time_window, od_window)
+            except:
+                growth_rate, error = np.nan, np.nan
+            timepoints += [timepoint]
+            growth_rates += [growth_rate]
+            errors += [error]
+    growth_rates = np.array(growth_rates)
+    errors = np.array(errors)
+    timepoints = np.array(timepoints)
+    return timepoints, growth_rates, errors
+
+
+def sliding_window_doubling_time(t, od, window_size_minutes=20):
+    timepoints, growth_rates, gr_errors = sliding_window_growth_rate(t, od, window_size_minutes=window_size_minutes)
+    t_doubling = np.log(2) / growth_rates
+    t_doubling_error = t_doubling * gr_errors / growth_rates
+    return timepoints, t_doubling, t_doubling_error
 
 # for i in range(len(od)):
 #     imax = i + 10
