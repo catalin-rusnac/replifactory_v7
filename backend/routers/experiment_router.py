@@ -673,6 +673,13 @@ def advanced_growth_rate_analysis(payload: dict, db_session: Session = Depends(g
             }
             
             summary_stats[vial] = summary
+            
+            # Debug: Log summary for logistic model
+            if model_type == 'logistic':
+                logger.warning(f"Router - Vial {vial} summary: {summary}")
+                logger.warning(f"Router - model_parameters: {summary.get('model_parameters', 'NOT_FOUND')}")
+                if 'model_parameters' in summary:
+                    logger.warning(f"Router - K value: {summary['model_parameters'].get('K', 'K_NOT_FOUND')}")
         
         if not vial_results:
             raise HTTPException(status_code=404, detail="No analyzable data found for selected vials")

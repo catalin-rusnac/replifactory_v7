@@ -1,0 +1,1 @@
+import{_ as o,o as t,c as s,a as e}from"./index-dba55fd0.js";const a={data(){return{docUrl:"https://docs.replifactory.com"}}},_={class:"documentation"},n=["src"];function r(d,l,p,f,c,i){return t(),s("div",_,[e("div",null,[e("iframe",{src:c.docUrl,class:"documentation-frame"},null,8,n)])])}const m=o(a,[["render",r],["__scopeId","data-v-f065acfe"]]);export{m as default};

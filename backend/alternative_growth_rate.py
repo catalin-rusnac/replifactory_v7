@@ -1900,8 +1900,9 @@ def analyze_growth_rate(time_data: np.ndarray, od_data: np.ndarray,
             
             # Debug: Print summary for logistic model
             if model_type == 'logistic':
-                print(f"Logistic summary - model_parameters: {summary['model_parameters']}")
-                print(f"Logistic summary - K value: {summary['model_parameters'].get('K', 'NOT_FOUND')}")
+                logger.warning(f"Logistic summary - model_parameters: {summary['model_parameters']}")
+                logger.warning(f"Logistic summary - K value: {summary['model_parameters'].get('K', 'NOT_FOUND')}")
+                logger.warning(f"Full summary keys: {list(summary.keys())}")
             
             # Clean any NaN values to prevent JSON serialization errors
             summary = clean_nan_values(summary)
