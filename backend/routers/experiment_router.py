@@ -528,10 +528,10 @@ def advanced_growth_rate_analysis(payload: dict, db_session: Session = Depends(g
         elif use_sliding_window and method == 'fixed':
             logger.info(f"Using fixed sliding window with window_size={window_size} hours")
         smoothing_method = payload.get('smoothing_method', 'median')
-        smoothing_window = int(payload.get('smoothing_window', 5))
+        smoothing_window = payload.get('smoothing_window', 5)
         enable_outlier_removal = payload.get('enable_outlier_removal', False)
-        outlier_threshold = float(payload.get('outlier_threshold', 3.0))
-        outlier_window_size = int(payload.get('outlier_window_size', 5))
+        outlier_threshold = payload.get('outlier_threshold', 3.0)
+        outlier_window_size = payload.get('outlier_window_size', 5)
         enable_trimming = payload.get('enable_trimming', False)
         trim_settings = payload.get('trim_settings', {})
         enable_od_trimming = payload.get('enable_od_trimming', False)
@@ -837,10 +837,10 @@ def filter_od_data(payload: dict, db_session: Session = Depends(get_db)):
         
         # Extract filtering parameters
         smoothing_method = payload.get('smoothing_method', 'median')
-        smoothing_window = int(payload.get('smoothing_window', 5))
+        smoothing_window = payload.get('smoothing_window', 5)
         enable_outlier_removal = payload.get('enable_outlier_removal', False)
-        outlier_threshold = float(payload.get('outlier_threshold', 3.0))
-        outlier_window_size = int(payload.get('outlier_window_size', 5))
+        outlier_threshold = payload.get('outlier_threshold', 3.0)
+        outlier_window_size = payload.get('outlier_window_size', 5)
         enable_trimming = payload.get('enable_trimming', False)
         trim_settings = payload.get('trim_settings', {})
         enable_od_trimming = payload.get('enable_od_trimming', False)
@@ -1085,12 +1085,18 @@ def get_data_time_range(vials: str, db_session: Session = Depends(get_db)):
                 logger.warning(f"No OD data for vial {vial}")
                 continue
             
-            # Get timestamps
+            # Get timestamps and OD values
             timestamps = list(od_dict.keys())
+            od_values = list(od_dict.values())
             unix_timestamps = [ts.timestamp() for ts in timestamps]
             
             min_time = min(unix_timestamps)
             max_time = max(unix_timestamps)
+            
+            # Get OD range
+            od_floats = [float(od) for od in od_values]
+            min_od = min(od_floats)
+            max_od = max(od_floats)
             
             # Update overall range
             if overall_min is None or min_time < overall_min:
@@ -1109,6 +1115,8 @@ def get_data_time_range(vials: str, db_session: Session = Depends(get_db)):
                 'max_datetime': max_datetime.strftime('%Y-%m-%d %H:%M:%S'),
                 'min_datetime_local': min_datetime.strftime('%Y-%m-%dT%H:%M'),  # For datetime-local input
                 'max_datetime_local': max_datetime.strftime('%Y-%m-%dT%H:%M'),  # For datetime-local input
+                'min_od': round(min_od, 4),
+                'max_od': round(max_od, 4),
                 'data_points': len(timestamps)
             }
         
